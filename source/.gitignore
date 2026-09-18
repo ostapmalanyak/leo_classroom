@@ -1,0 +1,17 @@
+# Local deployment config and secrets must never be committed.
+.env
+secrets/
+certs/
+
+# Build output.
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+**/bin/
+**/obj/
+
+# Rolling Serilog files written by the backend container.
+logs/
+
+# Deployment bundles produced by ./clean.sh.
+dist/

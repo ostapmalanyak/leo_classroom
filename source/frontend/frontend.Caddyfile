@@ -1,0 +1,7 @@
+# Internal static file server for the Angular SPA (not externally exposed; the ingress caddy proxies to it).
+:80 {
+	root * /srv
+	encode gzip
+	try_files {path} /index.html
+	file_server
+}

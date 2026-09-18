@@ -1,0 +1,69 @@
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+@if (roster(); as roster) {
+  <h1>{{ roster.name }}</h1>
+
+  @if (!isEditable()) {
+    <p class="auto-note">This roster is synced automatically and cannot be edited.</p>
+  } @else {
+    <mat-card class="section">
+      <mat-card-title>Rename</mat-card-title>
+      <mat-card-content>
+        <mat-form-field>
+          <mat-label>Name</mat-label>
+          <input matInput [ngModel]="name()" (ngModelChange)="name.set($event)">
+        </mat-form-field>
+        <button mat-flat-button color="primary" [disabled]="saving()" (click)="handleRenameClicked()">Save</button>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="section">
+      <mat-card-title>Members</mat-card-title>
+      <mat-card-content>
+        <mat-form-field class="search-field">
+          <mat-label>Add a student</mat-label>
+          <input matInput placeholder="Name or username" [ngModel]="searchTerm()"
+                 (ngModelChange)="handleSearchChange($event)">
+          <mat-hint>Search everyone the school has, then add them to this roster</mat-hint>
+        </mat-form-field>
+        @if (searching()) {
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+        }
+
+        @if (searchResults().length > 0) {
+          <mat-list class="search-results">
+            @for (user of searchResults(); track user.id) {
+              <mat-list-item>
+                <span matListItemTitle>{{ user.firstName }} {{ user.lastName }} ({{ user.studentId }})</span>
+                <span matListItemLine>{{ user.class }}</span>
+                <button mat-icon-button matListItemMeta (click)="handleAddMember(user)" title="Add">
+                  <mat-icon>add</mat-icon>
+                </button>
+              </mat-list-item>
+            }
+          </mat-list>
+        }
+
+        <h3>Current members</h3>
+        @if (members().length === 0) {
+          <p class="empty">No members yet.</p>
+        } @else {
+          <mat-list>
+            @for (user of members(); track user.id) {
+              <mat-list-item>
+                <span matListItemTitle>{{ user.firstName }} {{ user.lastName }} ({{ user.studentId }})</span>
+                <button mat-icon-button matListItemMeta (click)="handleRemoveMember(user)" title="Remove">
+                  <mat-icon>remove</mat-icon>
+                </button>
+              </mat-list-item>
+            }
+          </mat-list>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <button mat-stroked-button color="warn" (click)="handleDeleteClicked()">Delete roster</button>
+  }
+}

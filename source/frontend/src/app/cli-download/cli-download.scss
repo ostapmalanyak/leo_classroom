@@ -1,0 +1,36 @@
+.note {
+  color: rgba(0, 0, 0, 0.6);
+  max-width: 50rem;
+}
+
+.version {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.downloads mat-card {
+  width: 16rem;
+}
+
+mat-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+}
+
+mat-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 2.5rem;
+}
+
+.platform {
+  font-weight: 600;
+}

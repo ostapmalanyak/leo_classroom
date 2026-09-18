@@ -1,0 +1,46 @@
+<h1>Commit activity</h1>
+
+<p class="note">
+  A neutral overview of how this submission's commits are distributed over time. It is a prompt to take a
+  closer look where helpful — not a judgement about the student's work.
+</p>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+@if (analytics(); as a) {
+  <div class="cards">
+    <mat-card>
+      <mat-card-content>
+        <span class="value">{{ a.commitCount }}</span>
+        <span class="label">Commits</span>
+      </mat-card-content>
+    </mat-card>
+    <mat-card>
+      <mat-card-content>
+        <span class="value">{{ a.pushCount }}</span>
+        <span class="label">Pushes</span>
+      </mat-card-content>
+    </mat-card>
+    <mat-card>
+      <mat-card-content>
+        <span class="value">{{ a.commitsPerPush | number: '1.0-2' }}</span>
+        <span class="label">Commits per push</span>
+      </mat-card-content>
+    </mat-card>
+    <mat-card>
+      <mat-card-content>
+        <span class="value">{{ a.activeDayCount }}</span>
+        <span class="label">Active days</span>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <dl class="spread">
+    <dt>First push</dt>
+    <dd>{{ a.firstPushAt ? a.firstPushAt.toString() : '—' }}</dd>
+    <dt>Last push</dt>
+    <dd>{{ a.lastPushAt ? a.lastPushAt.toString() : '—' }}</dd>
+  </dl>
+}

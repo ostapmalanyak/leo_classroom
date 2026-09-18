@@ -1,0 +1,63 @@
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+@if (teachers(); as teachers) {
+  <h1>Teachers</h1>
+
+  <mat-card class="section">
+    <mat-card-title>Owner</mat-card-title>
+    <mat-card-content>
+      {{ teachers.owner.firstName }} {{ teachers.owner.lastName }} ({{ teachers.owner.studentId }})
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="section">
+    <mat-card-title>Co-teachers</mat-card-title>
+    <mat-card-content>
+      @if (teachers.coTeachers.length === 0) {
+        <p class="empty">No co-teachers.</p>
+      } @else {
+        <mat-list>
+          @for (teacher of teachers.coTeachers; track teacher.id) {
+            <mat-list-item>
+              <span matListItemTitle>{{ teacher.firstName }} {{ teacher.lastName }} ({{ teacher.studentId }})</span>
+              @if (session.isTeacher()) {
+                <button mat-icon-button matListItemMeta (click)="handleRemoveTeacher(teacher)" title="Remove">
+                  <mat-icon>remove</mat-icon>
+                </button>
+              }
+            </mat-list-item>
+          }
+        </mat-list>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  @if (session.isTeacher()) {
+    <mat-card class="section">
+      <mat-card-title>Add a co-teacher</mat-card-title>
+      <mat-card-content>
+        <mat-form-field class="search-field">
+          <mat-label>Find a teacher</mat-label>
+          <input matInput [ngModel]="searchTerm()" (ngModelChange)="handleSearchChange($event)">
+        </mat-form-field>
+        @if (searching()) {
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+        }
+        @if (searchResults().length > 0) {
+          <mat-list class="search-results">
+            @for (user of searchResults(); track user.id) {
+              <mat-list-item>
+                <span matListItemTitle>{{ user.firstName }} {{ user.lastName }} ({{ user.studentId }})</span>
+                <button mat-icon-button matListItemMeta (click)="handleAddTeacher(user)" title="Add">
+                  <mat-icon>add</mat-icon>
+                </button>
+              </mat-list-item>
+            }
+          </mat-list>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+}

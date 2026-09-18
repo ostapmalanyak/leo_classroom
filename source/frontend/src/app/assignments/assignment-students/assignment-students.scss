@@ -1,0 +1,31 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.students-table {
+  width: 100%;
+}
+
+.empty {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.late-badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.75rem;
+  background: #fdecea;
+  color: #b3261e;
+  font-size: 0.8rem;
+}
+
+td button {
+  margin-right: 0.5rem;
+}

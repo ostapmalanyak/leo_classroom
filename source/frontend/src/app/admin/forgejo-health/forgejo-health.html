@@ -1,0 +1,38 @@
+<h1>Forgejo connection</h1>
+
+<p class="intro">
+  Checks whether this application can still drive Forgejo, in the order things depend on each other: the
+  network, then the token, then the account's standing, then the administrative scope. The first failing row
+  names the layer that broke.
+</p>
+
+<button mat-flat-button color="primary" [disabled]="running()" (click)="run()">Check again</button>
+
+@if (running()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+@if (report(); as report) {
+  <p class="summary" [class.summary--ok]="report.ok" [class.summary--bad]="!report.ok">
+    <mat-icon>{{ report.ok ? 'check_circle' : 'error' }}</mat-icon>
+    <span>
+      @if (report.ok) {
+        Everything the application needs from Forgejo works.
+      } @else {
+        Something the application needs from Forgejo does not work.
+      }
+    </span>
+  </p>
+
+  <p class="target">Checked against <code>{{ report.baseUrl }}</code></p>
+
+  <ul class="checks">
+    @for (check of report.checks; track check.name) {
+      <li class="check" [class.check--failed]="!check.passed">
+        <mat-icon>{{ check.passed ? 'check' : 'close' }}</mat-icon>
+        <span class="check__name">{{ check.name }}</span>
+        <span class="check__detail">{{ check.detail }}</span>
+      </li>
+    }
+  </ul>
+}

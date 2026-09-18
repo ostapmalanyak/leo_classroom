@@ -1,0 +1,36 @@
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+@if (course(); as c) {
+  <mat-card class="course-card">
+    <mat-card-title>Edit course</mat-card-title>
+    <mat-card-content>
+      <mat-form-field class="full-width">
+        <mat-label>Title</mat-label>
+        <input matInput [ngModel]="title()" (ngModelChange)="title.set($event)">
+      </mat-form-field>
+
+      <div class="toggles">
+        <mat-slide-toggle [ngModel]="isReadOnly()" (ngModelChange)="isReadOnly.set($event)">
+          Read-only
+        </mat-slide-toggle>
+        <mat-slide-toggle [ngModel]="studentsRetainAccess()" (ngModelChange)="studentsRetainAccess.set($event)">
+          Students retain access
+        </mat-slide-toggle>
+      </div>
+
+      <dl class="meta">
+        <dt>Roster id</dt>
+        <dd>{{ c.rosterId }}</dd>
+        <dt>Owner id</dt>
+        <dd>{{ c.ownerId }}</dd>
+      </dl>
+
+      <div class="actions">
+        <button mat-flat-button color="primary" [disabled]="saving()" (click)="handleSaveClicked()">Save</button>
+        <button mat-stroked-button color="warn" (click)="handleDeleteClicked()">Delete</button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+}

@@ -1,0 +1,93 @@
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+<h1>{{ isEditMode() ? 'Edit assignment' : 'New assignment' }}</h1>
+
+<mat-card class="section">
+  <mat-card-content>
+    <mat-form-field class="full">
+      <mat-label>Title</mat-label>
+      <input matInput [ngModel]="title()" (ngModelChange)="title.set($event)">
+    </mat-form-field>
+
+    <app-markdown-editor label="Description" [(value)]="description"></app-markdown-editor>
+    <app-markdown-editor label="Hints / instructions" [(value)]="hints"></app-markdown-editor>
+  </mat-card-content>
+</mat-card>
+
+<mat-card class="section">
+  <mat-card-title>Deadline</mat-card-title>
+  <mat-card-content>
+    <mat-form-field>
+      <mat-label>Deadline kind</mat-label>
+      <mat-select [ngModel]="deadlineKind()" (ngModelChange)="deadlineKind.set($event)">
+        @for (kind of deadlineKinds; track kind) {
+          <mat-option [value]="kind">{{ kind }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (deadlineKind() !== DeadlineKind.None) {
+      <mat-form-field>
+        <mat-label>Deadline (ISO 8601, e.g. 2026-07-01T12:00:00Z)</mat-label>
+        <input matInput [ngModel]="deadline()" (ngModelChange)="deadline.set($event)">
+      </mat-form-field>
+    }
+
+    @if (deadlineKind() === DeadlineKind.Hard) {
+      <mat-slide-toggle [ngModel]="hardRevokesRead()" (ngModelChange)="hardRevokesRead.set($event)">
+        Hard deadline revokes read access
+      </mat-slide-toggle>
+    }
+  </mat-card-content>
+</mat-card>
+
+<mat-card class="section">
+  <mat-card-title>Starter</mat-card-title>
+  <mat-card-content>
+    <mat-form-field>
+      <mat-label>Starter source</mat-label>
+      <mat-select [ngModel]="starterSource()" (ngModelChange)="starterSource.set($event)">
+        @for (source of starterSources; track source) {
+          <mat-option [value]="source">{{ source }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (starterSource() === StarterSourceKind.ForkOwnRepo || starterSource() === StarterSourceKind.CopyRepo) {
+      <mat-form-field class="full">
+        <mat-label>Starter repository URL</mat-label>
+        <input matInput [ngModel]="starterRepoUrl()" (ngModelChange)="starterRepoUrl.set($event)">
+      </mat-form-field>
+    }
+
+    <app-markdown-editor label="README" [(value)]="readme"></app-markdown-editor>
+  </mat-card-content>
+</mat-card>
+
+<mat-card class="section">
+  <mat-card-title>Lifecycle</mat-card-title>
+  <mat-card-content>
+    <mat-slide-toggle [ngModel]="autoDeleteEnabled()" (ngModelChange)="autoDeleteEnabled.set($event)">
+      Auto-delete this assignment
+    </mat-slide-toggle>
+    @if (autoDeleteEnabled()) {
+      <mat-form-field>
+        <mat-label>Auto-delete on (ISO 8601, default +2y)</mat-label>
+        <input matInput [ngModel]="autoDeleteOn()" (ngModelChange)="autoDeleteOn.set($event)">
+      </mat-form-field>
+    }
+
+    <mat-form-field>
+      <mat-label>Download snapshot mode</mat-label>
+      <mat-select [ngModel]="snapshotMode()" (ngModelChange)="snapshotMode.set($event)">
+        @for (mode of snapshotModes; track mode) {
+          <mat-option [value]="mode">{{ mode }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </mat-card-content>
+</mat-card>
+
+<button mat-flat-button color="primary" [disabled]="saving()" (click)="handleSaveClicked()">Save</button>

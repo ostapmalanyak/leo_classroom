@@ -1,0 +1,30 @@
+.course-card {
+  max-width: 32rem;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.meta dt {
+  opacity: 0.7;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+}

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Compile Include="../../cli/BackendClient.cs" Link="Source/BackendClient.cs" />
+    <Compile Include="../../cli/CliConfig.cs" Link="Source/CliConfig.cs" />
+    <Compile Include="../../cli/DeviceAuth.cs" Link="Source/DeviceAuth.cs" />
+    <Compile Include="../../cli/Dtos.cs" Link="Source/Dtos.cs" />
+    <Compile Include="../../cli/GitPreparer.cs" Link="Source/GitPreparer.cs" />
+    <Compile Include="../../cli/TokenCache.cs" Link="Source/TokenCache.cs" />
+    <Compile Include="../../backend/LeoClassroom.Shared/Enums.cs" Link="Source/Enums.cs" />
+    <Compile Include="../../backend/LeoClassroom.Shared/LdapDistinguishedName.cs" Link="Source/LdapDistinguishedName.cs" />
+    <Compile Include="../../backend/LeoClassroom/Auth/AuthClaims.cs" Link="Source/AuthClaims.cs" />
+    <Compile Include="../../backend/LeoClassroom/Auth/LeoRoleClaimsTransformation.cs" Link="Source/LeoRoleClaimsTransformation.cs" />
+    <Compile Include="../../backend/LeoClassroom.Services/Forgejo/RepositoryFilePath.cs" Link="Source/RepositoryFilePath.cs" />
+  </ItemGroup>
+</Project>

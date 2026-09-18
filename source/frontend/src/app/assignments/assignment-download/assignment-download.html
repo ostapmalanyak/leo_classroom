@@ -1,0 +1,51 @@
+<h1>Download all submissions</h1>
+
+<p class="note">
+  Package every student's repository for this assignment into a single zip, with folders named by
+  student name. The export runs in the background and can be downloaded once it is ready.
+</p>
+
+<mat-card>
+  <mat-card-content>
+    <p class="field-label">Snapshot</p>
+    <mat-button-toggle-group [value]="mode()" (change)="mode.set($event.value)" hideSingleSelectionIndicator>
+      <mat-button-toggle [value]="null">Assignment default</mat-button-toggle>
+      <mat-button-toggle [value]="DownloadSnapshotMode.Deadline">Before deadline</mat-button-toggle>
+      <mat-button-toggle [value]="DownloadSnapshotMode.Head">Include late commits</mat-button-toggle>
+    </mat-button-toggle-group>
+
+    <div class="actions">
+      <button mat-raised-button color="primary" [disabled]="busy()" (click)="start()">
+        Start download
+      </button>
+    </div>
+  </mat-card-content>
+</mat-card>
+
+@if (job(); as j) {
+  <mat-card class="status">
+    <mat-card-content>
+      @switch (j.status) {
+        @case (DownloadJobStatus.Pending) {
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          <p>Queued…</p>
+        }
+        @case (DownloadJobStatus.Running) {
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          <p>Packaging submissions…</p>
+        }
+        @case (DownloadJobStatus.Ready) {
+          <p>The archive is ready.</p>
+          <button mat-raised-button color="primary" (click)="download()">Download zip</button>
+        }
+        @case (DownloadJobStatus.Failed) {
+          <p class="error">The download failed: {{ j.error ?? 'unknown error' }}</p>
+        }
+      }
+
+      @if (j.notes) {
+        <pre class="notes">{{ j.notes }}</pre>
+      }
+    </mat-card-content>
+  </mat-card>
+}

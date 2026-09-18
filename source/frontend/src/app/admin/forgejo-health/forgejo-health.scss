@@ -1,0 +1,52 @@
+.intro {
+  max-width: 60ch;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  font-weight: 500;
+}
+
+.summary--ok {
+  color: var(--mat-sys-primary);
+}
+
+.summary--bad {
+  color: var(--mat-sys-error);
+}
+
+.target {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.checks {
+  list-style: none;
+  padding: 0;
+  max-width: 80ch;
+}
+
+.check {
+  display: grid;
+  grid-template-columns: 1.5rem 12rem 1fr;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.check__name {
+  font-weight: 500;
+}
+
+.check__detail {
+  color: var(--mat-sys-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.check--failed .check__detail {
+  color: var(--mat-sys-error);
+}

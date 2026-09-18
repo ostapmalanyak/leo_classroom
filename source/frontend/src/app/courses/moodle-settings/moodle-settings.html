@@ -1,0 +1,35 @@
+<h1>Moodle link</h1>
+
+<p class="note">
+  Optionally mirror this course's assignments into Moodle as items carrying the title, deadline and a direct
+  accept link. The bridge is one-directional — nothing is read back from Moodle. Use a least-privilege Moodle
+  web-service token; it is stored encrypted and never shown again.
+</p>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+<div class="form">
+  <mat-slide-toggle [checked]="enabled()" (change)="enabled.set($event.checked)">
+    Enable Moodle sync for this course
+  </mat-slide-toggle>
+
+  <mat-form-field>
+    <mat-label>Moodle base URL</mat-label>
+    <input matInput [ngModel]="baseUrl()" (ngModelChange)="baseUrl.set($event)" placeholder="https://moodle.example.org">
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>Moodle course id</mat-label>
+    <input matInput type="number" [ngModel]="moodleCourseId()" (ngModelChange)="moodleCourseId.set($event)">
+  </mat-form-field>
+
+  <mat-form-field>
+    <mat-label>{{ hasToken() ? 'Replace web-service token' : 'Web-service token' }}</mat-label>
+    <input matInput type="password" [ngModel]="token()" (ngModelChange)="token.set($event)"
+           [placeholder]="hasToken() ? 'Leave blank to keep the current token' : ''">
+  </mat-form-field>
+</div>
+
+<button mat-flat-button color="primary" [disabled]="loading() || saving()" (click)="save()">Save</button>

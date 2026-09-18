@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\LeoClassroom.Persistence\LeoClassroom.Persistence.csproj"/>
+        <InternalsVisibleTo Include="LeoClassroom.Test"/>
+        <InternalsVisibleTo Include="DynamicProxyGenAssembly2"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="CliWrap" Version="3.10.2"/>
+        <PackageReference Include="MailKit" Version="4.17.0"/>
+        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.11"/>
+        <PackageReference Include="OneOf" Version="3.0.271"/>
+        <PackageReference Include="Quartz.Extensions.Hosting" Version="3.14.0"/>
+        <PackageReference Include="SharpCompress" Version="0.49.1"/>
+        <PackageReference Include="System.DirectoryServices.Protocols" Version="10.0.11"/>
+    </ItemGroup>
+
+</Project>

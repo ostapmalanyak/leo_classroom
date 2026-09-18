@@ -1,0 +1,20 @@
+.course-table {
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+.course-row {
+  cursor: pointer;
+}
+
+.empty {
+  opacity: 0.7;
+  margin-bottom: 2rem;
+}
+
+.create-course {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}

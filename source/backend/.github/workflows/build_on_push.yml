@@ -1,0 +1,46 @@
+name: .NET Build, Test & Publish
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build_test_publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # the solution lives in a subdirectory of the repository
+        working-directory: backend
+    env:
+      APP_DIR: 'backend/LeoClassroom'
+    steps:
+      - uses: actions/checkout@v4
+      - name: setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: restore dependencies
+        run: dotnet restore
+      - name: build
+        run: dotnet build --no-restore
+      - name: test
+        run: dotnet test --no-build --verbosity normal -- --filter-not-trait "Category=SkipOnGitHubActions"
+      - name: publish
+        run: dotnet publish -c Release -r linux-x64 -o release --self-contained true
+        working-directory: ${{env.APP_DIR}}
+      - name: zip deployment
+        run: zip -r LeoClassroom.zip ./*
+        working-directory: ${{env.APP_DIR}}/release
+
+      - name: prepare artifact directories
+        run: mkdir -p Artifacts
+      - name: copy binaries to artifact directories
+        run: cp -r LeoClassroom/release/LeoClassroom.zip Artifacts/LeoClassroom.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LeoClassroom
+          path: backend/Artifacts
+          retention-days: 1

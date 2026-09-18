@@ -1,0 +1,4 @@
+# `dotnet restore`/`publish` run inside the image; host build output must not leak into it.
+**/bin
+**/obj
+**/*.user

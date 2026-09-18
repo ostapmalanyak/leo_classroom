@@ -1,0 +1,21 @@
+<h1>Teacher CLI</h1>
+
+<p class="note">
+  Publish an assignment straight from a folder on disk: the tool logs you in, lets you pick a course and
+  enter a title/deadline/instructions, pushes the folder as the starter repo, creates the assignment, and
+  prints the accept link. Download the binary for your platform (no .NET install required).
+</p>
+
+<p class="version">Targets backend API version <strong>{{ apiVersion }}</strong>.</p>
+
+<div class="downloads">
+  @for (b of binaries; track b.rid) {
+    <mat-card>
+      <mat-card-content>
+        <mat-icon>terminal</mat-icon>
+        <span class="platform">{{ b.platform }}</span>
+        <a mat-raised-button color="primary" [href]="b.file" download>Download</a>
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

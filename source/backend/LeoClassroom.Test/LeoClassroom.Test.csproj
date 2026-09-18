@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>exe</OutputType>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\LeoClassroom.Services\LeoClassroom.Services.csproj"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.10.0"/>
+        <PackageReference Include="AwesomeAssertions" Version="9.6.0"/>
+        <PackageReference Include="NSubstitute" Version="6.2.0"/>
+        <PackageReference Include="xunit.v3" Version="4.0.0"/>
+    </ItemGroup>
+    <ItemGroup>
+        <Using Include="AwesomeAssertions"/>
+        <Using Include="Xunit"/>
+    </ItemGroup>
+</Project>

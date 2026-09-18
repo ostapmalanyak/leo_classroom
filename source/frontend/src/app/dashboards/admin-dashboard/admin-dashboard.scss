@@ -1,0 +1,36 @@
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.card-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.card-link mat-card {
+  width: 14rem;
+}
+
+mat-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1.25rem;
+}
+
+mat-icon {
+  width: 2rem;
+  height: 2rem;
+  font-size: 2rem;
+}
+
+.title {
+  font-weight: 600;
+}
+
+.description {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.85rem;
+}

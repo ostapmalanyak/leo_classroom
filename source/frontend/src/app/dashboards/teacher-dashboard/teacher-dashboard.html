@@ -1,0 +1,29 @@
+<h1>My courses</h1>
+
+<app-loading-indicator [loading]="loading()"></app-loading-indicator>
+
+@if (failed()) {
+  <app-inline-error message="Could not load your courses" [retryable]="true" (retry)="load()"></app-inline-error>
+} @else if (list(); as courses) {
+  @if (courses.length === 0) {
+    <app-empty-state message="You have no courses yet" icon="school"></app-empty-state>
+  } @else {
+    <mat-card>
+      <mat-card-content>
+        <mat-nav-list>
+          @for (c of courses; track c.id) {
+            <a mat-list-item [routerLink]="['/courses', c.id]">
+              <span matListItemTitle>{{ c.title }}</span>
+              <span matListItemLine>{{ c.rosterName }} · {{ c.memberCount }} members</span>
+            </a>
+          }
+        </mat-nav-list>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <div class="links">
+    <a mat-button routerLink="/courses">All courses</a>
+    <a mat-button routerLink="/rosters">Rosters</a>
+  </div>
+}

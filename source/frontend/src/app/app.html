@@ -1,0 +1,5 @@
+@if (session.authenticated()) {
+  <app-shell></app-shell>
+} @else {
+  <app-public-landing></app-public-landing>
+}

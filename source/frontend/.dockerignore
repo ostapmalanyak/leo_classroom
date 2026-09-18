@@ -1,0 +1,6 @@
+# The image runs `npm ci` from package-lock.json and builds from source; anything already built on the host
+# only slows the context transfer and risks native modules compiled for the wrong platform.
+node_modules
+dist
+.angular
+npm-debug.log*

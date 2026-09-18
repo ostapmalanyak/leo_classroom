@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/SolutionItems/">
+    <File Path=".github/workflows/build_on_push.yml" />
+    <File Path="Directory.Build.props" />
+    <File Path="ManageMigration.ps1" />
+    <File Path=".editorconfig" />
+    <File Path="AGENTS.md" />
+  </Folder>
+  <Project Path="LeoClassroom.Persistence/LeoClassroom.Persistence.csproj" />
+  <Project Path="LeoClassroom.Services/LeoClassroom.Services.csproj" />
+  <Project Path="LeoClassroom.Shared/LeoClassroom.Shared.csproj" />
+  <Project Path="LeoClassroom.Test/LeoClassroom.Test.csproj" />
+  <Project Path="LeoClassroom.TestInt/LeoClassroom.TestInt.csproj" />
+  <Project Path="LeoClassroom/LeoClassroom.csproj" />
+</Solution>

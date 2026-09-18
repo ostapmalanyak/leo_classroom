@@ -1,0 +1,66 @@
+<h1>Courses</h1>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+<table mat-table [dataSource]="courses()" class="course-table">
+  <ng-container matColumnDef="title">
+    <th mat-header-cell *matHeaderCellDef>Title</th>
+    <td mat-cell *matCellDef="let course">{{ course.title }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="rosterName">
+    <th mat-header-cell *matHeaderCellDef>Roster</th>
+    <td mat-cell *matCellDef="let course">{{ course.rosterName }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="memberCount">
+    <th mat-header-cell *matHeaderCellDef>Members</th>
+    <td mat-cell *matCellDef="let course">{{ course.memberCount }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="flags">
+    <th mat-header-cell *matHeaderCellDef>Read-only</th>
+    <td mat-cell *matCellDef="let course">
+      @if (course.isReadOnly) {
+        <mat-icon>lock</mat-icon>
+      }
+    </td>
+  </ng-container>
+
+  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+  <tr mat-row *matRowDef="let row; columns: displayedColumns" (click)="handleRowClicked(row)" class="course-row"></tr>
+</table>
+
+@if (!loading() && courses().length === 0) {
+  <p class="empty">No courses yet.</p>
+}
+
+@if (session.isTeacher()) {
+<section class="create-course">
+  <h2>New course</h2>
+  <mat-form-field>
+    <mat-label>Title</mat-label>
+    <input matInput [ngModel]="newTitle()" (ngModelChange)="newTitle.set($event)">
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Roster</mat-label>
+    <mat-select [ngModel]="newRosterId()" (ngModelChange)="newRosterId.set($event)">
+      @for (roster of rosters(); track roster.id) {
+        <mat-option [value]="roster.id">
+          {{ roster.name }} ({{ roster.memberCount }})
+        </mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <button mat-flat-button color="primary" [disabled]="creating()" (click)="handleCreateClicked()">Create</button>
+
+  @if (rosters().length === 0) {
+    <p class="empty">
+      No rosters yet, so there is nothing to base a course on. Class rosters appear on their own once the
+      LDAP sync runs; you can also create one by hand under <strong>Rosters</strong>.
+    </p>
+  }
+</section>
+}

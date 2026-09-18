@@ -1,0 +1,95 @@
+<h1>My account</h1>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+<section class="account">
+  <div class="card">
+    <h2>Who you are</h2>
+    <dl class="facts">
+      <dt>Name</dt>
+      <dd>{{ identity()?.displayName ?? '—' }}</dd>
+      <dt>Username</dt>
+      <dd><code>{{ me()?.studentId ?? identity()?.studentId ?? '—' }}</code></dd>
+      <dt>Class</dt>
+      <dd>{{ me()?.schoolClass ?? '—' }}</dd>
+      <dt>Roles</dt>
+      <dd>{{ (me()?.roles ?? []).join(', ') || '—' }}</dd>
+    </dl>
+  </div>
+
+  @if (issued(); as credential) {
+    <div class="credential">
+      <p class="credential__warning">
+        <mat-icon>warning</mat-icon>
+        <span>
+          Write this password down now. It is shown this one time and is <strong>not stored anywhere</strong> —
+          if you lose it you cannot look it up, you can only generate a new one.
+        </span>
+      </p>
+
+      <h2>Your git password</h2>
+
+      <div class="secret">
+        <span>Username</span>
+        <code>{{ credential.username }}</code>
+        <button mat-stroked-button (click)="copy(credential.username)">Copy</button>
+      </div>
+      <div class="secret">
+        <span>Password</span>
+        <code>{{ credential.password }}</code>
+        <button mat-stroked-button (click)="copy(credential.password)">Copy</button>
+      </div>
+
+      <h3>Signing in to Forgejo</h3>
+      <p>
+        Open Forgejo, choose <strong>Sign in</strong>, and enter the username and password above. You can
+        change the password there afterwards if you prefer one you can remember — this app will not know
+        about it, and generating a new one here always overrides it.
+      </p>
+
+      <h3>Cloning and pushing your repository</h3>
+      <p>When git asks for a username and password, use exactly the two values above.</p>
+      <pre>git clone &lt;your repository URL&gt;
+cd &lt;folder&gt;
+# ...work...
+git add -A
+git commit -m "my changes"
+git push</pre>
+
+      <h3>So you only type it once</h3>
+      <p>Let git remember it for you:</p>
+      <pre>git config --global credential.helper store</pre>
+      <p>
+        The next push asks once and then remembers. On Windows use
+        <code>manager</code> instead of <code>store</code> to keep it in the Windows Credential Manager.
+      </p>
+    </div>
+  }
+
+  <div class="card">
+    <h2>Git access</h2>
+
+    @if (me()?.gitCredentialManaged === false) {
+      <p>
+        Your Forgejo password comes from the school login system, not from this app. Sign in to Forgejo with
+        your usual school credentials.
+      </p>
+    } @else {
+      @if (asDate(me()?.gitCredentialIssuedAt ?? null); as issuedAt) {
+        <p>A git password was last generated on <strong>{{ issuedAt | date: 'medium' }}</strong>.</p>
+      } @else {
+        <p>You have not generated a git password yet.</p>
+      }
+
+      <p>
+        Forgot it, or think someone else has seen it? Generating a new one immediately replaces the old one,
+        which stops working.
+      </p>
+      <button mat-flat-button color="primary" [disabled]="loading()" (click)="reset()">
+        Generate a new password
+      </button>
+    }
+  </div>
+</section>

@@ -1,0 +1,19 @@
+<h1>Email notifications</h1>
+
+<p class="note">Choose which emails you'd like to receive at your school address. Both are off by default.</p>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+<div class="toggles">
+  <mat-slide-toggle [checked]="newAssignment()" (change)="newAssignment.set($event.checked)">
+    A new assignment is available
+  </mat-slide-toggle>
+
+  <mat-slide-toggle [checked]="deadlineChanged()" (change)="deadlineChanged.set($event.checked)">
+    An assignment deadline changes
+  </mat-slide-toggle>
+</div>
+
+<button mat-flat-button color="primary" [disabled]="loading() || saving()" (click)="save()">Save</button>

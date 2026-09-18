@@ -1,0 +1,41 @@
+<h1>My assignments</h1>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+<mat-card class="section">
+  <mat-card-title>New</mat-card-title>
+  <mat-card-content>
+    @if (unaccepted().length === 0) {
+      <p class="empty">Nothing new.</p>
+    } @else {
+      <mat-list>
+        @for (a of unaccepted(); track a.id) {
+          <mat-list-item (click)="handleOpen(a)" class="row">
+            <span matListItemTitle>{{ a.title }}</span>
+            <span matListItemLine>{{ a.courseTitle }}</span>
+          </mat-list-item>
+        }
+      </mat-list>
+    }
+  </mat-card-content>
+</mat-card>
+
+<mat-card class="section">
+  <mat-card-title>Accepted</mat-card-title>
+  <mat-card-content>
+    @if (accepted().length === 0) {
+      <p class="empty">None accepted yet.</p>
+    } @else {
+      <mat-list>
+        @for (a of accepted(); track a.id) {
+          <mat-list-item (click)="handleOpen(a)" class="row">
+            <span matListItemTitle>{{ a.title }}</span>
+            <span matListItemLine>{{ a.courseTitle }} — {{ a.status }}</span>
+          </mat-list-item>
+        }
+      </mat-list>
+    }
+  </mat-card-content>
+</mat-card>

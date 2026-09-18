@@ -1,0 +1,10 @@
+<div class="markdown-editor">
+  <mat-form-field class="editor-input">
+    <mat-label>{{ label() }}</mat-label>
+    <textarea matInput rows="8" [ngModel]="value()" (ngModelChange)="value.set($event)"></textarea>
+  </mat-form-field>
+  <div class="editor-preview">
+    <span class="preview-label">Preview</span>
+    <app-markdown-view [source]="value()"></app-markdown-view>
+  </div>
+</div>

@@ -1,0 +1,19 @@
+.roster-table {
+  width: 100%;
+}
+
+.roster-row {
+  cursor: pointer;
+}
+
+.empty {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.create-roster {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}

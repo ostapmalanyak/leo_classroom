@@ -1,0 +1,51 @@
+# Caddy is the ONLY externally bound service. It terminates TLS at the edge and proxies to the
+# backend, frontend, and Forgejo over the internal `leo` network. Git is HTTPS-only (no SSH anywhere).
+
+{
+	# Used by the public-ACME TLS mode below.
+	email {$ACME_EMAIL}
+}
+
+# APP_SITE / FORGEJO_SITE are Caddy site addresses, not host names.
+#
+# A bare port (`:80`) listens on that port and serves every request regardless of the Host header. That is
+# what an IP-only deployment wants: there is no virtual hosting to do, and it keeps the site reachable
+# through an SSH tunnel or port-forward, where the browser sends `localhost:<port>` and a host-matched
+# site block would answer nothing at all.
+#
+# With a real hostname use the full form - `https://classroom.school.example` - so that Caddy knows which
+# certificate to obtain and redirects HTTP to HTTPS for you.
+#
+# --- TLS mode (selectable by configuration) -------------------------------------------------------
+# Default (this empty snippet) = automatic HTTPS via public ACME using the global email above.
+# Internal CA:      replace the snippet body with:  tls internal
+# Provided certs:   replace the snippet body with:  tls /etc/caddy/certs/fullchain.pem /etc/caddy/certs/privkey.pem
+(tls_config) {
+}
+
+# --- Classroom app: frontend SPA + /api backend ---------------------------------------------------
+{$APP_SITE} {
+	import tls_config
+	encode gzip
+
+	# Preserve the /api prefix — the backend's endpoint groups are routed under /api.
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
+
+	# The backend's liveness endpoint, so it can be probed from outside as well as by the container
+	# healthcheck. Without this it falls through to the SPA below, which answers index.html to everything.
+	handle /healthz {
+		reverse_proxy backend:8080
+	}
+
+	handle {
+		reverse_proxy frontend:80
+	}
+}
+
+# --- Forgejo -------------------------------------------------------------------------
+{$FORGEJO_SITE} {
+	import tls_config
+	reverse_proxy forgejo:3000
+}

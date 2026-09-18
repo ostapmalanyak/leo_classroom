@@ -1,0 +1,59 @@
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+@if (info(); as info) {
+  <h1>{{ info.title }}</h1>
+
+  @if (info.deadline) {
+    <p class="deadline">Deadline ({{ info.deadlineKind }}): {{ info.deadline.toString() }}</p>
+  }
+
+  <mat-card class="section">
+    <mat-card-title>Instructions</mat-card-title>
+    <mat-card-content>
+      <app-markdown-view [source]="info.hintsInstructions"></app-markdown-view>
+    </mat-card-content>
+  </mat-card>
+
+  @if (submission(); as submission) {
+    <mat-card class="section">
+      <mat-card-title>Your submission</mat-card-title>
+      <mat-card-content>
+        <p>Status: {{ submission.status }}</p>
+
+        @if (submission.late) {
+          <p class="late">
+            This submission is marked late{{ submission.lateSince ? ' since ' + submission.lateSince.toString() : '' }}.
+          </p>
+        }
+
+        @if (submission.feedbackState === FeedbackState.Unread) {
+          <div class="feedback-banner">
+            <span>Your teacher left feedback on your repository.</span>
+            <button mat-flat-button color="primary" [disabled]="working()" (click)="handleConfirmRead()">
+              I have read the feedback
+            </button>
+          </div>
+        }
+        @if (submission.feedbackState === FeedbackState.Read) {
+          <p class="hint">Feedback read{{ submission.feedbackReadAt ? ' on ' + submission.feedbackReadAt.toString() : '' }}.</p>
+        }
+
+        @if (submission.status === SubmissionStatus.Provisioning) {
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          <p class="hint">Preparing your repository…</p>
+        }
+        @if (submission.status === SubmissionStatus.Ready && submission.repoUrl) {
+          <p>Clone URL: <code>{{ submission.repoUrl }}</code></p>
+        }
+        @if (submission.status === SubmissionStatus.Failed) {
+          <p class="failed">Provisioning failed.</p>
+          <button mat-flat-button color="primary" [disabled]="working()" (click)="handleRetry()">Retry</button>
+        }
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <button mat-flat-button color="primary" [disabled]="working()" (click)="handleAccept()">Accept assignment</button>
+  }
+}
