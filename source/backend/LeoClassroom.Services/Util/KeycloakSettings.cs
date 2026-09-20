@@ -31,4 +31,9 @@ public sealed class KeycloakSettings
     ///     read out of a token - so this application names its own, by <c>preferred_username</c>.
     /// </remarks>
     public IReadOnlyList<string> AdminUsers { get; init; } = [];
+
+    /// <summary>
+    ///     The usernames (IF numbers) that act as teachers, regardless of their LDAP distinguished name
+    /// </summary>
+    public IReadOnlyList<string> TeacherUsers { get; init; } = [];
 }

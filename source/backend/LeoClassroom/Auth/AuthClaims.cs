@@ -9,8 +9,8 @@ namespace LeoClassroom.Auth;
 /// <remarks>
 ///     The shared realm does not carry a roles claim. A user's group is instead readable from their LDAP
 ///     distinguished name, which the realm puts in <c>ldap_entry_dn</c> - the same thing the school's own
-///     <c>LeoAuth</c> samples key on. Administrators are not expressible at all in that scheme, so they are
-///     configured by username instead (<c>Keycloak:AdminUsers</c>).
+///     <c>LeoAuth</c> samples key on. Administrators and teacher overrides are configured by username when
+///     the LDAP group cannot express them (<c>Keycloak:AdminUsers</c> and <c>Keycloak:TeacherUsers</c>).
 /// </remarks>
 public static class AuthClaims
 {
@@ -53,7 +53,9 @@ public static class AuthClaims
     /// </summary>
     /// <param name="principal">The authenticated caller</param>
     /// <param name="adminUsers">The usernames configured as administrators</param>
-    public static IReadOnlySet<Role> ReadRoles(ClaimsPrincipal principal, IReadOnlySet<string> adminUsers)
+    /// <param name="teacherUsers">The usernames configured as teachers</param>
+    public static IReadOnlySet<Role> ReadRoles(ClaimsPrincipal principal, IReadOnlySet<string> adminUsers,
+                                                IReadOnlySet<string> teacherUsers)
     {
         var roles = new HashSet<Role>();
 
@@ -75,6 +77,11 @@ public static class AuthClaims
         if (ReadStudentId(principal) is { } studentId && adminUsers.Contains(studentId))
         {
             roles.Add(Role.Admin);
+        }
+
+        if (ReadStudentId(principal) is { } teacherId && teacherUsers.Contains(teacherId))
+        {
+            roles.Add(Role.Teacher);
         }
 
         return roles;
