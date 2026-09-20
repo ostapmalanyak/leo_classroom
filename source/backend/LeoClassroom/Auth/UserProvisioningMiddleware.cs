@@ -32,7 +32,9 @@ public sealed class UserProvisioningMiddleware(RequestDelegate next, ILogger<Use
             return;
         }
 
-        var data = BuildClaimUserData(context.User, new HashSet<string>(keycloak.Value.AdminUsers, StringComparer.Ordinal));
+        var data = BuildClaimUserData(context.User,
+                                      new HashSet<string>(keycloak.Value.AdminUsers, StringComparer.Ordinal),
+                                      new HashSet<string>(keycloak.Value.TeacherUsers, StringComparer.Ordinal));
         if (data is null)
         {
             logger.LogWarning("Authenticated principal is missing the preferred_username (IF number) claim");
@@ -118,7 +120,8 @@ public sealed class UserProvisioningMiddleware(RequestDelegate next, ILogger<Use
         return endpoint is not null && endpoint.Metadata.GetMetadata<IAllowAnonymous>() is null;
     }
 
-    private static ClaimUserData? BuildClaimUserData(ClaimsPrincipal principal, IReadOnlySet<string> adminUsers)
+    private static ClaimUserData? BuildClaimUserData(ClaimsPrincipal principal, IReadOnlySet<string> adminUsers,
+                                                    IReadOnlySet<string> teacherUsers)
     {
         string? studentId = AuthClaims.ReadStudentId(principal);
         if (studentId is null)
@@ -126,7 +129,7 @@ public sealed class UserProvisioningMiddleware(RequestDelegate next, ILogger<Use
             return null;
         }
 
-        var roles = AuthClaims.ReadRoles(principal, adminUsers);
+        var roles = AuthClaims.ReadRoles(principal, adminUsers, teacherUsers);
 
         return new ClaimUserData(
             studentId,

@@ -17,9 +17,11 @@ internal sealed class CurrentUser(IHttpContextAccessor httpContextAccessor, IOpt
         Principal is null ? string.Empty : AuthClaims.ReadStudentId(Principal) ?? string.Empty;
 
     public IReadOnlySet<Role> Roles =>
-        Principal is null ? new HashSet<Role>() : AuthClaims.ReadRoles(Principal, AdminUsers);
+        Principal is null ? new HashSet<Role>() : AuthClaims.ReadRoles(Principal, AdminUsers, TeacherUsers);
 
     public string? Class => Principal?.FindFirstValue(AuthClaims.ClassClaim);
 
     private HashSet<string> AdminUsers => new(keycloak.Value.AdminUsers, StringComparer.Ordinal);
+
+    private HashSet<string> TeacherUsers => new(keycloak.Value.TeacherUsers, StringComparer.Ordinal);
 }

@@ -5,9 +5,10 @@ using Microsoft.AspNetCore.Authentication;
 namespace LeoClassroom.Auth;
 
 /// <summary>
-///     Supplies only the roles derived from the LDAP DN and configured administrator list
+///     Supplies only the roles derived from the LDAP DN and configured username lists
 /// </summary>
-internal sealed class LeoRoleClaimsTransformation(IReadOnlySet<string> adminUsers) : IClaimsTransformation
+internal sealed class LeoRoleClaimsTransformation(IReadOnlySet<string> adminUsers,
+                                                   IReadOnlySet<string> teacherUsers) : IClaimsTransformation
 {
     public Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
     {
@@ -29,7 +30,7 @@ internal sealed class LeoRoleClaimsTransformation(IReadOnlySet<string> adminUser
             return clone;
         }));
         ClaimsIdentity target = transformed.Identities.First(identity => identity.IsAuthenticated);
-        foreach (Role role in AuthClaims.ReadRoles(principal, adminUsers))
+        foreach (Role role in AuthClaims.ReadRoles(principal, adminUsers, teacherUsers))
         {
             target.AddClaim(new Claim(target.RoleClaimType, role.ToString().ToLowerInvariant()));
         }

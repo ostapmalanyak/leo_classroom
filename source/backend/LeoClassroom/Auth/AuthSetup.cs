@@ -60,9 +60,10 @@ public static class AuthSetup
         public void AddAuthZ(KeycloakSettings keycloak)
         {
             // this realm carries no roles claim; roles are derived per request from ldap_entry_dn plus the
-            // configured administrator list, so the policies assert on the claims this application adds
+            // configured username lists, so the policies assert on the claims this application adds
             HashSet<string> adminUsers = new(keycloak.AdminUsers, StringComparer.Ordinal);
-            services.AddSingleton<IClaimsTransformation>(new LeoRoleClaimsTransformation(adminUsers));
+            HashSet<string> teacherUsers = new(keycloak.TeacherUsers, StringComparer.Ordinal);
+            services.AddSingleton<IClaimsTransformation>(new LeoRoleClaimsTransformation(adminUsers, teacherUsers));
 
             services.AddAuthorizationBuilder()
                     .AddPolicy(AuthPolicies.RequireAdmin, p => p.RequireRole(AuthPolicies.AdminRole))
