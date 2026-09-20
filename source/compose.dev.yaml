@@ -1,0 +1,46 @@
+# Dev override for LEO Classroom — BACKEND ONLY.
+#
+# The frontend is intentionally NOT overridden here: running it as a standalone dev server on
+# :4200 creates a different browser origin than http://localhost, which the real HTL Leonding
+# Keycloak instance hasn't been told to trust as a redirect URI (and which the backend's CORS
+# policy, a single exact-match origin, also rejects). Fixing that needs Keycloak admin access
+# this deployment doesn't have. So: frontend stays on the normal compose.yaml build, served
+# through Caddy at http://localhost where Keycloak login is already proven to work.
+#
+# Usage:
+#   docker compose -f compose.yaml -f compose.dev.yaml up -d --build
+#
+# Back to the fully normal stack (no dev overrides at all):
+#   docker compose up -d --build
+#
+# Editing frontend code still needs a manual rebuild:
+#   docker compose up -d --build frontend
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: dev.Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    volumes:
+      # Mount live source over the image's /src so dotnet watch sees your edits immediately.
+      - ./backend:/src
+      # Keep build artifacts inside the container's own filesystem, not your host — avoids
+      # Windows/WSL path and permission weirdness with .NET's obj/bin folders.
+      - backend_dev_obj:/src/LeoClassroom/obj
+      - backend_dev_bin:/src/LeoClassroom/bin
+    # dotnet watch needs a TTY-less long-running process; override the image's ENTRYPOINT.
+    entrypoint: ["dotnet", "watch", "run", "--project", "LeoClassroom/LeoClassroom.csproj", "--urls", "http://0.0.0.0:8080", "--non-interactive"]
+    # First dotnet-watch build is slow (restore + compile) — give it more room before Compose
+    # decides the container is unhealthy and Caddy refuses to route to it.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+
+volumes:
+  backend_dev_obj:
+  backend_dev_bin:
