@@ -27,8 +27,28 @@ public static class DesiredStateComputer
     {
         CollaboratorPermission studentLevel = ComputeStudentLevel(input, now);
 
-        List<DesiredCollaborator> collaborators = [.. input.Acceptances.Select(a =>
-            new DesiredCollaborator(a.RepoOwner, a.RepoName, a.StudentStudentId, studentLevel))];
+        HashSet<(string RepoOwner, string RepoName, string Username)> seen = [];
+        List<DesiredCollaborator> collaborators = [];
+
+        foreach (AcceptanceInput acceptance in input.Acceptances)
+        {
+            collaborators.Add(new DesiredCollaborator(acceptance.RepoOwner, acceptance.RepoName,
+                                                     acceptance.StudentStudentId, studentLevel));
+            seen.Add((acceptance.RepoOwner, acceptance.RepoName, acceptance.StudentStudentId));
+
+            foreach (string teacherId in input.TeacherStudentIds)
+            {
+                var key = (acceptance.RepoOwner, acceptance.RepoName, teacherId);
+                if (seen.Contains(key))
+                {
+                    continue;
+                }
+
+                collaborators.Add(new DesiredCollaborator(acceptance.RepoOwner, acceptance.RepoName, teacherId,
+                                                         CollaboratorPermission.Write));
+                seen.Add(key);
+            }
+        }
 
         return new DesiredState(input.Org, ForgejoNaming.TeachersTeamName, input.TeacherStudentIds, collaborators);
     }

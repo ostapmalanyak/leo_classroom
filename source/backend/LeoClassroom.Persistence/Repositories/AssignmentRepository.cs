@@ -56,6 +56,8 @@ internal sealed class AssignmentRepository(DbSet<Assignment> assignments) : IAss
     public async ValueTask<Assignment?> GetReconciliationDataAsync(long id) =>
         await assignments.AsNoTracking()
                          .AsSplitQuery()
+                         .Include(a => a.Owner)
+                         .Include(a => a.CoTeachers)
                          .Include(a => a.Course).ThenInclude(c => c.Owner)
                          .Include(a => a.Course).ThenInclude(c => c.CoTeachers)
                          .Include(a => a.Acceptances).ThenInclude(ac => ac.Student)

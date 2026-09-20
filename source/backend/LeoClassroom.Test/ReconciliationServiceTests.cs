@@ -54,6 +54,8 @@ public sealed class ReconciliationServiceTests
         Slug = "a1",
         Title = "A1",
         DeadlineKind = DeadlineKind.None,
+        Owner = new User { StudentId = TeacherIf, FirstName = "T", LastName = "T", Role = Role.Teacher },
+        CoTeachers = [],
         Course = new Course
         {
             Id = 5,
@@ -72,7 +74,8 @@ public sealed class ReconciliationServiceTests
         ]
     };
 
-    private void ArrangeActual(bool teacherIsMember, CollaboratorPermission studentActual)
+    private void ArrangeActual(bool teacherIsMember, CollaboratorPermission studentActual,
+                              CollaboratorPermission teacherActual = CollaboratorPermission.Write)
     {
         OneOf<IReadOnlyCollection<string>, ForgejoError> members =
             (teacherIsMember ? new List<string> { TeacherIf } : []).AsReadOnly();
@@ -80,6 +83,8 @@ public sealed class ReconciliationServiceTests
                 .Returns(new ValueTask<OneOf<IReadOnlyCollection<string>, ForgejoError>>(members));
         _forgejo.GetCollaboratorPermissionAsync(Org, RepoName, StudentIf)
                 .Returns(new ValueTask<OneOf<CollaboratorPermission, NotFound, ForgejoError>>(studentActual));
+        _forgejo.GetCollaboratorPermissionAsync(Org, RepoName, TeacherIf)
+                .Returns(new ValueTask<OneOf<CollaboratorPermission, NotFound, ForgejoError>>(teacherActual));
     }
 
     [Fact]

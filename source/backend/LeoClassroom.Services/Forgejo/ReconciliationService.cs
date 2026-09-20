@@ -30,7 +30,7 @@ internal sealed class ReconciliationService(
         string org = course.ForgejoOrg ?? ForgejoNaming.OrgName(course.Title, course.Id);
         var input = new ReconciliationInput(
             org,
-            TeacherStudentIds(course),
+            AssignmentTeacherStudentIds(assignment),
             [.. assignment.Acceptances.Select(a => new AcceptanceInput(a.Student.StudentId, a.RepoOwner, a.RepoName))],
             assignment.Deadline,
             assignment.DeadlineKind,
@@ -62,6 +62,17 @@ internal sealed class ReconciliationService(
 
     private static IReadOnlyList<string> TeacherStudentIds(Course course) =>
         [course.Owner.StudentId, .. course.CoTeachers.Select(t => t.StudentId)];
+
+    private static IReadOnlyList<string> AssignmentTeacherStudentIds(Assignment assignment)
+    {
+        HashSet<string> teacherIds = [assignment.Owner.StudentId, .. assignment.CoTeachers.Select(t => t.StudentId)];
+        foreach (string teacherId in TeacherStudentIds(assignment.Course))
+        {
+            teacherIds.Add(teacherId);
+        }
+
+        return [.. teacherIds];
+    }
 
     public async ValueTask ReconcileAllWithHardDeadlinesAsync()
     {

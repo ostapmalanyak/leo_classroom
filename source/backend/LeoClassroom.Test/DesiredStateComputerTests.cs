@@ -21,7 +21,8 @@ public sealed class DesiredStateComputerTests
     {
         DesiredState state = DesiredStateComputer.Compute(Input(DeadlineKind.None, false), Deadline.Plus(Duration.FromDays(1)));
 
-        state.Collaborators.Single().Permission.Should().Be(CollaboratorPermission.Write);
+        state.Collaborators.Should().Contain(c => c.Username == "IF_S" && c.Permission == CollaboratorPermission.Write);
+        state.Collaborators.Should().Contain(c => c.Username == "IF_T" && c.Permission == CollaboratorPermission.Write);
         state.Org.Should().Be(Org);
         state.TeamMembers.Should().ContainSingle().Which.Should().Be("IF_T");
         state.TeamName.Should().Be(ForgejoNaming.TeachersTeamName);
@@ -32,7 +33,8 @@ public sealed class DesiredStateComputerTests
     {
         DesiredState state = DesiredStateComputer.Compute(Input(DeadlineKind.Hard, true), Deadline.Minus(Duration.FromMinutes(1)));
 
-        state.Collaborators.Single().Permission.Should().Be(CollaboratorPermission.Write);
+        state.Collaborators.Should().Contain(c => c.Username == "IF_S" && c.Permission == CollaboratorPermission.Write);
+        state.Collaborators.Should().Contain(c => c.Username == "IF_T" && c.Permission == CollaboratorPermission.Write);
     }
 
     [Fact]
@@ -40,7 +42,8 @@ public sealed class DesiredStateComputerTests
     {
         DesiredState state = DesiredStateComputer.Compute(Input(DeadlineKind.Hard, true), Deadline);
 
-        state.Collaborators.Single().Permission.Should().Be(CollaboratorPermission.None);
+        state.Collaborators.Should().Contain(c => c.Username == "IF_S" && c.Permission == CollaboratorPermission.None);
+        state.Collaborators.Should().Contain(c => c.Username == "IF_T" && c.Permission == CollaboratorPermission.Write);
     }
 
     [Fact]
@@ -48,7 +51,8 @@ public sealed class DesiredStateComputerTests
     {
         DesiredState state = DesiredStateComputer.Compute(Input(DeadlineKind.Hard, false), Deadline.Plus(Duration.FromHours(1)));
 
-        state.Collaborators.Single().Permission.Should().Be(CollaboratorPermission.Read);
+        state.Collaborators.Should().Contain(c => c.Username == "IF_S" && c.Permission == CollaboratorPermission.Read);
+        state.Collaborators.Should().Contain(c => c.Username == "IF_T" && c.Permission == CollaboratorPermission.Write);
     }
 
     [Fact]
@@ -56,7 +60,8 @@ public sealed class DesiredStateComputerTests
     {
         DesiredState state = DesiredStateComputer.Compute(Input(DeadlineKind.Soft, true), Deadline.Plus(Duration.FromHours(1)));
 
-        state.Collaborators.Single().Permission.Should().Be(CollaboratorPermission.Write);
+        state.Collaborators.Should().Contain(c => c.Username == "IF_S" && c.Permission == CollaboratorPermission.Write);
+        state.Collaborators.Should().Contain(c => c.Username == "IF_T" && c.Permission == CollaboratorPermission.Write);
     }
 
     [Fact]
