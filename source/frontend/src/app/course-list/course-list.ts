@@ -10,6 +10,7 @@ import { MatOption, MatSelect } from '@angular/material/select';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { MatIcon } from '@angular/material/icon';
 import { Course, CourseOverview, CourseService } from '../../core/services/course-service';
+import { CourseTeacherService } from '../../core/services/course-teacher-service';
 import { SnackbarService } from '../../core/services/snackbar-service';
 import { SessionService } from '../../core/auth/session-service';
 import { RosterOverview, RosterService } from '../../core/services/roster-service';
@@ -34,6 +35,7 @@ import { RosterOverview, RosterService } from '../../core/services/roster-servic
 })
 export class CourseList implements OnInit {
   private readonly courseService = inject(CourseService);
+  private readonly courseTeacherService = inject(CourseTeacherService);
   private readonly rosterService = inject(RosterService);
   private readonly snackbar = inject(SnackbarService);
   private readonly router = inject(Router);
@@ -41,6 +43,7 @@ export class CourseList implements OnInit {
 
   protected readonly displayedColumns: string[] = ['title', 'rosterName', 'memberCount', 'flags', 'actions'];
   protected readonly courses: WritableSignal<CourseOverview[]> = signal([]);
+  protected readonly manageableCourseIds: WritableSignal<ReadonlySet<number>> = signal(new Set());
   protected readonly loading: WritableSignal<boolean> = signal(false);
 
   protected readonly newTitle: WritableSignal<string> = signal('');
@@ -53,6 +56,10 @@ export class CourseList implements OnInit {
   }
 
   protected async handleRowClicked(course: CourseOverview): Promise<void> {
+    if (!this.canManageCourse(course)) {
+      return;
+    }
+
     await this.router.navigate(['courses', course.id]);
   }
 
@@ -111,5 +118,25 @@ export class CourseList implements OnInit {
       return;
     }
     this.courses.set(result);
+    const teacherResults = await Promise.all(
+      result.map(course => this.courseTeacherService.getTeachers(course.id))
+    );
+    const studentId = this.session.identity()?.studentId;
+    const manageableIds = new Set<number>();
+    if (studentId !== undefined) {
+      result.forEach((course, index) => {
+        const teachers = teacherResults[index];
+        if (teachers !== null
+          && (teachers.owner.studentId === studentId
+            || teachers.coTeachers.some(teacher => teacher.studentId === studentId))) {
+          manageableIds.add(course.id);
+        }
+      });
+    }
+    this.manageableCourseIds.set(manageableIds);
+  }
+
+  protected canManageCourse(course: CourseOverview): boolean {
+    return this.manageableCourseIds().has(course.id);
   }
 }

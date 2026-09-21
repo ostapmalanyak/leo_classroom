@@ -30,8 +30,23 @@ export class StudentAssignments implements OnInit {
 
       return;
     }
-    this.accepted.set(result.accepted);
-    this.unaccepted.set(result.unaccepted);
+    this.accepted.set(this.sortAssignments(result.accepted));
+    this.unaccepted.set(this.sortAssignments(result.unaccepted));
   }
 
+  private sortAssignments(assignments: AssignedAssignment[]): AssignedAssignment[] {
+    return [...assignments].sort((left, right) => {
+      if (left.deadline === null && right.deadline === null) {
+        return left.title.localeCompare(right.title);
+      }
+      if (left.deadline === null) {
+        return 1;
+      }
+      if (right.deadline === null) {
+        return -1;
+      }
+
+      return left.deadline.compareTo(right.deadline);
+    });
+  }
 }
