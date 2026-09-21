@@ -5,10 +5,17 @@ import { AssignmentAnalytics } from './assignment-analytics/assignment-analytics
 import { AssignmentDownload } from './assignment-download/assignment-download';
 import { StudentAssignments } from '../student/student-assignments/student-assignments';
 import { StudentAssignmentDetail } from '../student/assignment-detail/assignment-detail';
+import { AssignmentList } from './assignment-list/assignment-list';
 import { authGuard } from '../../core/auth/auth-guard';
 import { Role } from '../../core/auth/roles';
 
 export const assignmentRoutes: Routes = [
+  {
+    path: 'courses/:courseId/assignments',
+    component: AssignmentList,
+    canActivate: [authGuard],
+    data: { role: Role.Teacher }
+  },
   {
     path: 'courses/:courseId/assignments/new',
     component: AssignmentEdit,

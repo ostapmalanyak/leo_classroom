@@ -12,9 +12,10 @@
     } @else {
       <mat-list>
         @for (a of unaccepted(); track a.id) {
-          <mat-list-item (click)="handleOpen(a)" class="row">
+          <mat-list-item class="row">
             <span matListItemTitle>{{ a.title }}</span>
             <span matListItemLine>{{ a.courseTitle }}</span>
+            <a mat-button matListItemMeta [routerLink]="['/my-assignments', a.id]">Open assignment</a>
           </mat-list-item>
         }
       </mat-list>
@@ -30,9 +31,10 @@
     } @else {
       <mat-list>
         @for (a of accepted(); track a.id) {
-          <mat-list-item (click)="handleOpen(a)" class="row">
+          <mat-list-item class="row">
             <span matListItemTitle>{{ a.title }}</span>
             <span matListItemLine>{{ a.courseTitle }} — {{ a.status }}</span>
+            <a mat-button matListItemMeta [routerLink]="['/my-assignments', a.id]">Open assignment</a>
           </mat-list-item>
         }
       </mat-list>
