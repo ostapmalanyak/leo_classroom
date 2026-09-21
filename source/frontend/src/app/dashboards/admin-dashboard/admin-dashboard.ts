@@ -22,4 +22,5 @@ export class AdminDashboard {
     { title: 'Courses', description: 'Browse and manage courses', route: '/courses', icon: 'school' },
     { title: 'Rosters', description: 'Manage class and custom rosters', route: '/rosters', icon: 'group' }
   ];
+
 }

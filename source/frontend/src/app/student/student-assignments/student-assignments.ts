@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal, WritableSignal } from '@angular/core';
-import { Router } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
+import { MatButton } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { AssignedAssignment, AssignmentService } from '../../../core/services/assignment-service';
@@ -8,14 +9,13 @@ import { SnackbarService } from '../../../core/services/snackbar-service';
 
 @Component({
   selector: 'app-student-assignments',
-  imports: [MatCard, MatCardContent, MatCardTitle, MatListModule, MatProgressBar],
+  imports: [RouterLink, MatCard, MatCardContent, MatCardTitle, MatListModule, MatProgressBar, MatButton],
   templateUrl: './student-assignments.html',
   styleUrl: './student-assignments.scss'
 })
 export class StudentAssignments implements OnInit {
   private readonly service = inject(AssignmentService);
   private readonly snackbar = inject(SnackbarService);
-  private readonly router = inject(Router);
 
   protected readonly accepted: WritableSignal<AssignedAssignment[]> = signal([]);
   protected readonly unaccepted: WritableSignal<AssignedAssignment[]> = signal([]);
@@ -34,7 +34,4 @@ export class StudentAssignments implements OnInit {
     this.unaccepted.set(result.unaccepted);
   }
 
-  protected async handleOpen(assignment: AssignedAssignment): Promise<void> {
-    await this.router.navigate(['my-assignments', assignment.id]);
-  }
 }

@@ -28,6 +28,7 @@ public sealed record AssignmentSettings(
 
 public interface IAssignmentService
 {
+    public ValueTask<OneOf<IReadOnlyCollection<Assignment>, NotFound, Forbidden>> GetForCourseAsync(long courseId);
     public ValueTask<OneOf<Success<Assignment>, NotFound, Forbidden>> CreateAsync(long courseId, AssignmentSettings settings);
     public ValueTask<OneOf<Success<Assignment>, NotFound, Forbidden>> EditAsync(long id, AssignmentSettings settings);
     public ValueTask<OneOf<Assignment, NotFound, Forbidden>> GetForEditAsync(long id);
@@ -49,6 +50,23 @@ internal sealed class AssignmentService(
     ILogger<AssignmentService> logger) : IAssignmentService
 {
     private const int AutoDeleteDefaultYears = 2;
+
+    public async ValueTask<OneOf<IReadOnlyCollection<Assignment>, NotFound, Forbidden>> GetForCourseAsync(long courseId)
+    {
+        Course? course = await uow.CourseRepository.GetWithTeachersAsync(courseId);
+        if (course is null)
+        {
+            return new NotFound();
+        }
+        if (!IsCourseTeacher(course))
+        {
+            return new Forbidden();
+        }
+
+        IReadOnlyCollection<Assignment> assignments = await uow.AssignmentRepository.GetByCourseIdAsync(courseId);
+
+        return OneOf<IReadOnlyCollection<Assignment>, NotFound, Forbidden>.FromT0(assignments);
+    }
 
     public async ValueTask<OneOf<Success<Assignment>, NotFound, Forbidden>> CreateAsync(
         long courseId, AssignmentSettings settings)

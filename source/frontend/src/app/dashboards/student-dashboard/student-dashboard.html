@@ -1,47 +1,19 @@
-<h1>My assignments</h1>
+<mat-card class="welcome-card">
+  <mat-card-content>
+    <h1>Welcome</h1>
 
-<app-loading-indicator [loading]="loading()"></app-loading-indicator>
+    <p>
+      Log in to
+      <a [href]="forgejoLoginUrl" target="_blank" rel="noopener">Forgejo</a>
+      to access your repositories.
+    </p>
 
-@if (failed()) {
-  <app-inline-error message="Could not load your assignments" [retryable]="true" (retry)="load()"></app-inline-error>
-} @else if (list(); as l) {
-  @if (l.unaccepted.length === 0 && l.accepted.length === 0) {
-    <app-empty-state message="You have no assignments yet" icon="assignment"></app-empty-state>
-  } @else {
-    @if (l.unaccepted.length > 0) {
-      <mat-card class="section">
-        <mat-card-header><mat-card-title>To accept</mat-card-title></mat-card-header>
-        <mat-card-content>
-          <mat-nav-list>
-            @for (a of l.unaccepted; track a.id) {
-              <a mat-list-item [routerLink]="['/my-assignments', a.id]">
-                <span matListItemTitle>{{ a.title }}</span>
-                <span matListItemLine>{{ a.courseTitle }}</span>
-              </a>
-            }
-          </mat-nav-list>
-        </mat-card-content>
-      </mat-card>
-    }
+    <p>
+      Your Forgejo username and password are available in your My Account tab.
+    </p>
 
-    <mat-card class="section">
-      <mat-card-header><mat-card-title>Accepted</mat-card-title></mat-card-header>
-      <mat-card-content>
-        @if (l.accepted.length === 0) {
-          <app-empty-state message="Nothing accepted yet" icon="assignment_turned_in"></app-empty-state>
-        } @else {
-          <mat-nav-list>
-            @for (a of l.accepted; track a.id) {
-              <a mat-list-item [routerLink]="['/my-assignments', a.id]">
-                <span matListItemTitle>{{ a.title }}</span>
-                <span matListItemLine>{{ a.courseTitle }}</span>
-              </a>
-            }
-          </mat-nav-list>
-        }
-      </mat-card-content>
-    </mat-card>
-  }
+    <a mat-flat-button color="primary" routerLink="/account">My Account</a>
 
-  <a mat-button routerLink="/my-assignments">View all assignments</a>
-}
+    <p class="motivation">Accept an assignment, start learning, and make something great!</p>
+  </mat-card-content>
+</mat-card>

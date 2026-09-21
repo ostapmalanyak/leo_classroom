@@ -7,6 +7,7 @@ set -eu
 : "${KEYCLOAK_URL:?KEYCLOAK_URL is required}"
 : "${KEYCLOAK_REALM:?KEYCLOAK_REALM is required}"
 : "${KEYCLOAK_FRONTEND_CLIENT_ID:?KEYCLOAK_FRONTEND_CLIENT_ID is required}"
+: "${FORGEJO_URL:?FORGEJO_URL is required}"
 KEYCLOAK_FLOW="${KEYCLOAK_FLOW:-implicit}"
 SESSION_TIMEOUT_MINUTES="${SESSION_TIMEOUT_MINUTES:-360}"
 # backendOrigin stays empty: Caddy serves the SPA and proxies /api on the same origin, so the browser talks
@@ -14,6 +15,7 @@ SESSION_TIMEOUT_MINUTES="${SESSION_TIMEOUT_MINUTES:-360}"
 cat > /srv/config.json <<JSON
 {
   "backendOrigin": "",
+  "forgejoOrigin": "${FORGEJO_URL}",
   "keycloak": {
     "url": "${KEYCLOAK_URL}",
     "realm": "${KEYCLOAK_REALM}",

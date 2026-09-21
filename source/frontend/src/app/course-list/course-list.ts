@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, signal, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButton } from '@angular/material/button';
@@ -17,6 +18,7 @@ import { RosterOverview, RosterService } from '../../core/services/roster-servic
   selector: 'app-course-list',
   imports: [
     FormsModule,
+    RouterLink,
     MatTableModule,
     MatButton,
     MatFormField,
@@ -37,7 +39,7 @@ export class CourseList implements OnInit {
   private readonly router = inject(Router);
   protected readonly session = inject(SessionService);
 
-  protected readonly displayedColumns: string[] = ['title', 'rosterName', 'memberCount', 'flags'];
+  protected readonly displayedColumns: string[] = ['title', 'rosterName', 'memberCount', 'flags', 'actions'];
   protected readonly courses: WritableSignal<CourseOverview[]> = signal([]);
   protected readonly loading: WritableSignal<boolean> = signal(false);
 
