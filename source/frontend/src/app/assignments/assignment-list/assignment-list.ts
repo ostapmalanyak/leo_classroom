@@ -11,13 +11,13 @@ import { SnackbarService } from '../../../core/services/snackbar-service';
   imports: [RouterLink, MatButton, MatCard, MatCardContent, MatProgressBar],
   styles: `
     .assignments {
-      display: grid;
+      display: flex;
+      flex-direction: column;
       gap: 1rem;
-      grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
     }
 
     mat-card {
-      height: 100%;
+      width: 100%;
     }
 
     mat-card-content {
@@ -43,10 +43,10 @@ import { SnackbarService } from '../../../core/services/snackbar-service';
           <mat-card>
             <mat-card-content>
               <strong>{{ assignment.title }}</strong>
-              @if (assignment.deadline; as deadline) {
-                <span>Deadline: {{ deadline.toString() }}</span>
-              }
               <span>
+                @if (assignment.deadline; as deadline) {
+                  <span>Deadline: {{ deadline.toString() }}</span>
+                }
                 <a mat-button [routerLink]="['/assignments', assignment.id, 'edit']">Edit</a>
                 <a mat-button [routerLink]="['/assignments', assignment.id, 'students']">See submissions</a>
               </span>
