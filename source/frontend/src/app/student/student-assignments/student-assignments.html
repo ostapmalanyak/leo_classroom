@@ -15,7 +15,12 @@
           <mat-list-item class="row">
             <span matListItemTitle>{{ a.title }}</span>
             <span matListItemLine>{{ a.courseTitle }}</span>
-            <a mat-button matListItemMeta [routerLink]="['/my-assignments', a.id]">Open assignment</a>
+            <div matListItemMeta>
+              @if (a.deadline; as deadline) {
+                <span>Deadline: {{ deadline.toString() }}</span>
+              }
+              <a mat-button [routerLink]="['/my-assignments', a.id]">Open assignment</a>
+            </div>
           </mat-list-item>
         }
       </mat-list>
@@ -34,7 +39,12 @@
           <mat-list-item class="row">
             <span matListItemTitle>{{ a.title }}</span>
             <span matListItemLine>{{ a.courseTitle }} — {{ a.status }}</span>
-            <a mat-button matListItemMeta [routerLink]="['/my-assignments', a.id]">Open assignment</a>
+            <div matListItemMeta>
+              @if (a.deadline; as deadline) {
+                <span>Deadline: {{ deadline.toString() }}</span>
+              }
+              <a mat-button [routerLink]="['/my-assignments', a.id]">Open assignment</a>
+            </div>
           </mat-list-item>
         }
       </mat-list>
