@@ -37,7 +37,7 @@
 
       @if (deadlineDate() !== '') {
         <mat-form-field>
-          <mat-label>Deadline time</mat-label>
+          <mat-label>Deadline time(local)</mat-label>
           <input matInput type="time" [ngModel]="deadlineTime()"
                  (ngModelChange)="handleDeadlineTimeChanged($event)">
         </mat-form-field>

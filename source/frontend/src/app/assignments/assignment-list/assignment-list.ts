@@ -72,8 +72,12 @@ export class AssignmentList implements OnInit {
 
   public async ngOnInit(): Promise<void> {
     this.loading.set(true);
-    const result = await this.service.listForCourse(Number(this.courseId()));
-    this.loading.set(false);
+    let result: Assignment[] | null = null;
+    try {
+      result = await this.service.listForCourse(Number(this.courseId()));
+    } finally {
+      this.loading.set(false);
+    }
     if (result === null) {
       this.snackbar.show('Could not load assignments');
 
