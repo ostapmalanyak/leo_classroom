@@ -199,7 +199,7 @@ export class AssignmentService extends BackendServiceBase {
 export enum DeadlineKind {
   None = 'None',
   Soft = 'Soft',
-  Hard = 'Hard'
+  Hard = 'Hard(doesn\'t work)'
 }
 
 export enum StarterSourceKind {

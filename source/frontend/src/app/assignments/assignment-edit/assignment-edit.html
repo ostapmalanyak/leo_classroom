@@ -41,7 +41,7 @@
           <input matInput type="time" [ngModel]="deadlineTime()"
                  (ngModelChange)="handleDeadlineTimeChanged($event)">
         </mat-form-field>
-        <button mat-button type="button" (click)="clearDeadline()">Clear deadline</button>
+        <button class="light-button" mat-button type="button" (click)="clearDeadline()">Clear deadline</button>
       }
     }
 
