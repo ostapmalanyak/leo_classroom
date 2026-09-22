@@ -131,6 +131,8 @@ public sealed class SubmissionReviewServiceTests
                             new ForgejoCommitAuthor("2026-06-01T10:00:00Z")), new ForgejoUser(1, "IF000050")),
                         new("sha-2", new ForgejoCommitDetails(
                             new ForgejoCommitAuthor("2026-06-01T11:00:00Z")), new ForgejoUser(1, "IF000050")),
+                        new("teacher-authored", new ForgejoCommitDetails(
+                            new ForgejoCommitAuthor("2026-06-01T11:30:00Z")), new ForgejoUser(20, "IF000020")),
                         new("other", new ForgejoCommitDetails(
                             new ForgejoCommitAuthor("2026-06-01T12:00:00Z")), new ForgejoUser(2, "IF000099"))
                     }));
@@ -139,10 +141,10 @@ public sealed class SubmissionReviewServiceTests
 
         CommitAnalyticsView analytics = result.ShouldBe<CommitAnalyticsView>();
         analytics.PushCount.Should().Be(4);
-        analytics.CommitCount.Should().Be(3);
-        analytics.CommitsPerPush.Should().Be(0.75);
+        analytics.CommitCount.Should().Be(4);
+        analytics.CommitsPerPush.Should().Be(1);
         analytics.ActiveDayCount.Should().Be(3);
-        analytics.Commits.Should().HaveCount(3);
+        analytics.Commits.Should().HaveCount(4);
     }
 
     [Fact]
