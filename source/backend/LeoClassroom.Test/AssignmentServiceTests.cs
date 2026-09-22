@@ -50,9 +50,12 @@ public sealed class AssignmentServiceTests
                 .Returns(new ValueTask<CascadeResult>(CascadeResult.Empty));
         _reconciliation.ReconcileAsync(Arg.Any<long>())
                        .Returns(new ValueTask<OneOf<Success, NotFound, ForgejoError>>(new Success()));
+        _forgejo.GetUserAsync(OwnerStudentId)
+                .Returns(new ValueTask<OneOf<ForgejoUser, NotFound, ForgejoError>>(
+                             new ForgejoUser(1, OwnerStudentId)));
 
-        _sut = new AssignmentService(_uow, _currentUser, _reconciliation, _cascade, _audit, _notifications, _moodle,
-                                     _clock, Substitute.For<ILogger<AssignmentService>>());
+        _sut = new AssignmentService(_uow, _currentUser, _reconciliation, _cascade, _forgejo, _audit, _notifications,
+                                     _moodle, _clock, Substitute.For<ILogger<AssignmentService>>());
     }
 
     private static AssignmentSettings Settings(DeadlineKind kind = DeadlineKind.None, Instant? deadline = null) =>
@@ -100,6 +103,19 @@ public sealed class AssignmentServiceTests
         var result = await _sut.CreateAsync(CourseId, Settings());
 
         result.ShouldBe<Forbidden>();
+        _assignmentRepo.DidNotReceive().Add(Arg.Any<Assignment>());
+    }
+
+    [Fact]
+    public async Task Create_WithoutForgejoAccount_ReturnsForgejoError()
+    {
+        _courseRepo.GetWithTeachersAsync(CourseId).Returns(new ValueTask<Course?>(CourseOwnedByCurrent()));
+        _forgejo.GetUserAsync(OwnerStudentId)
+                .Returns(new ValueTask<OneOf<ForgejoUser, NotFound, ForgejoError>>(new NotFound()));
+
+        var result = await _sut.CreateAsync(CourseId, Settings());
+
+        result.ShouldBe<ForgejoError>();
         _assignmentRepo.DidNotReceive().Add(Arg.Any<Assignment>());
     }
 

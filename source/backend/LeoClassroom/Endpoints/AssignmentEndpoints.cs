@@ -75,7 +75,7 @@ public static class AssignmentEndpoints
         await transaction.BeginTransactionAsync();
         var result = await service.CreateAsync(request.CourseId, request.ToSettings());
 
-        return await result.Match(OnCreatedAsync, OnNotFoundAsync, OnForbiddenAsync);
+        return await result.Match(OnCreatedAsync, OnNotFoundAsync, OnForbiddenAsync, OnUpstreamFailureAsync);
 
         async ValueTask<CreateResult> OnCreatedAsync(ServiceSuccess success)
         {
@@ -92,6 +92,9 @@ public static class AssignmentEndpoints
 
         static ValueTask<CreateResult> OnForbiddenAsync(Forbidden forbidden) =>
             ValueTask.FromResult<CreateResult>(ApiResults.Forbidden());
+
+        static ValueTask<CreateResult> OnUpstreamFailureAsync(Services.Forgejo.ForgejoError error) =>
+            ValueTask.FromResult<CreateResult>(ApiResults.BadGateway(error.Reason));
     }
 
     private static async ValueTask<Results<Ok<AssignmentDto>, NotFound, ProblemHttpResult>>
