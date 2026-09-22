@@ -1,4 +1,5 @@
 import { Component, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatButton } from '@angular/material/button';
 import { MatCard, MatCardContent } from '@angular/material/card';
@@ -8,7 +9,7 @@ import { SnackbarService } from '../../../core/services/snackbar-service';
 
 @Component({
   selector: 'app-assignment-list',
-  imports: [RouterLink, MatButton, MatCard, MatCardContent, MatProgressBar],
+  imports: [RouterLink, MatButton, MatCard, MatCardContent, MatProgressBar, DatePipe],
   styles: `
     .assignments {
       display: flex;
@@ -45,7 +46,7 @@ import { SnackbarService } from '../../../core/services/snackbar-service';
               <strong>{{ assignment.title }}</strong>
               <span>
                 @if (assignment.deadline; as deadline) {
-                  <span>Deadline: {{ deadline.toString() }}</span>
+                  <span>Deadline: {{ formatDeadline(deadline) | date: 'dd.MM.yy HH:mm' }}</span>
                 }
                 <a mat-button [routerLink]="['/assignments', assignment.id, 'edit']">Edit</a>
                 <a mat-button [routerLink]="['/assignments', assignment.id, 'students']">See submissions</a>
@@ -64,6 +65,10 @@ export class AssignmentList implements OnInit {
   public readonly courseId: InputSignal<string> = input.required<string>();
   protected readonly assignments: WritableSignal<Assignment[]> = signal([]);
   protected readonly loading: WritableSignal<boolean> = signal(false);
+
+  protected formatDeadline(deadline: Assignment['deadline']): Date | null {
+    return deadline === null ? null : new Date(deadline.toEpochMilli());
+  }
 
   public async ngOnInit(): Promise<void> {
     this.loading.set(true);

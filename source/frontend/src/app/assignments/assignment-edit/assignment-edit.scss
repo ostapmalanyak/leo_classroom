@@ -14,3 +14,9 @@ mat-slide-toggle {
   display: block;
   margin: 0.75rem 0;
 }
+
+.light-button {
+  background: #fff;
+  border: 1px solid var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface);
+}
