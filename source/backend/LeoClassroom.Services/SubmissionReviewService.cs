@@ -131,6 +131,11 @@ internal sealed class SubmissionReviewService(
                 List<CommitAnalyticsEntry> entries = [];
                 foreach (ForgejoCommit commit in forgejoCommits)
                 {
+                    if (string.Equals(commit.Author?.Login, "leo-classroom-bot", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
                     if (!DateTimeOffset.TryParse(commit.Details.Author.Date, CultureInfo.InvariantCulture,
                                                  DateTimeStyles.RoundtripKind, out DateTimeOffset parsed))
                     {
