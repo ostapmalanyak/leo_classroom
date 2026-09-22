@@ -128,9 +128,21 @@ internal sealed class SubmissionReviewService(
             forgejoCommits =>
             {
                 Instant? deadline = acceptance.Assignment.Deadline;
+                HashSet<string> teacherLogins = new(
+                [
+                    acceptance.Assignment.Owner.StudentId,
+                    .. acceptance.Assignment.CoTeachers.Select(teacher => teacher.StudentId)
+                ], StringComparer.OrdinalIgnoreCase);
                 List<CommitAnalyticsEntry> entries = [];
                 foreach (ForgejoCommit commit in forgejoCommits)
                 {
+                    if (commit.Author?.Login is { } author
+                        && (string.Equals(author, "leo-classroom-bot", StringComparison.OrdinalIgnoreCase)
+                            || teacherLogins.Contains(author)))
+                    {
+                        continue;
+                    }
+
                     if (!DateTimeOffset.TryParse(commit.Details.Author.Date, CultureInfo.InvariantCulture,
                                                  DateTimeStyles.RoundtripKind, out DateTimeOffset parsed))
                     {
