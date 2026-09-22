@@ -21,7 +21,7 @@
   <mat-card-content>
     <mat-form-field>
       <mat-label>Deadline kind</mat-label>
-      <mat-select [ngModel]="deadlineKind()" (ngModelChange)="deadlineKind.set($event)">
+      <mat-select [ngModel]="deadlineKind()" (ngModelChange)="handleDeadlineKindChanged($event)">
         @for (kind of deadlineKinds; track kind) {
           <mat-option [value]="kind">{{ kind }}</mat-option>
         }
@@ -30,9 +30,19 @@
 
     @if (deadlineKind() !== DeadlineKind.None) {
       <mat-form-field>
-        <mat-label>Deadline (ISO 8601, e.g. 2026-07-01T12:00:00Z)</mat-label>
-        <input matInput [ngModel]="deadline()" (ngModelChange)="deadline.set($event)">
+        <mat-label>Deadline date</mat-label>
+        <input matInput type="date" [ngModel]="deadlineDate()"
+               (ngModelChange)="handleDeadlineDateChanged($event)">
       </mat-form-field>
+
+      @if (deadlineDate() !== '') {
+        <mat-form-field>
+          <mat-label>Deadline time</mat-label>
+          <input matInput type="time" [ngModel]="deadlineTime()"
+                 (ngModelChange)="handleDeadlineTimeChanged($event)">
+        </mat-form-field>
+        <button mat-button type="button" (click)="clearDeadline()">Clear deadline</button>
+      }
     }
 
     @if (deadlineKind() === DeadlineKind.Hard) {
