@@ -178,7 +178,11 @@ public static class AssignmentEndpoints
     {
         var result = await review.GetAnalyticsAsync(acceptanceId);
 
-        return result.ToOk();
+        return result.Match<Results<Ok<CommitAnalyticsView>, NotFound, ProblemHttpResult>>(
+            analytics => TypedResults.Ok(analytics),
+            _ => TypedResults.NotFound(),
+            _ => ApiResults.Forbidden(),
+            error => ApiResults.BadGateway(error.Reason));
     }
 
     private static async ValueTask<FeedbackPrResult> OpenFeedbackPrAsync(
