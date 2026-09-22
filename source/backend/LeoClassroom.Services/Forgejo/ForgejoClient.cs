@@ -38,6 +38,8 @@ public interface IForgejoClient
     public ValueTask<OneOf<Success, ForgejoError>> CheckAdminAccessAsync();
 
     public ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>> GetRepoAsync(string owner, string repo);
+    public ValueTask<OneOf<IReadOnlyCollection<ForgejoCommit>, NotFound, ForgejoError>> GetAllCommitsAsync(
+        string owner, string repo);
     public ValueTask<OneOf<Success<ForgejoRepo>, AlreadyExists, ForgejoError>> CreateOrgRepoAsync(
         string org, string name, bool autoInit, bool isPrivate);
     public ValueTask<OneOf<Success, ForgejoError>> DeleteRepoAsync(string owner, string repo);
@@ -289,6 +291,34 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
         }
 
         return (await ReadAsync<ForgejoRepo>(response))!;
+    }
+
+    public async ValueTask<OneOf<IReadOnlyCollection<ForgejoCommit>, NotFound, ForgejoError>> GetAllCommitsAsync(
+        string owner, string repo)
+    {
+        var commits = new List<ForgejoCommit>();
+        const int pageSize = 50;
+
+        for (int page = 1; ; page++)
+        {
+            HttpResponseMessage response = await http.GetAsync(
+                $"api/v1/repos/{Escape(owner)}/{Escape(repo)}/commits?page={page}&limit={pageSize}");
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return new NotFound();
+            }
+            if (!response.IsSuccessStatusCode)
+            {
+                return await ErrorAsync(response, "list commits");
+            }
+
+            ForgejoCommit[] pageCommits = (await ReadAsync<ForgejoCommit[]>(response)) ?? [];
+            commits.AddRange(pageCommits);
+            if (pageCommits.Length < pageSize)
+            {
+                return commits.AsReadOnly();
+            }
+        }
     }
 
     public async ValueTask<OneOf<Success<ForgejoRepo>, AlreadyExists, ForgejoError>> CreateOrgRepoAsync(

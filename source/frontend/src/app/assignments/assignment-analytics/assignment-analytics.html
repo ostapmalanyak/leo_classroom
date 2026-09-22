@@ -43,4 +43,23 @@
     <dt>Last push</dt>
     <dd>{{ a.lastPushAt ? a.lastPushAt.toString() : '—' }}</dd>
   </dl>
+
+  <h2>Commits</h2>
+  @if (a.commits.length === 0) {
+    <p class="note">No commits by this student were found.</p>
+  } @else {
+    <div class="commits">
+      @for (commit of a.commits; track commit.sha) {
+        <div class="commit">
+          <code>{{ commit.sha.substring(0, 8) }}</code>
+          <span>{{ commit.at.toString() }}</span>
+          @if (commit.late) {
+            <strong class="late">Late</strong>
+          } @else {
+            <strong class="on-time">On Time</strong>
+          }
+        </div>
+      }
+    </div>
+  }
 }

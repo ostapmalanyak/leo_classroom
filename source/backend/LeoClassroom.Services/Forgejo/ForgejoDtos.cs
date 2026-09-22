@@ -42,6 +42,17 @@ public sealed record ForgejoRepo(
     [property: JsonPropertyName("html_url")] string HtmlUrl,
     [property: JsonPropertyName("default_branch")] string? DefaultBranch);
 
+public sealed record ForgejoCommit(
+    string Sha,
+    [property: JsonPropertyName("commit")] ForgejoCommitDetails Details,
+    ForgejoUser? Author);
+
+public sealed record ForgejoCommitDetails(
+    [property: JsonPropertyName("author")] ForgejoCommitAuthor Author);
+
+public sealed record ForgejoCommitAuthor(
+    [property: JsonPropertyName("date")] string Date);
+
 public sealed record ForgejoPullRequest(
     long Number,
     [property: JsonPropertyName("html_url")] string HtmlUrl,

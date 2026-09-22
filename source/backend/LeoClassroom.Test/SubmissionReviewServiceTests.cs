@@ -122,16 +122,27 @@ public sealed class SubmissionReviewServiceTests
     {
         Acceptance acceptance = Setup();
         acceptance.Analytics.PushCount = 4;
-        acceptance.Analytics.CommitCount = 10;
         acceptance.Analytics.ActiveDayCount = 3;
+        _forgejo.GetAllCommitsAsync("course-7", "course-a-IF1")
+                .Returns(new ValueTask<OneOf<IReadOnlyCollection<ForgejoCommit>, NotFound, ForgejoError>>(
+                    new ForgejoCommit[]
+                    {
+                        new("sha-1", new ForgejoCommitDetails(
+                            new ForgejoCommitAuthor("2026-06-01T10:00:00Z")), new ForgejoUser(1, "IF000050")),
+                        new("sha-2", new ForgejoCommitDetails(
+                            new ForgejoCommitAuthor("2026-06-01T11:00:00Z")), new ForgejoUser(1, "IF000050")),
+                        new("other", new ForgejoCommitDetails(
+                            new ForgejoCommitAuthor("2026-06-01T12:00:00Z")), new ForgejoUser(2, "IF000099"))
+                    }));
 
         var result = await _sut.GetAnalyticsAsync(AcceptanceId);
 
         CommitAnalyticsView analytics = result.ShouldBe<CommitAnalyticsView>();
         analytics.PushCount.Should().Be(4);
-        analytics.CommitCount.Should().Be(10);
-        analytics.CommitsPerPush.Should().Be(2.5);
+        analytics.CommitCount.Should().Be(3);
+        analytics.CommitsPerPush.Should().Be(0.75);
         analytics.ActiveDayCount.Should().Be(3);
+        analytics.Commits.Should().HaveCount(3);
     }
 
     [Fact]

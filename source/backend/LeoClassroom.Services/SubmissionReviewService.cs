@@ -6,6 +6,7 @@ using LeoClassroom.Persistence.Util;
 using LeoClassroom.Shared;
 using OneOf;
 using OneOf.Types;
+using System.Globalization;
 
 namespace LeoClassroom.Services;
 
@@ -14,7 +15,8 @@ public sealed record FeedbackPr(long Number, string HtmlUrl);
 public interface ISubmissionReviewService
 {
     public ValueTask<OneOf<Success<FeedbackPr>, NotFound, Forbidden, ForgejoError>> OpenFeedbackPrAsync(long acceptanceId);
-    public ValueTask<OneOf<CommitAnalyticsView, NotFound, Forbidden>> GetAnalyticsAsync(long acceptanceId);
+    public ValueTask<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>> GetAnalyticsAsync(
+        long acceptanceId);
 }
 
 internal sealed class SubmissionReviewService(
@@ -106,7 +108,8 @@ internal sealed class SubmissionReviewService(
     private static ValueTask<OneOf<Success<FeedbackPr>, NotFound, Forbidden, ForgejoError>> Answer(
         OneOf<Success<FeedbackPr>, NotFound, Forbidden, ForgejoError> outcome) => ValueTask.FromResult(outcome);
 
-    public async ValueTask<OneOf<CommitAnalyticsView, NotFound, Forbidden>> GetAnalyticsAsync(long acceptanceId)
+    public async ValueTask<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>> GetAnalyticsAsync(
+        long acceptanceId)
     {
         Acceptance? acceptance = await uow.AcceptanceRepository.GetTrackedWithAssignmentTeachersAsync(acceptanceId);
         if (acceptance is null)
@@ -118,11 +121,51 @@ internal sealed class SubmissionReviewService(
             return new Forbidden();
         }
 
-        CommitAnalytics rollup = acceptance.Analytics;
-        double commitsPerPush = rollup.PushCount > 0 ? (double)rollup.CommitCount / rollup.PushCount : 0;
+        OneOf<IReadOnlyCollection<ForgejoCommit>, NotFound, ForgejoError> commits =
+            await forgejo.GetAllCommitsAsync(acceptance.RepoOwner, acceptance.RepoName);
 
-        return new CommitAnalyticsView(rollup.PushCount, rollup.CommitCount, commitsPerPush,
-                                       rollup.FirstPushAt, rollup.LastPushAt, rollup.ActiveDayCount);
+        return await commits.Match<ValueTask<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>>>(
+            forgejoCommits =>
+            {
+                Instant? deadline = acceptance.Assignment.Deadline;
+                HashSet<string> teacherLogins = new(
+                [
+                    acceptance.Assignment.Owner.StudentId,
+                    .. acceptance.Assignment.CoTeachers.Select(teacher => teacher.StudentId)
+                ], StringComparer.OrdinalIgnoreCase);
+                List<CommitAnalyticsEntry> entries = [];
+                foreach (ForgejoCommit commit in forgejoCommits)
+                {
+                    if (commit.Author?.Login is { } author
+                        && (string.Equals(author, "leo-classroom-bot", StringComparison.OrdinalIgnoreCase)
+                            || teacherLogins.Contains(author)))
+                    {
+                        continue;
+                    }
+
+                    if (!DateTimeOffset.TryParse(commit.Details.Author.Date, CultureInfo.InvariantCulture,
+                                                 DateTimeStyles.RoundtripKind, out DateTimeOffset parsed))
+                    {
+                        return ValueTask.FromResult<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>>(
+                            new ForgejoError(502, $"Forgejo returned an invalid commit date for {commit.Sha}"));
+                    }
+
+                    Instant at = Instant.FromDateTimeOffset(parsed);
+                    entries.Add(new CommitAnalyticsEntry(
+                        commit.Sha, at, deadline is not null && at > deadline.Value));
+                }
+
+                CommitAnalytics rollup = acceptance.Analytics;
+                double commitsPerPush = rollup.PushCount > 0
+                    ? (double)entries.Count / rollup.PushCount
+                    : 0;
+
+                return ValueTask.FromResult<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>>(
+                        new CommitAnalyticsView(rollup.PushCount, entries.Count, commitsPerPush,
+                                                rollup.FirstPushAt, rollup.LastPushAt, rollup.ActiveDayCount, entries));
+                },
+                notFound => ValueTask.FromResult<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>>(notFound),
+                error => ValueTask.FromResult<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>>(error));
     }
 
     private async ValueTask<OneOf<Success<FeedbackPr>, NotFound, Forbidden, ForgejoError>> StoreAndReturnAsync(
