@@ -26,7 +26,7 @@ export class AssignmentService extends BackendServiceBase {
 
       return assignmentZod.array().parse(response);
     } catch (error) {
-      if (error instanceof HttpErrorResponse) {
+      if (error instanceof HttpErrorResponse || error instanceof z.ZodError) {
         return null;
       }
       throw error;
@@ -199,7 +199,7 @@ export class AssignmentService extends BackendServiceBase {
 export enum DeadlineKind {
   None = 'None',
   Soft = 'Soft',
-  Hard = 'Hard(doesn\'t work)'
+  Hard = 'Hard'
 }
 
 export enum StarterSourceKind {
