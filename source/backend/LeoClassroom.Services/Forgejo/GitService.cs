@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Globalization;
 using CliWrap;
 using CliWrap.Buffered;
 using LeoClassroom.Services.Util;
@@ -22,7 +23,7 @@ public interface IGitService
 
     public ValueTask<OneOf<Success, GitError>> ExportRepositoryAsync(
         string cloneUrl, string targetDirectory, string? checkoutSha,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default, Instant? deadline = null);
 }
 
 internal sealed partial class GitService(IOptions<ForgejoSettings> settings, ILogger<GitService> logger)
@@ -113,14 +114,17 @@ internal sealed partial class GitService(IOptions<ForgejoSettings> settings, ILo
     }
 
     public async ValueTask<OneOf<Success, GitError>> ExportRepositoryAsync(
-        string cloneUrl, string targetDirectory, string? checkoutSha, CancellationToken cancellationToken = default)
+        string cloneUrl, string targetDirectory, string? checkoutSha,
+        CancellationToken cancellationToken = default, Instant? deadline = null)
     {
         if (RejectUnsupportedCloneUrl(cloneUrl) is { } rejected)
         {
             return rejected;
         }
 
-        if (!string.IsNullOrWhiteSpace(checkoutSha) && !ObjectName.IsMatch(checkoutSha))
+        cloneUrl = InternalCloneUrl(cloneUrl);
+
+        if (deadline is null && !string.IsNullOrWhiteSpace(checkoutSha) && !ObjectName.IsMatch(checkoutSha))
         {
             logger.LogWarning("Refused to check out {Sha}, which is not a git object name", checkoutSha);
 
@@ -136,10 +140,28 @@ internal sealed partial class GitService(IOptions<ForgejoSettings> settings, ILo
                 return cloneFailed;
             }
 
-            if (!string.IsNullOrWhiteSpace(checkoutSha))
+            string? revision = checkoutSha;
+            if (deadline is not null)
+            {
+                OneOf<string, GitError> selected = await FindRevisionAtOrBeforeAsync(
+                    targetDirectory, deadline.Value, cancellationToken);
+                OneOf<Success, GitError> selection = selected.Match<OneOf<Success, GitError>>(
+                    value =>
+                    {
+                        revision = value;
+                        return new Success();
+                    },
+                    error => error);
+                if (selection.Failure is { } selectionFailed)
+                {
+                    return selectionFailed;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(revision))
             {
                 OneOf<Success, GitError> checkout = await RunAsync(targetDirectory, withAuth: false, cancellationToken,
-                    "checkout", "--detach", checkoutSha);
+                    "checkout", "--detach", revision);
                 if (checkout.Failure is { } checkoutFailed)
                 {
                     return checkoutFailed;
@@ -155,6 +177,56 @@ internal sealed partial class GitService(IOptions<ForgejoSettings> settings, ILo
 
             return new GitError(ex.Message);
         }
+    }
+
+    private async ValueTask<OneOf<string, GitError>> FindRevisionAtOrBeforeAsync(
+        string repositoryDirectory, Instant deadline, CancellationToken cancellationToken)
+    {
+        BufferedCommandResult result = await RunBufferedAsync(repositoryDirectory, withAuth: false, cancellationToken,
+            "log", "--all", "--format=%H%x09%cI");
+        if (result.ExitCode != 0)
+        {
+            return new GitError("git log failed with exit code " + result.ExitCode);
+        }
+
+        var commits = new List<(string Sha, Instant At)>();
+        foreach (string line in result.StandardOutput.Split(
+                     ['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            string[] fields = line.Split('\t', 2);
+            if (fields.Length != 2 || !ObjectName.IsMatch(fields[0])
+                || !DateTimeOffset.TryParse(fields[1], CultureInfo.InvariantCulture,
+                                             DateTimeStyles.RoundtripKind, out DateTimeOffset commitTime))
+            {
+                continue;
+            }
+
+            commits.Add((fields[0], Instant.FromDateTimeOffset(commitTime)));
+        }
+
+        foreach ((string sha, Instant at) in commits.OrderByDescending(commit => commit.At))
+        {
+            if (at <= deadline)
+            {
+                return sha;
+            }
+        }
+
+        return new GitError("no repository commit exists before the deadline");
+    }
+
+    internal string InternalCloneUrl(string cloneUrl)
+    {
+        Uri cloneUri = new(cloneUrl, UriKind.Absolute);
+        Uri forgejoUri = new(settings.Value.BaseUrl.TrimEnd('/') + "/", UriKind.Absolute);
+        var rewritten = new UriBuilder(forgejoUri)
+        {
+            Path = cloneUri.AbsolutePath,
+            Query = cloneUri.Query.TrimStart('?'),
+            Fragment = cloneUri.Fragment.TrimStart('#')
+        };
+
+        return rewritten.Uri.AbsoluteUri;
     }
 
     private async ValueTask<OneOf<Success, GitError>> CloneAsync(
@@ -203,6 +275,19 @@ internal sealed partial class GitService(IOptions<ForgejoSettings> settings, ILo
         }
 
         return new Success();
+    }
+
+    private async ValueTask<BufferedCommandResult> RunBufferedAsync(
+        string? workingDirectory, bool withAuth, CancellationToken cancellationToken, params string[] args)
+    {
+        logger.LogDebug("Running git {Args}", string.Join(' ', args));
+
+        return await Cli.Wrap("git")
+            .WithArguments(args)
+            .WithEnvironmentVariables(BuildEnvironment(withAuth))
+            .WithWorkingDirectory(workingDirectory ?? Directory.GetCurrentDirectory())
+            .WithValidation(CommandResultValidation.None)
+            .ExecuteBufferedAsync(cancellationToken);
     }
 
     /// <summary>
