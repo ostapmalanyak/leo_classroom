@@ -97,8 +97,7 @@ internal sealed class DownloadJobProcessor(
             }
 
             string folder = DownloadFolderNamer.Unique(
-                DownloadFolderNamer.Base(acceptance.Student.LastName, acceptance.Student.FirstName,
-                                          acceptance.Student.StudentId), usedNames);
+                DownloadFolderNamer.Base(acceptance.Student.LastName, acceptance.Student.FirstName), usedNames);
 
             if (string.IsNullOrWhiteSpace(acceptance.RepoUrl))
             {

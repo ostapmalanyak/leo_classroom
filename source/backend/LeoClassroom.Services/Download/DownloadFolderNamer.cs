@@ -6,15 +6,13 @@ public static class DownloadFolderNamer
 {
     private const string Placeholder = "student";
 
-    public static string Base(string? lastName, string? firstName, string? studentId = null)
+    public static string Base(string? lastName, string? firstName)
     {
         string last = Slugifier.Slugify(lastName ?? string.Empty);
         string first = Slugifier.Slugify(firstName ?? string.Empty);
         string combined = string.Join('_', new[] { last, first }.Where(part => part.Length > 0));
 
-        return combined.Length > 0 ? combined : Slugifier.Slugify(studentId ?? string.Empty) is { Length: > 0 } id
-            ? $"student_{id}"
-            : Placeholder;
+        return combined.Length == 0 ? Placeholder : combined;
     }
 
     public static string Unique(string baseName, ISet<string> used)
