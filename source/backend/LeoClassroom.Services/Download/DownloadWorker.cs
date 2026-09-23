@@ -121,10 +121,6 @@ internal sealed class DownloadJobProcessor(
             }
 
             exported++;
-            if (snapshot.SeededFallback)
-            {
-                notes.AppendLine($"{folder}: no push before deadline, seeded state exported");
-            }
 
             totalBytes += DirectorySize(target);
             if (totalBytes > settings.MaxTotalSizeBytes)
