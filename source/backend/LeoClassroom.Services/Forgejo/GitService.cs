@@ -120,6 +120,8 @@ internal sealed partial class GitService(IOptions<ForgejoSettings> settings, ILo
             return rejected;
         }
 
+        cloneUrl = InternalCloneUrl(cloneUrl);
+
         if (!string.IsNullOrWhiteSpace(checkoutSha) && !ObjectName.IsMatch(checkoutSha))
         {
             logger.LogWarning("Refused to check out {Sha}, which is not a git object name", checkoutSha);
@@ -155,6 +157,20 @@ internal sealed partial class GitService(IOptions<ForgejoSettings> settings, ILo
 
             return new GitError(ex.Message);
         }
+    }
+
+    internal string InternalCloneUrl(string cloneUrl)
+    {
+        Uri cloneUri = new(cloneUrl, UriKind.Absolute);
+        Uri forgejoUri = new(settings.Value.BaseUrl.TrimEnd('/') + "/", UriKind.Absolute);
+        var rewritten = new UriBuilder(forgejoUri)
+        {
+            Path = cloneUri.AbsolutePath,
+            Query = cloneUri.Query.TrimStart('?'),
+            Fragment = cloneUri.Fragment.TrimStart('#')
+        };
+
+        return rewritten.Uri.AbsoluteUri;
     }
 
     private async ValueTask<OneOf<Success, GitError>> CloneAsync(
