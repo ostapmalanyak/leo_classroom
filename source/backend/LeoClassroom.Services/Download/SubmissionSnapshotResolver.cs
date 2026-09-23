@@ -2,6 +2,8 @@ using LeoClassroom.Services.Forgejo;
 using LeoClassroom.Persistence.Model;
 using LeoClassroom.Persistence.Util;
 using LeoClassroom.Shared;
+using OneOf;
+using System.Globalization;
 
 namespace LeoClassroom.Services.Download;
 
@@ -12,7 +14,7 @@ public interface ISubmissionSnapshotResolver
     public ValueTask<SnapshotResolution> ResolveAsync(Acceptance acceptance, DownloadSnapshotMode mode, Instant? deadline);
 }
 
-internal sealed class SubmissionSnapshotResolver(IUnitOfWork uow) : ISubmissionSnapshotResolver
+internal sealed class SubmissionSnapshotResolver(IForgejoClient forgejo) : ISubmissionSnapshotResolver
 {
     public async ValueTask<SnapshotResolution> ResolveAsync(
         Acceptance acceptance, DownloadSnapshotMode mode, Instant? deadline)
@@ -22,17 +24,34 @@ internal sealed class SubmissionSnapshotResolver(IUnitOfWork uow) : ISubmissionS
             return new SnapshotResolution(null, false);
         }
 
-        WebhookEvent? lastPush = await uow.WebhookEventRepository.GetLastPushReceivedByAsync(
-            acceptance.RepoOwner, acceptance.RepoName, deadline.Value);
-        if (lastPush is null)
+        OneOf<IReadOnlyCollection<ForgejoCommit>, NotFound, ForgejoError> commits =
+            await forgejo.GetAllCommitsAsync(acceptance.RepoOwner, acceptance.RepoName);
+        IReadOnlyCollection<ForgejoCommit> allCommits = commits.Match(
+            found => found,
+            _ => Array.Empty<ForgejoCommit>());
+        if (allCommits.Count == 0)
         {
             return new SnapshotResolution(null, true);
         }
 
-        string? headSha = ForgejoPushPayload.Parse(lastPush.Payload).HeadSha;
+        foreach ((ForgejoCommit commit, Instant at) in allCommits
+                     .Select(commit => (Commit: commit, Parsed: ParseDate(commit)))
+                     .Where(item => item.Parsed is not null)
+                     .OrderByDescending(item => item.Parsed)
+                     .Select(item => (item.Commit, item.Parsed!.Value)))
+        {
+            if (at <= deadline.Value)
+            {
+                return new SnapshotResolution(commit.Sha, false);
+            }
+        }
 
-        return headSha is null
-            ? new SnapshotResolution(null, true)
-            : new SnapshotResolution(headSha, false);
+        return new SnapshotResolution(null, true);
     }
+
+    private static Instant? ParseDate(ForgejoCommit commit) =>
+        DateTimeOffset.TryParse(commit.Details.Author.Date, CultureInfo.InvariantCulture,
+                                DateTimeStyles.RoundtripKind, out DateTimeOffset parsed)
+            ? Instant.FromDateTimeOffset(parsed)
+            : null;
 }

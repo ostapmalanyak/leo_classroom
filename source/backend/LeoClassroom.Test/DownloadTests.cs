@@ -27,7 +27,7 @@ public sealed class DownloadFolderNamerTests
     [Fact]
     public void Base_FallsBackToPlaceholder_WhenNoName()
     {
-        DownloadFolderNamer.Base("", "  ").Should().Be("student");
+        DownloadFolderNamer.Base("", "  ", "IF000001").Should().Be("student_if000001");
     }
 
     [Fact]
@@ -43,8 +43,7 @@ public sealed class DownloadFolderNamerTests
 
 public sealed class SubmissionSnapshotResolverTests
 {
-    private readonly IUnitOfWork _uow = Substitute.For<IUnitOfWork>();
-    private readonly IWebhookEventRepository _webhookRepo = Substitute.For<IWebhookEventRepository>();
+    private readonly IForgejoClient _forgejo = Substitute.For<IForgejoClient>();
     private readonly SubmissionSnapshotResolver _sut;
 
     private static readonly Instant Deadline = Instant.FromUtc(2026, 6, 13, 21, 59);
@@ -56,21 +55,23 @@ public sealed class SubmissionSnapshotResolverTests
 
     public SubmissionSnapshotResolverTests()
     {
-        _uow.WebhookEventRepository.Returns(_webhookRepo);
-        _sut = new SubmissionSnapshotResolver(_uow);
+        _sut = new SubmissionSnapshotResolver(_forgejo);
     }
 
     [Fact]
-    public async Task Deadline_UsesHeadShaOfLastPushBeforeDeadline()
+    public async Task Deadline_UsesLatestCommitBeforeDeadline()
     {
-        var lastPush = new WebhookEvent
-        {
-            EventType = "push", RepoOwner = "course-7", RepoName = "course-a-IF1",
-            ReceivedAt = Deadline.Minus(Duration.FromMinutes(5)),
-            Payload = """{"after":"abc123","commits":[{}]}"""
-        };
-        _webhookRepo.GetLastPushReceivedByAsync("course-7", "course-a-IF1", Deadline)
-                    .Returns(new ValueTask<WebhookEvent?>(lastPush));
+        _forgejo.GetAllCommitsAsync("course-7", "course-a-IF1")
+                 .Returns(new ValueTask<OneOf<IReadOnlyCollection<ForgejoCommit>, NotFound, ForgejoError>>(
+                     new ForgejoCommit[]
+                     {
+                         new("late", new ForgejoCommitDetails(new ForgejoCommitAuthor("2026-06-13T22:00:00Z")),
+                             null),
+                         new("older", new ForgejoCommitDetails(
+                             new ForgejoCommitAuthor("2026-06-13T20:00:00Z")), null),
+                         new("abc123", new ForgejoCommitDetails(
+                             new ForgejoCommitAuthor("2026-06-13T21:54:00Z")), null)
+                     }));
 
         SnapshotResolution result = await _sut.ResolveAsync(Acceptance, DownloadSnapshotMode.Deadline, Deadline);
 
@@ -79,12 +80,11 @@ public sealed class SubmissionSnapshotResolverTests
     }
 
     [Fact]
-    public async Task Deadline_QueriesByReceiveTime_NotCommitterDate()
+    public async Task Deadline_QueriesForgejoCommits()
     {
         await _sut.ResolveAsync(Acceptance, DownloadSnapshotMode.Deadline, Deadline);
 
-        // The cutoff passed to the repository is the deadline; the query filters on server-receive time.
-        await _webhookRepo.Received(1).GetLastPushReceivedByAsync("course-7", "course-a-IF1", Deadline);
+        await _forgejo.Received(1).GetAllCommitsAsync("course-7", "course-a-IF1");
     }
 
     [Fact]
@@ -94,8 +94,7 @@ public sealed class SubmissionSnapshotResolverTests
 
         result.Sha.Should().BeNull();
         result.SeededFallback.Should().BeFalse();
-        await _webhookRepo.DidNotReceive()
-                          .GetLastPushReceivedByAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Instant>());
+        await _forgejo.DidNotReceive().GetAllCommitsAsync(Arg.Any<string>(), Arg.Any<string>());
     }
 
     [Fact]
@@ -110,8 +109,9 @@ public sealed class SubmissionSnapshotResolverTests
     [Fact]
     public async Task Deadline_NoQualifyingPush_FallsBackToSeededState()
     {
-        _webhookRepo.GetLastPushReceivedByAsync("course-7", "course-a-IF1", Deadline)
-                    .Returns(new ValueTask<WebhookEvent?>((WebhookEvent?)null));
+        _forgejo.GetAllCommitsAsync("course-7", "course-a-IF1")
+                 .Returns(new ValueTask<OneOf<IReadOnlyCollection<ForgejoCommit>, NotFound, ForgejoError>>(
+                     Array.Empty<ForgejoCommit>()));
 
         SnapshotResolution result = await _sut.ResolveAsync(Acceptance, DownloadSnapshotMode.Deadline, Deadline);
 
