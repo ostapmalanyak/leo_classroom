@@ -79,6 +79,7 @@ internal static partial class LdapDirectory
             const string CommandName = "ldapsearch";
             var cmd = Cli.Wrap(CommandName)
                          .WithArguments(args)
+                         .WithEnvironmentVariables(e => e.Set("LDAPTLS_REQCERT", "never"))
                          .WithValidation(CommandResultValidation.None);
 
             var result = await cmd.ExecuteBufferedAsync(Encoding.UTF8);
