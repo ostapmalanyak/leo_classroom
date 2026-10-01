@@ -169,30 +169,7 @@ internal sealed partial class GitService(IOptions<ForgejoSettings> settings, ILo
             }
 
             // Drop the origin remote so the packaged .git carries no service credentials.
-            OneOf<Success, GitError> removed = await RunAsync(targetDirectory, withAuth: false, cancellationToken,
-                "remote", "remove", "origin");
-            if (removed.Failure is not null || string.IsNullOrWhiteSpace(revision))
-            {
-                return removed;
-            }
-
-            // The clone still holds every later commit through the local branch and tags; drop all refs so only
-            // history reachable from the detached snapshot survives, then prune the unreachable objects.
-            BufferedCommandResult refs = await RunBufferedAsync(targetDirectory, withAuth: false, cancellationToken,
-                "for-each-ref", "--format=%(refname)");
-            foreach (string name in refs.StandardOutput.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
-            {
-                OneOf<Success, GitError> deleted = await RunAsync(targetDirectory, withAuth: false, cancellationToken,
-                    "update-ref", "-d", name);
-                if (deleted.Failure is { } deleteFailed)
-                {
-                    return deleteFailed;
-                }
-            }
-
-            await RunAsync(targetDirectory, withAuth: false, cancellationToken, "reflog", "expire", "--expire=now", "--all");
-
-            return await RunAsync(targetDirectory, withAuth: false, cancellationToken, "gc", "--prune=now");
+            return await RunAsync(targetDirectory, withAuth: false, cancellationToken, "remote", "remove", "origin");
         }
         catch (Exception ex) when (ex is IOException or CliWrap.Exceptions.CommandExecutionException)
         {
