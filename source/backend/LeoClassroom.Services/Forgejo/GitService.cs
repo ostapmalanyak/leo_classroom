@@ -160,12 +160,7 @@ internal sealed partial class GitService(IOptions<ForgejoSettings> settings, ILo
 
             if (!string.IsNullOrWhiteSpace(revision))
             {
-                OneOf<Success, GitError> checkout = await RunAsync(targetDirectory, withAuth: false, cancellationToken,
-                    "checkout", "--detach", revision);
-                if (checkout.Failure is { } checkoutFailed)
-                {
-                    return checkoutFailed;
-                }
+                return await RebuildAtRevisionAsync(targetDirectory, revision, cancellationToken);
             }
 
             // Drop the origin remote so the packaged .git carries no service credentials.
@@ -177,6 +172,39 @@ internal sealed partial class GitService(IOptions<ForgejoSettings> settings, ILo
 
             return new GitError(ex.Message);
         }
+    }
+
+    // A detached checkout in the clone would still ship every later commit through the local branch and tags.
+    // Instead build a fresh repository holding only the history reachable from the revision; it also has no remote.
+    private async ValueTask<OneOf<Success, GitError>> RebuildAtRevisionAsync(
+        string targetDirectory, string revision, CancellationToken cancellationToken)
+    {
+        string snapshotDirectory = targetDirectory + ".snapshot";
+        OneOf<Success, GitError> step = await RunAsync(null, withAuth: false, cancellationToken,
+            "init", snapshotDirectory);
+        if (step.Failure is { } initFailed)
+        {
+            return initFailed;
+        }
+
+        step = await RunAsync(snapshotDirectory, withAuth: false, cancellationToken,
+            "fetch", "--no-tags", Path.GetFullPath(targetDirectory), revision);
+        if (step.Failure is { } fetchFailed)
+        {
+            return fetchFailed;
+        }
+
+        step = await RunAsync(snapshotDirectory, withAuth: false, cancellationToken,
+            "checkout", "--detach", revision);
+        if (step.Failure is { } checkoutFailed)
+        {
+            return checkoutFailed;
+        }
+
+        Directory.Delete(targetDirectory, recursive: true);
+        Directory.Move(snapshotDirectory, targetDirectory);
+
+        return new Success();
     }
 
     private async ValueTask<OneOf<string, GitError>> FindRevisionAtOrBeforeAsync(
