@@ -70,10 +70,14 @@ public sealed class LdapSyncServiceTests
 
     private void ArrangeFailedRead() =>
         _directory.SearchPeopleAsync()
-                  .Returns(new ValueTask<OneOf<IReadOnlyCollection<LdapPerson>, LdapError>>(new LdapError("down")));
+                  .Returns(new ValueTask<OneOf<IReadOnlyCollection<LdapPerson>, LdapError>>(
+                      new LdapError("ldap_bind: Invalid credentials", 49, 49, "students")));
 
     private static LdapPerson Student(string number, string @class) =>
         new(number, "First", "Last", $"{number}@s.local", @class, Role.Student);
+
+    private static LdapPerson Teacher(string number) =>
+        new(number, "First", "Last", $"{number}@s.local", null, Role.Teacher);
 
     private static User ActiveUser(string number, Role role = Role.Student) =>
         new() { StudentId = number, FirstName = "Old", LastName = "Name", Role = role, State = UserState.Active };
@@ -121,6 +125,38 @@ public sealed class LdapSyncServiceTests
     }
 
     [Fact]
+    public async Task AutoRosters_IncludeAllStudentsAndTeachersAsWellAsClassRosters()
+    {
+        ArrangeRead(Student("IF111111", "1A"), Student("IF222222", "2B"), Teacher("IT333333"));
+
+        await _sut.RunAsync();
+
+        Roster students = _autoRosters.Single(roster => roster.ClassKey == "@role:Student");
+        students.Name.Should().Be("Students");
+        students.Members.Select(member => member.StudentId)
+            .Should().BeEquivalentTo("IF111111", "IF222222");
+        Roster teachers = _autoRosters.Single(roster => roster.ClassKey == "@role:Teacher");
+        teachers.Name.Should().Be("Teachers");
+        teachers.Members.Should().ContainSingle(member => member.StudentId == "IT333333");
+        _autoRosters.Should().Contain(roster => roster.ClassKey == "1A");
+        _autoRosters.Should().Contain(roster => roster.ClassKey == "2B");
+    }
+
+    [Fact]
+    public async Task EmptyDirectory_DoesNotClearAutoRosterMembership()
+    {
+        User member = ActiveUser("IF111111");
+        _users.Add(member);
+        Roster roster = new() { Name = "1A", Kind = RosterKind.Auto, ClassKey = "1A", Members = [member] };
+        _autoRosters.Add(roster);
+        ArrangeRead();
+
+        await _sut.RunAsync();
+
+        roster.Members.Should().ContainSingle().Which.Should().BeSameAs(member);
+    }
+
+    [Fact]
     public async Task HealthyDeparture_SoftDeletesAndDisablesForgejo()
     {
         _users.AddRange([ActiveUser("FE100000"), ActiveUser("FE200000")]);
@@ -142,6 +178,9 @@ public sealed class LdapSyncServiceTests
         SyncOutcome outcome = await _sut.RunAsync();
 
         outcome.DestructivePassSkipped.Should().BeTrue();
+        outcome.LdapExitCode.Should().Be(49);
+        outcome.LdapResultCode.Should().Be(49);
+        outcome.LdapError.Should().Contain("Invalid credentials");
         _users.Single().State.Should().Be(UserState.Active);
         await _forgejo.DidNotReceive().SetUserActiveAsync(Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<long>());
     }
@@ -150,6 +189,14 @@ public sealed class LdapSyncServiceTests
     public async Task OverThresholdDisappearance_SkipsSoftDeleteButStillUpserts()
     {
         _users.AddRange([ActiveUser("IF000001"), ActiveUser("IF000002"), ActiveUser("IF000003"), ActiveUser("IF000004")]);
+        Roster studentRoster = new()
+        {
+            Name = "Students",
+            Kind = RosterKind.Auto,
+            ClassKey = "@role:Student",
+            Members = [.. _users]
+        };
+        _autoRosters.Add(studentRoster);
         ArrangeRead(Student("IF000001", "1A"));
 
         SyncOutcome outcome = await _sut.RunAsync();
@@ -158,6 +205,7 @@ public sealed class LdapSyncServiceTests
         outcome.SoftDeleted.Should().Be(0);
         _users.Where(u => u.State == UserState.SoftDeleted).Should().BeEmpty();
         _users.Single(u => u.StudentId == "IF000001").FirstName.Should().Be("First");
+        studentRoster.Members.Should().HaveCount(4);
     }
 
     [Fact]

@@ -242,6 +242,7 @@ services:
       retries: 10
 
   backup:
+    init: true
     build:
       context: ./backup
     restart: unless-stopped

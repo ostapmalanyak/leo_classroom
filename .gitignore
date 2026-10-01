@@ -11,6 +11,7 @@
 /node_modules/
 /package-lock.json
 /yarn.lock
+/source/ldap-export/credentials.json
 
 # Environment files
 /.env

@@ -13,7 +13,8 @@ using OneOf.Types;
 namespace LeoClassroom.Services.Ldap;
 
 public readonly record struct SyncOutcome(
-    int Created, int Updated, int SoftDeleted, int Reactivated, bool DestructivePassSkipped);
+    int Created, int Updated, int SoftDeleted, int Reactivated, bool DestructivePassSkipped,
+    int? LdapExitCode = null, int? LdapResultCode = null, string? LdapError = null);
 
 public interface ILdapSyncService
 {
@@ -31,6 +32,9 @@ internal sealed class LdapSyncService(
     IAuditLog audit,
     ILogger<LdapSyncService> logger) : ILdapSyncService
 {
+    private const string StudentRosterKey = "@role:Student";
+    private const string TeacherRosterKey = "@role:Teacher";
+
     public async ValueTask<SyncOutcome> RunAsync()
     {
         OneOf<IReadOnlyCollection<LdapPerson>, LdapError> read = await directory.SearchPeopleAsync();
@@ -39,9 +43,14 @@ internal sealed class LdapSyncService(
             people => SyncAsync(people),
             error =>
             {
-                logger.LogWarning("LDAP read failed ({Reason}); skipping the entire sync", error.Reason);
+                logger.LogWarning(
+                    "LDAP read failed with ldapsearch exit code {ExitCode} and LDAP result code {ResultCode} " +
+                    "for {BaseDn} ({Reason}); skipping the entire sync",
+                    error.ExitCode, error.ResultCode, error.BaseDn, error.Reason);
 
-                return ValueTask.FromResult(new SyncOutcome(0, 0, 0, 0, DestructivePassSkipped: true));
+                return ValueTask.FromResult(new SyncOutcome(
+                    0, 0, 0, 0, DestructivePassSkipped: true,
+                    LdapExitCode: error.ExitCode, LdapResultCode: error.ResultCode, LdapError: error.Reason));
             });
     }
 
@@ -86,9 +95,11 @@ internal sealed class LdapSyncService(
             await EnsureForgejoUserAsync(person);
         }
 
-        await ReconcileAutoRostersAsync(people, usersByStudentId);
-
         (int softDeleted, bool skipped) = await ApplyGuardedSoftDeleteAsync(healthy, activeBefore, people, usersByStudentId);
+        if (!skipped)
+        {
+            await ReconcileAutoRostersAsync(people, usersByStudentId);
+        }
 
         await uow.SaveChangesAsync();
 
@@ -116,29 +127,44 @@ internal sealed class LdapSyncService(
     private async ValueTask ReconcileAutoRostersAsync(IReadOnlyCollection<LdapPerson> people,
                                                       Dictionary<string, User> usersByStudentId)
     {
-        Dictionary<string, List<User>> membersByClass = people
+        Dictionary<string, List<User>> desiredMembers = people
             .Where(p => p.Role == Role.Student && !string.IsNullOrWhiteSpace(p.Class))
             .GroupBy(p => p.Class!)
             .ToDictionary(g => g.Key, g => g.Select(p => usersByStudentId[p.StudentId]).ToList());
+        desiredMembers[StudentRosterKey] = people
+            .Where(p => p.Role == Role.Student)
+            .Select(p => usersByStudentId[p.StudentId])
+            .ToList();
+        desiredMembers[TeacherRosterKey] = people
+            .Where(p => p.Role == Role.Teacher)
+            .Select(p => usersByStudentId[p.StudentId])
+            .ToList();
 
         IReadOnlyCollection<Roster> autoRosters = await uow.RosterRepository.GetAllTrackedAutoRostersAsync();
         Dictionary<string, Roster> rostersByClass = autoRosters
             .Where(r => r.ClassKey is not null)
             .ToDictionary(r => r.ClassKey!);
 
-        foreach ((string classKey, List<User> members) in membersByClass)
+        foreach ((string key, List<User> members) in desiredMembers)
         {
-            if (!rostersByClass.TryGetValue(classKey, out Roster? roster))
+            if (!rostersByClass.TryGetValue(key, out Roster? roster))
             {
-                roster = new Roster { Name = classKey, Kind = RosterKind.Auto, ClassKey = classKey };
+                string name = key switch
+                {
+                    StudentRosterKey => "Students",
+                    TeacherRosterKey => "Teachers",
+                    _ => key
+                };
+                roster = new Roster { Name = name, Kind = RosterKind.Auto, ClassKey = key };
                 uow.RosterRepository.Add(roster);
-                rostersByClass[classKey] = roster;
+                rostersByClass[key] = roster;
             }
 
             SetMembership(roster, members);
         }
 
-        foreach (Roster roster in autoRosters.Where(r => r.ClassKey is not null && !membersByClass.ContainsKey(r.ClassKey!)))
+        foreach (Roster roster in autoRosters.Where(r => r.ClassKey is not null
+                                                         && !desiredMembers.ContainsKey(r.ClassKey)))
         {
             roster.Members.Clear();
         }
