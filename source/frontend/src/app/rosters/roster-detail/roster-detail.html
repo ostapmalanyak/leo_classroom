@@ -20,7 +20,6 @@
     </mat-card>
 
     <mat-card class="section">
-      <mat-card-title>Members</mat-card-title>
       <mat-card-content>
         <mat-form-field class="search-field">
           <mat-label>Add a student</mat-label>
@@ -45,25 +44,32 @@
             }
           </mat-list>
         }
-
-        <h3>Current members</h3>
-        @if (members().length === 0) {
-          <p class="empty">No members yet.</p>
-        } @else {
-          <mat-list>
-            @for (user of members(); track user.id) {
-              <mat-list-item>
-                <span matListItemTitle>{{ user.firstName }} {{ user.lastName }} ({{ user.studentId }})</span>
-                <button mat-icon-button matListItemMeta (click)="handleRemoveMember(user)" title="Remove">
-                  <mat-icon>remove</mat-icon>
-                </button>
-              </mat-list-item>
-            }
-          </mat-list>
-        }
       </mat-card-content>
     </mat-card>
 
     <button mat-stroked-button color="warn" (click)="handleDeleteClicked()">Delete roster</button>
   }
+
+  <mat-card class="section">
+    <mat-card-title>Members</mat-card-title>
+    <mat-card-content>
+      @if (members().length === 0) {
+        <p class="empty">No members yet.</p>
+      } @else {
+        <mat-list>
+          @for (user of members(); track user.id) {
+            <mat-list-item>
+              <span matListItemTitle>{{ user.firstName }} {{ user.lastName }} ({{ user.studentId }})</span>
+              <span matListItemLine>{{ user.role }}@if (user.class) { · {{ user.class }} }</span>
+              @if (isEditable()) {
+                <button mat-icon-button matListItemMeta (click)="handleRemoveMember(user)" title="Remove">
+                  <mat-icon>remove</mat-icon>
+                </button>
+              }
+            </mat-list-item>
+          }
+        </mat-list>
+      }
+    </mat-card-content>
+  </mat-card>
 }

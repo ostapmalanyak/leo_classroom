@@ -19,10 +19,10 @@ public sealed class LdapSettings
 
     public required string StudentBaseDn { get; init; }
     public required string TeacherBaseDn { get; init; }
-    public string SearchFilter { get; init; } = "(objectClass=person)";
-    public int PageSize { get; init; } = 500;
+    public string SearchFilter { get; init; } = "(&(objectCategory=person)(objectClass=user))";
+    public int PageSize { get; init; } = 1000;
 
-    public string StudentIdAttribute { get; init; } = "uid";
+    public string StudentIdAttribute { get; init; } = "sAMAccountName";
     public string GivenNameAttribute { get; init; } = "givenName";
     public string FamilyNameAttribute { get; init; } = "sn";
     public string MailAttribute { get; init; } = "mail";

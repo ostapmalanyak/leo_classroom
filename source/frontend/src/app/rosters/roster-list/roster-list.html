@@ -1,5 +1,12 @@
 <h1>Rosters</h1>
 
+@if (session.isAdmin()) {
+  <button mat-flat-button color="primary" [disabled]="syncing()" (click)="handleSyncClicked()">
+    {{ syncing() ? 'Updating rosters...' : 'Test LDAP sync / update rosters' }}
+  </button>
+  <p>Runs the full LDAP sync, including user and roster updates.</p>
+}
+
 @if (loading()) {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
 }
@@ -28,8 +35,7 @@
 
   <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
   <tr mat-row *matRowDef="let row; columns: displayedColumns"
-      (click)="handleRowClicked(row)"
-      [class.roster-row]="row.kind === RosterKind.Custom"></tr>
+      (click)="handleRowClicked(row)" class="roster-row"></tr>
 </table>
 
 @if (!loading() && rosters().length === 0) {
