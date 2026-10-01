@@ -37,6 +37,7 @@ public static class AssignmentEndpoints
                                  .RequireAuthorization(AuthPolicies.RequireTeacher);
 
             assignments.MapPost("/", CreateAssignmentAsync);
+            assignments.MapGet("/course/{courseId:long:min(1)}", GetForCourseAsync);
             assignments.MapGet("/{id:long:min(1)}/edit", GetAssignmentForEditAsync)
                        .WithName(nameof(GetAssignmentForEditAsync));
             assignments.MapPut("/{id:long:min(1)}", UpdateAssignmentAsync);
@@ -48,6 +49,18 @@ public static class AssignmentEndpoints
             assignments.MapGet("/acceptances/{acceptanceId:long:min(1)}/analytics", GetAnalyticsAsync);
             assignments.MapPost("/acceptances/{acceptanceId:long:min(1)}/feedback-pr", OpenFeedbackPrAsync);
         }
+    }
+
+    private static async ValueTask<Results<Ok<IReadOnlyCollection<AssignmentDto>>, NotFound, ForbidHttpResult>>
+        GetForCourseAsync([FromRoute] long courseId, [FromServices] IAssignmentService service)
+    {
+        var result = await service.GetForCourseAsync(courseId);
+
+        return result.Match<Results<Ok<IReadOnlyCollection<AssignmentDto>>, NotFound, ForbidHttpResult>>(
+            assignments => TypedResults.Ok<IReadOnlyCollection<AssignmentDto>>(
+                assignments.Select(AssignmentDto.FromAssignment).ToArray()),
+            _ => TypedResults.NotFound(),
+            _ => TypedResults.Forbid());
     }
 
     private static async ValueTask<CreateResult> CreateAssignmentAsync(
@@ -62,7 +75,7 @@ public static class AssignmentEndpoints
         await transaction.BeginTransactionAsync();
         var result = await service.CreateAsync(request.CourseId, request.ToSettings());
 
-        return await result.Match(OnCreatedAsync, OnNotFoundAsync, OnForbiddenAsync);
+        return await result.Match(OnCreatedAsync, OnNotFoundAsync, OnForbiddenAsync, OnUpstreamFailureAsync);
 
         async ValueTask<CreateResult> OnCreatedAsync(ServiceSuccess success)
         {
@@ -79,6 +92,9 @@ public static class AssignmentEndpoints
 
         static ValueTask<CreateResult> OnForbiddenAsync(Forbidden forbidden) =>
             ValueTask.FromResult<CreateResult>(ApiResults.Forbidden());
+
+        static ValueTask<CreateResult> OnUpstreamFailureAsync(Services.Forgejo.ForgejoError error) =>
+            ValueTask.FromResult<CreateResult>(ApiResults.BadGateway(error.Reason));
     }
 
     private static async ValueTask<Results<Ok<AssignmentDto>, NotFound, ProblemHttpResult>>
@@ -165,7 +181,11 @@ public static class AssignmentEndpoints
     {
         var result = await review.GetAnalyticsAsync(acceptanceId);
 
-        return result.ToOk();
+        return result.Match<Results<Ok<CommitAnalyticsView>, NotFound, ProblemHttpResult>>(
+            analytics => TypedResults.Ok(analytics),
+            _ => TypedResults.NotFound(),
+            _ => ApiResults.Forbidden(),
+            error => ApiResults.BadGateway(error.Reason));
     }
 
     private static async ValueTask<FeedbackPrResult> OpenFeedbackPrAsync(

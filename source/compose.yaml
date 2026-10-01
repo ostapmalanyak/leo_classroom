@@ -62,6 +62,7 @@ services:
       KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID}
       KEYCLOAK_FLOW: ${KEYCLOAK_FLOW}
       SESSION_TIMEOUT_MINUTES: ${SESSION_TIMEOUT_MINUTES:-360}
+      FORGEJO_URL: ${PUBLIC_SCHEME}://${FORGEJO_DOMAIN}
     networks: [leo]
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]

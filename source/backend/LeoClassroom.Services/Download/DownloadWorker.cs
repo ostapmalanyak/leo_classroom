@@ -97,7 +97,8 @@ internal sealed class DownloadJobProcessor(
             }
 
             string folder = DownloadFolderNamer.Unique(
-                DownloadFolderNamer.Base(acceptance.Student.LastName, acceptance.Student.FirstName), usedNames);
+                DownloadFolderNamer.Base(acceptance.Student.LastName, acceptance.Student.FirstName,
+                                          acceptance.Student.StudentId), usedNames);
 
             if (string.IsNullOrWhiteSpace(acceptance.RepoUrl))
             {
@@ -109,7 +110,9 @@ internal sealed class DownloadJobProcessor(
             SnapshotResolution snapshot = await resolver.ResolveAsync(acceptance, job.Mode, assignment.Deadline);
             string target = Path.Combine(workDir, folder);
 
-            var export = await git.ExportRepositoryAsync(acceptance.RepoUrl, target, snapshot.Sha, cancellationToken);
+            Instant? deadline = job.Mode == DownloadSnapshotMode.Deadline ? assignment.Deadline : null;
+            var export = await git.ExportRepositoryAsync(acceptance.RepoUrl, target, snapshot.Sha, cancellationToken,
+                                                         deadline);
             if (export.Failure is { } exportFailed)
             {
                 notes.AppendLine($"{folder}: export failed ({exportFailed.Reason})");
@@ -118,10 +121,6 @@ internal sealed class DownloadJobProcessor(
             }
 
             exported++;
-            if (snapshot.SeededFallback)
-            {
-                notes.AppendLine($"{folder}: no push before deadline, seeded state exported");
-            }
 
             totalBytes += DirectorySize(target);
             if (totalBytes > settings.MaxTotalSizeBytes)

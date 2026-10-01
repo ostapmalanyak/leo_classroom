@@ -12,6 +12,7 @@ public interface IAssignmentRepository
     public ValueTask<Assignment?> GetTrackedWithTeachersAsync(long id);
     public ValueTask<Assignment?> GetWithTeachersAsync(long id);
     public ValueTask<Assignment?> GetWithAcceptancesAsync(long id);
+    public ValueTask<IReadOnlyCollection<Assignment>> GetByCourseIdAsync(long courseId);
     public ValueTask<Assignment?> GetReconciliationDataAsync(long id);
     public ValueTask<bool> ExistsWithSlugInCourseAsync(string slug, long courseId);
     public ValueTask<bool> DeleteByIdAsync(long id);
@@ -52,6 +53,16 @@ internal sealed class AssignmentRepository(DbSet<Assignment> assignments) : IAss
         await assignments.AsNoTracking()
                          .Include(a => a.Acceptances)
                          .FirstOrDefaultAsync(a => a.Id == id);
+
+    public async ValueTask<IReadOnlyCollection<Assignment>> GetByCourseIdAsync(long courseId)
+    {
+        List<Assignment> rows = await assignments.AsNoTracking()
+                                                  .Where(a => a.CourseId == courseId)
+                                                  .OrderBy(a => a.Title)
+                                                  .ToListAsync();
+
+        return rows.AsReadOnly();
+    }
 
     public async ValueTask<Assignment?> GetReconciliationDataAsync(long id) =>
         await assignments.AsNoTracking()

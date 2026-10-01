@@ -28,7 +28,8 @@ public sealed record AssignmentSettings(
 
 public interface IAssignmentService
 {
-    public ValueTask<OneOf<Success<Assignment>, NotFound, Forbidden>> CreateAsync(long courseId, AssignmentSettings settings);
+    public ValueTask<OneOf<IReadOnlyCollection<Assignment>, NotFound, Forbidden>> GetForCourseAsync(long courseId);
+    public ValueTask<OneOf<Success<Assignment>, NotFound, Forbidden, ForgejoError>> CreateAsync(long courseId, AssignmentSettings settings);
     public ValueTask<OneOf<Success<Assignment>, NotFound, Forbidden>> EditAsync(long id, AssignmentSettings settings);
     public ValueTask<OneOf<Assignment, NotFound, Forbidden>> GetForEditAsync(long id);
     public ValueTask<OneOf<Success, NotFound, Forbidden>> DeleteAsync(long id);
@@ -42,6 +43,7 @@ internal sealed class AssignmentService(
     ICurrentUser currentUser,
     IReconciliationService reconciliation,
     IDeletionCascade deletion,
+    IForgejoClient forgejo,
     IAuditLog audit,
     INotificationService notifications,
     IMoodleSyncService moodle,
@@ -50,7 +52,24 @@ internal sealed class AssignmentService(
 {
     private const int AutoDeleteDefaultYears = 2;
 
-    public async ValueTask<OneOf<Success<Assignment>, NotFound, Forbidden>> CreateAsync(
+    public async ValueTask<OneOf<IReadOnlyCollection<Assignment>, NotFound, Forbidden>> GetForCourseAsync(long courseId)
+    {
+        Course? course = await uow.CourseRepository.GetWithTeachersAsync(courseId);
+        if (course is null)
+        {
+            return new NotFound();
+        }
+        if (!IsCourseTeacher(course))
+        {
+            return new Forbidden();
+        }
+
+        IReadOnlyCollection<Assignment> assignments = await uow.AssignmentRepository.GetByCourseIdAsync(courseId);
+
+        return OneOf<IReadOnlyCollection<Assignment>, NotFound, Forbidden>.FromT0(assignments);
+    }
+
+    public async ValueTask<OneOf<Success<Assignment>, NotFound, Forbidden, ForgejoError>> CreateAsync(
         long courseId, AssignmentSettings settings)
     {
         Course? course = await uow.CourseRepository.GetWithTeachersAsync(courseId);
@@ -61,6 +80,19 @@ internal sealed class AssignmentService(
         if (!IsCourseTeacher(course))
         {
             return new Forbidden();
+        }
+
+        // reconciliation adds the owner to the course's Forgejo team by username; without an account there
+        // it fails far away from here, the first time a student accepts
+        OneOf<ForgejoUser, NotFound, ForgejoError> forgejoAccount = await forgejo.GetUserAsync(currentUser.StudentId);
+        ForgejoError? accountProblem = forgejoAccount.Match<ForgejoError?>(
+            found => null,
+            notFound => new ForgejoError(409, "Your Forgejo account does not exist yet. Reset your git "
+                                              + "credential under My Account before creating an assignment."),
+            error => error);
+        if (accountProblem is { } failed)
+        {
+            return failed;
         }
 
         long? ownerId = await uow.UserRepository.GetIdByStudentIdAsync(currentUser.StudentId);

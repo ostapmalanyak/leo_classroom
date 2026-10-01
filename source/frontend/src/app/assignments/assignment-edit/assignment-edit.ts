@@ -46,6 +46,8 @@ export class AssignmentEdit implements OnInit {
   protected readonly description: WritableSignal<string> = signal('');
   protected readonly hints: WritableSignal<string> = signal('');
   protected readonly deadline: WritableSignal<string> = signal('');
+  protected readonly deadlineDate: WritableSignal<string> = signal('');
+  protected readonly deadlineTime: WritableSignal<string> = signal('');
   protected readonly deadlineKind: WritableSignal<DeadlineKind> = signal(DeadlineKind.None);
   protected readonly hardRevokesRead: WritableSignal<boolean> = signal(false);
   protected readonly starterSource: WritableSignal<StarterSourceKind> = signal(StarterSourceKind.DescriptionOnly);
@@ -88,6 +90,11 @@ export class AssignmentEdit implements OnInit {
 
       return;
     }
+    if (this.deadlineKind() !== DeadlineKind.None && (this.deadlineDate() === '' || this.deadlineTime() === '')) {
+      this.snackbar.show('Choose a deadline date and time');
+
+      return;
+    }
 
     this.saving.set(true);
     const body = this.buildWrite();
@@ -108,6 +115,29 @@ export class AssignmentEdit implements OnInit {
     }
     this.snackbar.show('Assignment saved');
     await this.router.navigate(['assignments', result.id, 'students']);
+  }
+
+  protected handleDeadlineDateChanged(date: string): void {
+    this.deadlineDate.set(date);
+    this.updateDeadline();
+  }
+
+  protected handleDeadlineKindChanged(kind: DeadlineKind): void {
+    this.deadlineKind.set(kind);
+    if (kind === DeadlineKind.None) {
+      this.clearDeadline();
+    }
+  }
+
+  protected handleDeadlineTimeChanged(time: string): void {
+    this.deadlineTime.set(time);
+    this.updateDeadline();
+  }
+
+  protected clearDeadline(): void {
+    this.deadlineDate.set('');
+    this.deadlineTime.set('');
+    this.deadline.set('');
   }
 
   private buildWrite(): AssignmentWrite {
@@ -132,6 +162,11 @@ export class AssignmentEdit implements OnInit {
     this.description.set(a.description ?? '');
     this.hints.set(a.hintsInstructions ?? '');
     this.deadline.set(a.deadline?.toString() ?? '');
+    const parsedDeadline = a.deadline === null ? null : new Date(a.deadline.toString());
+    if (parsedDeadline !== null && !Number.isNaN(parsedDeadline.getTime())) {
+      this.deadlineDate.set(this.formatDate(parsedDeadline));
+      this.deadlineTime.set(this.formatTime(parsedDeadline));
+    }
     this.deadlineKind.set(a.deadlineKind);
     this.hardRevokesRead.set(a.hardDeadlineRevokesRead);
     this.starterSource.set(a.starterSourceKind);
@@ -140,6 +175,34 @@ export class AssignmentEdit implements OnInit {
     this.autoDeleteEnabled.set(a.autoDeleteEnabled);
     this.autoDeleteOn.set(a.autoDeleteOn?.toString() ?? '');
     this.snapshotMode.set(a.downloadSnapshotMode);
+  }
+
+  private updateDeadline(): void {
+    const date = this.deadlineDate();
+    const time = this.deadlineTime();
+    if (date === '' || time === '') {
+      this.deadline.set('');
+
+      return;
+    }
+
+    const [year, month, day] = date.split('-').map(Number);
+    const [hours, minutes] = time.split(':').map(Number);
+    this.deadline.set(new Date(
+      year,
+      month - 1,
+      day,
+      hours,
+      minutes
+    ).toISOString());
+  }
+
+  private formatTime(date: Date): string {
+    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  }
+
+  private formatDate(date: Date): string {
+    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
   }
 
   private emptyToNull(value: string): string | null {

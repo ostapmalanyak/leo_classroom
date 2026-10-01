@@ -10,6 +10,7 @@
 export interface RuntimeConfig {
   /** Origin of the API. Empty means "same origin as this page", which is how the stack is deployed. */
   readonly backendOrigin: string;
+  readonly forgejoOrigin: string;
   readonly keycloak: {
     readonly url: string;
     readonly realm: string;
@@ -31,6 +32,7 @@ export interface RuntimeConfig {
 
 const developmentDefaults: RuntimeConfig = {
   backendOrigin: 'http://localhost:5080',
+  forgejoOrigin: 'http://localhost:3000',
   keycloak: {
     url: 'http://localhost:8080',
     realm: 'leo',
@@ -53,6 +55,7 @@ export async function loadRuntimeConfig(): Promise<void> {
     const loaded = await response.json() as Partial<RuntimeConfig>;
     current = {
       backendOrigin: loaded.backendOrigin ?? developmentDefaults.backendOrigin,
+      forgejoOrigin: loaded.forgejoOrigin ?? developmentDefaults.forgejoOrigin,
       keycloak: { ...developmentDefaults.keycloak, ...loaded.keycloak }
     };
   } catch {
@@ -67,6 +70,10 @@ export function backendOrigin(): string {
 
 export function backendApiBaseUrl(): string {
   return `${backendOrigin()}/api`;
+}
+
+export function forgejoOrigin(): string {
+  return current.forgejoOrigin.replace(/\/$/, '');
 }
 
 export function keycloakConfig(): RuntimeConfig['keycloak'] {

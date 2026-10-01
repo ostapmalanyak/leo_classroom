@@ -7,7 +7,7 @@ import { Instant } from '@js-joda/core';
 import { IssuedGitCredential, Me, MeService } from '../../core/services/me-service';
 import { SnackbarService } from '../../core/services/snackbar-service';
 import { SessionService } from '../../core/auth/session-service';
-import { backendOrigin } from '../../core/auth/auth-config';
+import { forgejoOrigin } from '../../core/auth/auth-config';
 
 @Component({
   selector: 'app-account',
@@ -28,7 +28,7 @@ export class Account implements OnInit {
   protected readonly issued: WritableSignal<IssuedGitCredential | null> = signal(null);
 
   protected readonly neverIssued = computed(() => this.me()?.gitCredentialIssuedAt === null);
-  protected readonly forgejoOrigin = signal(backendOrigin());
+  protected readonly forgejoOrigin = signal(forgejoOrigin());
 
   public async ngOnInit(): Promise<void> {
     await this.meService.load();

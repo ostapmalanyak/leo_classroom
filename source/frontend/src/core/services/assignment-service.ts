@@ -20,6 +20,19 @@ export class AssignmentService extends BackendServiceBase {
     return this.write(this.http.post<unknown>(this.buildUrl(''), request));
   }
 
+  public async listForCourse(courseId: number): Promise<Assignment[] | null> {
+    try {
+      const response = await firstValueFrom(this.http.get<unknown>(this.buildUrl(`course/${courseId}`)));
+
+      return assignmentZod.array().parse(response);
+    } catch (error) {
+      if (error instanceof HttpErrorResponse || error instanceof z.ZodError) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
   public async getForEdit(id: number): Promise<Assignment | 'forbidden' | null> {
     try {
       const response = await firstValueFrom(this.http.get<unknown>(this.buildUrl(`${id}/edit`)));
@@ -272,7 +285,12 @@ const commitAnalyticsZod = z.object({
   commitsPerPush: z.number(),
   firstPushAt: InstantSchema.nullable(),
   lastPushAt: InstantSchema.nullable(),
-  activeDayCount: z.int()
+  activeDayCount: z.int(),
+  commits: z.object({
+    sha: z.string(),
+    at: InstantSchema,
+    late: z.boolean()
+  }).array()
 });
 export type CommitAnalytics = z.infer<typeof commitAnalyticsZod>;
 

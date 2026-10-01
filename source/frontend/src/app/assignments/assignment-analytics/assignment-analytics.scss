@@ -39,3 +39,22 @@
 .spread dt {
   font-weight: 600;
 }
+
+.commits {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.commit {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.on-time {
+  color: #2e7d32;
+}
+
+.late {
+  color: #f9a825;
+}
