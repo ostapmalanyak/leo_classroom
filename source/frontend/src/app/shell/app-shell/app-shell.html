@@ -1,44 +1,31 @@
-<mat-sidenav-container class="shell">
-  <mat-sidenav #sidenav class="shell-sidenav"
-               [mode]="isHandset() ? 'over' : 'side'"
-               [opened]="!isHandset()">
-    <mat-nav-list>
+<mat-toolbar class="shell-toolbar navbar">
+  <div class="container navbar__inner">
+    <span class="app-title">LEO Classroom</span>
+
+    <nav class="navbar__items" aria-label="Main navigation">
       @for (entry of entries(); track entry.route) {
-        <a mat-list-item [routerLink]="entry.route"
+        <a class="navbar-item" [attr.data-route]="entry.route" [routerLink]="entry.route"
            routerLinkActive="active-nav"
-           [routerLinkActiveOptions]="{ exact: entry.route === '/' }"
-           (click)="isHandset() && sidenav.close()">
-          <mat-icon matListItemIcon>{{ entry.icon }}</mat-icon>
-          <span matListItemTitle>{{ entry.label }}</span>
+           [routerLinkActiveOptions]="{ exact: entry.route === '/' }">
+          <mat-icon>{{ entry.icon }}</mat-icon>
+          <span>{{ entry.label }}</span>
         </a>
       }
-    </mat-nav-list>
-  </mat-sidenav>
+    </nav>
 
-  <mat-sidenav-content>
-    <mat-toolbar color="primary" class="shell-toolbar">
-      @if (isHandset()) {
-        <button mat-icon-button (click)="sidenav.toggle()" aria-label="Toggle navigation">
-          <mat-icon>menu</mat-icon>
-        </button>
-      }
-      <span class="app-title">LEO Classroom</span>
-      <span class="spacer"></span>
-
-      <button mat-button [matMenuTriggerFor]="userMenu" aria-label="Account">
-        <mat-icon>account_circle</mat-icon>
-        <span class="identity">{{ session.identity()?.displayName }}</span>
+    <button class="navbar-item navbar-account" mat-button [matMenuTriggerFor]="userMenu" aria-label="Account">
+      <mat-icon>account_circle</mat-icon>
+      <span class="identity">{{ session.identity()?.displayName }}</span>
+    </button>
+    <mat-menu #userMenu="matMenu">
+      <button class="navbar-item" mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Logout</span>
       </button>
-      <mat-menu #userMenu="matMenu">
-        <button mat-menu-item (click)="logout()">
-          <mat-icon>logout</mat-icon>
-          <span>Logout</span>
-        </button>
-      </mat-menu>
-    </mat-toolbar>
+    </mat-menu>
+  </div>
+</mat-toolbar>
 
-    <main class="shell-content">
-      <router-outlet></router-outlet>
-    </main>
-  </mat-sidenav-content>
-</mat-sidenav-container>
+<main class="shell-content container">
+  <router-outlet></router-outlet>
+</main>

@@ -1,9 +1,13 @@
-<h1>Rosters</h1>
+<header class="page-header">
+  <h1>Rosters</h1>
+  @if (session.isAdmin()) {
+    <button mat-flat-button color="primary" [disabled]="syncing()" (click)="handleSyncClicked()">
+      {{ syncing() ? 'Updating rosters...' : 'Test LDAP sync / update rosters' }}
+    </button>
+  }
+</header>
 
 @if (session.isAdmin()) {
-  <button mat-flat-button color="primary" [disabled]="syncing()" (click)="handleSyncClicked()">
-    {{ syncing() ? 'Updating rosters...' : 'Test LDAP sync / update rosters' }}
-  </button>
   <p>Runs the full LDAP sync, including user and roster updates.</p>
 }
 

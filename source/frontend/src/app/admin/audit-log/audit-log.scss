@@ -1,7 +1,7 @@
 .filters {
   display: flex;
   gap: var(--space-4);
-  align-items: baseline;
+  align-items: flex-start;
   flex-wrap: wrap;
   margin-bottom: var(--space-4);
 }

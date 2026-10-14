@@ -15,6 +15,10 @@
 .create-course {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-4);
+}
+
+.create-course h2 {
+  flex-basis: 100%;
 }

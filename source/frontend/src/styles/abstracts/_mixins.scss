@@ -62,6 +62,16 @@
   }
 }
 
+@mixin field-box {
+  min-height: var(--control-height);
+  border: var(--border-width) solid var(--color-input-border);
+  border-radius: var(--radius);
+  background-color: var(--color-bg-input);
+  color: var(--color-text);
+  font: inherit;
+  transition: color var(--transition), background-color var(--transition), border-color var(--transition);
+}
+
 @mixin control-base {
   min-height: var(--control-height);
   border: var(--border-width) solid var(--color-border);
@@ -72,6 +82,147 @@
   transition: color var(--transition), background-color var(--transition), border-color var(--transition);
 
   @include focus-ring;
+}
+
+@mixin material-button-tokens {
+  --mat-button-filled-container-color: var(--color-bg-input);
+  --mat-button-filled-container-height: var(--control-height);
+  --mat-button-filled-container-shape: var(--radius-button);
+  --mat-button-filled-label-text-color: var(--color-text);
+  --mat-button-filled-label-text-font: var(--font-family-base);
+  --mat-button-filled-label-text-size: var(--font-size-base);
+  --mat-button-filled-label-text-weight: var(--font-weight-medium);
+  --mat-button-filled-ripple-color: var(--color-transparent);
+  --mat-button-filled-state-layer-color: var(--color-transparent);
+  --mat-button-filled-hover-state-layer-opacity: 0;
+  --mat-button-filled-focus-state-layer-opacity: 0;
+  --mat-button-filled-pressed-state-layer-opacity: 0;
+  --mat-button-filled-touch-target-display: none;
+  --mat-button-filled-disabled-container-color: var(--color-bg-surface);
+  --mat-button-filled-disabled-label-text-color: var(--color-text-muted);
+  --mat-button-protected-container-color: var(--color-bg-input);
+  --mat-button-protected-container-height: var(--control-height);
+  --mat-button-protected-container-shape: var(--radius-button);
+  --mat-button-protected-container-elevation-shadow: none;
+  --mat-button-protected-hover-container-elevation-shadow: none;
+  --mat-button-protected-focus-container-elevation-shadow: none;
+  --mat-button-protected-pressed-container-elevation-shadow: none;
+  --mat-button-protected-label-text-color: var(--color-text);
+  --mat-button-protected-label-text-font: var(--font-family-base);
+  --mat-button-protected-label-text-size: var(--font-size-base);
+  --mat-button-protected-label-text-weight: var(--font-weight-medium);
+  --mat-button-protected-ripple-color: var(--color-transparent);
+  --mat-button-protected-state-layer-color: var(--color-transparent);
+  --mat-button-protected-hover-state-layer-opacity: 0;
+  --mat-button-protected-focus-state-layer-opacity: 0;
+  --mat-button-protected-pressed-state-layer-opacity: 0;
+  --mat-button-protected-touch-target-display: none;
+  --mat-button-protected-disabled-container-color: var(--color-bg-surface);
+  --mat-button-protected-disabled-label-text-color: var(--color-text-muted);
+  --mat-button-outlined-container-height: var(--control-height);
+  --mat-button-outlined-container-shape: var(--radius-button);
+  --mat-button-outlined-outline-color: var(--color-border);
+  --mat-button-outlined-outline-width: var(--border-width);
+  --mat-button-outlined-label-text-color: var(--color-text);
+  --mat-button-outlined-label-text-font: var(--font-family-base);
+  --mat-button-outlined-label-text-size: var(--font-size-base);
+  --mat-button-outlined-label-text-weight: var(--font-weight-medium);
+  --mat-button-outlined-ripple-color: var(--color-transparent);
+  --mat-button-outlined-state-layer-color: var(--color-transparent);
+  --mat-button-outlined-hover-state-layer-opacity: 0;
+  --mat-button-outlined-focus-state-layer-opacity: 0;
+  --mat-button-outlined-pressed-state-layer-opacity: 0;
+  --mat-button-outlined-touch-target-display: none;
+  --mat-button-outlined-disabled-label-text-color: var(--color-text-muted);
+  --mat-button-outlined-disabled-outline-color: var(--color-border);
+  --mat-button-text-container-height: var(--control-height);
+  --mat-button-text-container-shape: var(--radius-button);
+  --mat-button-text-label-text-color: var(--color-text);
+  --mat-button-text-label-text-font: var(--font-family-base);
+  --mat-button-text-label-text-size: var(--font-size-base);
+  --mat-button-text-label-text-weight: var(--font-weight-medium);
+  --mat-button-text-ripple-color: var(--color-transparent);
+  --mat-button-text-state-layer-color: var(--color-transparent);
+  --mat-button-text-hover-state-layer-opacity: 0;
+  --mat-button-text-focus-state-layer-opacity: 0;
+  --mat-button-text-pressed-state-layer-opacity: 0;
+  --mat-button-text-touch-target-display: none;
+  --mat-button-text-disabled-label-text-color: var(--color-text-muted);
+  --mat-button-tonal-container-color: var(--color-bg-input);
+  --mat-button-tonal-container-height: var(--control-height);
+  --mat-button-tonal-container-shape: var(--radius-button);
+  --mat-button-tonal-label-text-color: var(--color-text);
+  --mat-button-tonal-label-text-font: var(--font-family-base);
+  --mat-button-tonal-label-text-size: var(--font-size-base);
+  --mat-button-tonal-label-text-weight: var(--font-weight-medium);
+  --mat-button-tonal-ripple-color: var(--color-transparent);
+  --mat-button-tonal-state-layer-color: var(--color-transparent);
+  --mat-button-tonal-hover-state-layer-opacity: 0;
+  --mat-button-tonal-focus-state-layer-opacity: 0;
+  --mat-button-tonal-pressed-state-layer-opacity: 0;
+  --mat-button-tonal-touch-target-display: none;
+  --mat-button-tonal-disabled-container-color: var(--color-bg-surface);
+  --mat-button-tonal-disabled-label-text-color: var(--color-text-muted);
+  --mat-icon-button-container-shape: var(--radius-button);
+  --mat-icon-button-icon-color: var(--color-text);
+  --mat-icon-button-icon-size: var(--icon-md);
+  --mat-icon-button-state-layer-size: var(--control-height);
+  --mat-icon-button-touch-target-size: var(--control-height);
+  --mat-icon-button-touch-target-display: none;
+  --mat-icon-button-ripple-color: var(--color-transparent);
+  --mat-icon-button-state-layer-color: var(--color-transparent);
+  --mat-icon-button-hover-state-layer-opacity: 0;
+  --mat-icon-button-focus-state-layer-opacity: 0;
+  --mat-icon-button-pressed-state-layer-opacity: 0;
+  --mat-icon-button-disabled-icon-color: var(--color-text-muted);
+}
+
+@mixin material-field-box {
+  --mat-form-field-container-height: var(--control-height);
+  --mat-form-field-container-text-font: var(--font-family-base);
+  --mat-form-field-container-text-size: var(--font-size-base);
+  --mat-form-field-container-text-weight: var(--font-weight-normal);
+  --mat-form-field-filled-container-color: var(--color-bg-input);
+  --mat-form-field-filled-container-shape: var(--radius);
+  --mat-form-field-filled-active-indicator-color: var(--color-transparent);
+  --mat-form-field-filled-active-indicator-height: 0;
+  --mat-form-field-filled-focus-active-indicator-color: var(--color-transparent);
+  --mat-form-field-filled-focus-active-indicator-height: 0;
+  --mat-form-field-filled-input-text-color: var(--color-text);
+  --mat-form-field-filled-input-text-placeholder-color: var(--color-text-muted);
+  --mat-form-field-filled-label-text-color: var(--color-text-muted);
+  --mat-form-field-filled-focus-label-text-color: var(--color-text-muted);
+  --mat-form-field-filled-disabled-input-text-color: var(--color-text-muted);
+  --mat-form-field-filled-disabled-label-text-color: var(--color-text-muted);
+  --mat-form-field-filled-disabled-container-color: var(--color-bg-surface);
+  --mat-form-field-outlined-container-shape: var(--radius);
+  --mat-form-field-outlined-outline-color: var(--color-input-border);
+  --mat-form-field-outlined-outline-width: var(--border-width);
+  --mat-form-field-outlined-focus-outline-color: var(--color-accent);
+  --mat-form-field-outlined-focus-outline-width: var(--border-width);
+  --mat-form-field-outlined-input-text-color: var(--color-text);
+  --mat-form-field-outlined-input-text-placeholder-color: var(--color-text-muted);
+  --mat-form-field-outlined-label-text-color: var(--color-text-muted);
+  --mat-form-field-outlined-focus-label-text-color: var(--color-text-muted);
+  --mat-form-field-outlined-disabled-input-text-color: var(--color-text-muted);
+  --mat-form-field-outlined-disabled-label-text-color: var(--color-text-muted);
+  --mat-form-field-outlined-disabled-outline-color: var(--color-border);
+  --mat-form-field-error-text-color: var(--color-danger-text);
+  --mat-form-field-filled-error-active-indicator-color: var(--color-danger-border);
+  --mat-form-field-filled-error-focus-active-indicator-color: var(--color-danger-border);
+  --mat-form-field-filled-error-label-text-color: var(--color-danger-text);
+  --mat-form-field-filled-error-focus-label-text-color: var(--color-danger-text);
+  --mat-form-field-filled-error-hover-label-text-color: var(--color-danger-text);
+  --mat-form-field-outlined-error-outline-color: var(--color-danger-border);
+  --mat-form-field-outlined-error-focus-outline-color: var(--color-danger-border);
+  --mat-form-field-outlined-error-label-text-color: var(--color-danger-text);
+  --mat-form-field-outlined-error-focus-label-text-color: var(--color-danger-text);
+  --mat-form-field-outlined-error-hover-label-text-color: var(--color-danger-text);
+  --mat-form-field-enabled-select-arrow-color: var(--color-text-muted);
+  --mat-form-field-focus-select-arrow-color: var(--color-accent);
+  --mat-form-field-disabled-select-arrow-color: var(--color-text-muted);
+  --mat-form-field-select-option-text-color: var(--color-text);
+  --mat-form-field-select-disabled-option-text-color: var(--color-text-muted);
 }
 
 @mixin breakpoint-md {

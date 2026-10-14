@@ -11,9 +11,13 @@
 }
 
 .create-roster {
-  margin-top: var(--space-5);
   display: flex;
   gap: var(--space-4);
-  align-items: baseline;
+  align-items: flex-start;
   flex-wrap: wrap;
+  margin-block-start: var(--space-5);
+}
+
+.create-roster h2 {
+  flex-basis: 100%;
 }
