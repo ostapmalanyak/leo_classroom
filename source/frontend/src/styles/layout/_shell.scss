@@ -68,7 +68,7 @@
 .app-title {
   flex: 0 0 auto;
   color: var(--color-text-strong);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-normal);
   line-height: 1;
 }
@@ -92,7 +92,7 @@
   background-color: transparent;
   color: var(--color-text);
   font: inherit;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-normal);
   line-height: 1;
   text-decoration: none;
