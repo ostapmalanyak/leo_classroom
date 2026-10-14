@@ -1,0 +1,81 @@
+@use "tokens" as tokens;
+
+@mixin surface {
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text);
+}
+
+@mixin component-host {
+  display: block;
+}
+
+@mixin input-group {
+  display: flex;
+  min-width: 0;
+
+  > :not(:first-child) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  > :not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+
+@mixin inline-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  color: var(--color-danger-text);
+}
+
+@mixin large-muted-icon {
+  width: var(--icon-xl);
+  height: var(--icon-xl);
+  color: var(--color-text-muted);
+  font-size: var(--icon-xl);
+}
+
+@mixin muted-text {
+  color: var(--color-text-muted);
+}
+
+@mixin hover-bg {
+  transition: color var(--transition), background-color var(--transition), border-color var(--transition);
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--color-bg-hover);
+  }
+}
+
+@mixin focus-ring {
+  &:focus-visible {
+    border-color: var(--color-accent);
+    outline: var(--border-width) solid var(--color-accent);
+    outline-offset: 0;
+  }
+}
+
+@mixin control-base {
+  min-height: var(--control-height);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: var(--color-bg-input);
+  color: var(--color-text);
+  font: inherit;
+  transition: color var(--transition), background-color var(--transition), border-color var(--transition);
+
+  @include focus-ring;
+}
+
+@mixin breakpoint-md {
+  @media (max-width: tokens.$breakpoint-md) {
+    @content;
+  }
+}

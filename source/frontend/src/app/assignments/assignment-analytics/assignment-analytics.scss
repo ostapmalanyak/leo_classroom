@@ -1,17 +1,17 @@
 .note {
-  color: rgba(0, 0, 0, 0.6);
-  max-width: 50rem;
+  color: var(--color-text-muted);
+  max-width: var(--container-narrow);
 }
 
 .cards {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  margin: 1rem 0;
+  gap: var(--space-4);
+  margin-block: var(--space-4);
 }
 
 .cards mat-card {
-  min-width: 8rem;
+  min-width: var(--metric-card-min);
 }
 
 .cards mat-card-content {
@@ -21,19 +21,19 @@
 }
 
 .value {
-  font-size: 1.6rem;
-  font-weight: 600;
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-semibold);
 }
 
 .label {
-  color: rgba(0, 0, 0, 0.6);
-  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
 }
 
 .spread {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 0.25rem 1rem;
+  gap: var(--space-1) var(--space-4);
 }
 
 .spread dt {
@@ -42,19 +42,19 @@
 
 .commits {
   display: grid;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .commit {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .on-time {
-  color: #2e7d32;
+  color: var(--color-success-text);
 }
 
 .late {
-  color: #f9a825;
+  color: var(--color-accent);
 }

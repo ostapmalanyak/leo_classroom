@@ -1,0 +1,128 @@
+@use "../abstracts/mixins" as mixins;
+
+.navbar {
+  min-height: var(--navbar-height);
+  border-bottom: var(--border-width) solid var(--color-border);
+  background-color: var(--color-bg-nav);
+  color: var(--color-text);
+}
+
+.navbar-item {
+  @include mixins.hover-bg;
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+}
+
+.subbar {
+  min-height: var(--subbar-height);
+  border-bottom: var(--border-width) solid var(--color-border);
+  background-color: var(--color-bg-surface);
+}
+
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+.container--narrow {
+  max-width: var(--container-narrow);
+}
+
+.layout-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--sidebar-width);
+  gap: var(--space-5);
+}
+
+.sidebar {
+  min-width: 0;
+}
+
+.footer {
+  border-top: var(--border-width) solid var(--color-border);
+  background-color: var(--color-bg-nav);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.shell-container {
+  background-color: var(--color-bg-body);
+}
+
+.shell {
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-bg-body);
+}
+
+.shell-sidenav {
+  width: var(--sidenav-width);
+  border-right: var(--border-width) solid var(--color-border);
+  background-color: var(--color-bg-nav);
+  color: var(--color-text);
+}
+
+.shell-toolbar {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  height: var(--navbar-height);
+  min-height: var(--navbar-height);
+  border-bottom: var(--border-width) solid var(--color-border);
+  background-color: var(--color-bg-nav);
+  color: var(--color-text);
+}
+
+.shell .app-title {
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-semibold);
+}
+
+.shell .spacer {
+  flex: 1 1 auto;
+}
+
+.shell .identity {
+  margin-left: var(--space-1);
+}
+
+.shell-content {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  background-color: var(--color-bg-body);
+  padding: var(--space-5) var(--space-4);
+}
+
+.shell-sidenav .active-nav {
+  border-radius: var(--radius);
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-semibold);
+}
+
+.shell-sidenav a[mat-list-item] {
+  color: var(--color-text);
+}
+
+.shell-sidenav a[mat-list-item]:hover {
+  background-color: var(--color-bg-hover);
+}
+
+@include mixins.breakpoint-md {
+  .layout-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shell-content {
+    padding: var(--space-4);
+  }
+}

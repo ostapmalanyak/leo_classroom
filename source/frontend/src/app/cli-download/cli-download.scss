@@ -1,36 +1,36 @@
 .note {
-  color: rgba(0, 0, 0, 0.6);
-  max-width: 50rem;
+  color: var(--color-text-muted);
+  max-width: var(--container-narrow);
 }
 
 .version {
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--color-text-muted);
 }
 
 .downloads {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .downloads mat-card {
-  width: 16rem;
+  width: var(--sidebar-width);
 }
 
 mat-card-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1.5rem;
+  gap: var(--space-3);
+  padding: var(--space-5);
 }
 
 mat-icon {
-  width: 2.5rem;
-  height: 2.5rem;
-  font-size: 2.5rem;
+  width: var(--icon-xl);
+  height: var(--icon-xl);
+  font-size: var(--icon-xl);
 }
 
 .platform {
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }

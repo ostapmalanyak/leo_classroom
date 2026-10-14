@@ -1,9 +1,9 @@
 .filters {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-4);
   align-items: baseline;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .audit-table {
@@ -11,14 +11,14 @@
 }
 
 code {
-  font-family: monospace;
-  font-size: 0.8rem;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
 }
 
 small {
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--color-text-muted);
 }
 
 .empty {
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--color-text-muted);
 }

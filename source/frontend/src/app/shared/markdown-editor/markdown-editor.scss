@@ -1,7 +1,9 @@
+@use "../../../styles/abstracts/mixins" as mixins;
+
 .markdown-editor {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .editor-input {
@@ -9,19 +11,19 @@
 }
 
 .editor-preview {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 4px;
-  padding: 0.75rem;
+  @include mixins.surface;
+
+  padding: var(--space-3);
 }
 
 .preview-label {
   display: block;
-  font-size: 0.75rem;
-  color: rgba(0, 0, 0, 0.6);
-  margin-bottom: 0.5rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
 }
 
-@media (max-width: 700px) {
+@include mixins.breakpoint-md {
   .markdown-editor {
     grid-template-columns: 1fr;
   }

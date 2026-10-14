@@ -7,13 +7,13 @@
 }
 
 .empty {
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--color-text-muted);
 }
 
 .create-roster {
-  margin-top: 1.5rem;
+  margin-top: var(--space-5);
   display: flex;
-  gap: 1rem;
+  gap: var(--space-4);
   align-items: baseline;
   flex-wrap: wrap;
 }

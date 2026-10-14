@@ -1,0 +1,52 @@
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+}
+
+body {
+  line-height: var(--line-height-base);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-medium);
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-family-mono);
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: color var(--transition);
+
+  &:hover {
+    color: var(--color-accent-hover);
+    text-decoration: underline;
+  }
+}
+
+:focus-visible {
+  outline-color: var(--color-accent);
+}

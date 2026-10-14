@@ -1,5 +1,5 @@
 .section {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-5);
 }
 
 .row {
@@ -7,12 +7,13 @@
 }
 
 .empty {
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--color-text-muted);
 }
+
 .row a[mat-button] {
-  transition: box-shadow 160ms ease, background-color 160ms ease;
+  transition: color var(--transition), background-color var(--transition), border-color var(--transition);
 }
 
 .row a[mat-button]:hover {
-  box-shadow: 0 0 12px rgba(63, 81, 181, 0.55);
+  background-color: var(--color-bg-hover);
 }

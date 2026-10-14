@@ -1,5 +1,5 @@
 .section {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-5);
 }
 
 .full {
@@ -7,16 +7,17 @@
 }
 
 mat-form-field {
-  margin-right: 1rem;
+  margin-right: var(--space-4);
 }
 
 mat-slide-toggle {
   display: block;
-  margin: 0.75rem 0;
+  margin-block: var(--space-3);
 }
 
 .light-button {
-  background: #fff;
-  border: 1px solid var(--mat-sys-outline-variant);
-  color: var(--mat-sys-on-surface);
+  background-color: var(--color-bg-input);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
 }

@@ -1,34 +1,5 @@
-.shell {
-  position: absolute;
-  inset: 0;
-}
+@use "../../../styles/abstracts/mixins" as mixins;
 
-.shell-sidenav {
-  width: 16rem;
-}
-
-.shell-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-
-.app-title {
-  font-weight: 600;
-}
-
-.spacer {
-  flex: 1 1 auto;
-}
-
-.identity {
-  margin-left: 0.25rem;
-}
-
-.shell-content {
-  padding: 1.5rem;
-}
-
-.active-nav {
-  font-weight: 600;
+:host {
+  @include mixins.component-host;
 }
