@@ -39,5 +39,9 @@
     "stylelint": "^16.26.1",
     "stylelint-config-standard-scss": "^14.0.0",
     "typescript": "~5.9.3"
+  },
+  "overrides": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "vite": "^7.3.7"
   }
 }
