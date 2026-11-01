@@ -203,6 +203,8 @@ services:
       FORGEJO__database__PASSWD__FILE: /run/secrets/forgejo_db_password
       # Confidential OIDC client secret for Keycloak SSO (consumed by `forgejo admin auth add-oauth`).
       FORGEJO__oauth2_client__OPENID_CONNECT_SCOPES: "openid email profile"
+      FORGEJO__service__ENABLE_OPENID_SIGNIN: "false"
+      FORGEJO__service__ENABLE_OPENID_SIGNUP: "false"
       FORGEJO__service__DISABLE_REGISTRATION: "true"
       FORGEJO__service__ALLOW_ONLY_EXTERNAL_REGISTRATION: "true"
       FORGEJO__security__INSTALL_LOCK: "true"
