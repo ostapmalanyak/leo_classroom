@@ -1,31 +1,43 @@
-<mat-toolbar class="shell-toolbar navbar">
-  <div class="container navbar__inner">
-    <span class="app-title">LEO Classroom</span>
+<div class="shell-layout">
+  <mat-toolbar class="shell-toolbar navbar">
+    <div class="container navbar__inner">
+      <span class="app-title">LEO Classroom</span>
 
-    <nav class="navbar__items" aria-label="Main navigation">
-      @for (entry of entries(); track entry.route) {
-        <a class="navbar-item" [attr.data-route]="entry.route" [routerLink]="entry.route"
-           routerLinkActive="active-nav"
-           [routerLinkActiveOptions]="{ exact: entry.route === '/' }">
-          <mat-icon>{{ entry.icon }}</mat-icon>
-          <span>{{ entry.label }}</span>
-        </a>
-      }
-    </nav>
+      <nav class="navbar__items" aria-label="Main navigation">
+        @for (entry of entries(); track entry.route) {
+          <a class="navbar-item" [attr.data-route]="entry.route" [routerLink]="entry.route"
+             routerLinkActive="active-nav"
+             [routerLinkActiveOptions]="{ exact: entry.route === '/' }">
+            <mat-icon>{{ entry.icon }}</mat-icon>
+            <span>{{ entry.label }}</span>
+          </a>
+        }
+      </nav>
 
-    <button class="navbar-item navbar-account" mat-button [matMenuTriggerFor]="userMenu" aria-label="Account">
-      <mat-icon>account_circle</mat-icon>
-      <span class="identity">{{ session.identity()?.displayName }}</span>
-    </button>
-    <mat-menu #userMenu="matMenu">
-      <button class="navbar-item" mat-menu-item (click)="logout()">
-        <mat-icon>logout</mat-icon>
-        <span>Logout</span>
+      <button class="navbar-item navbar-account" mat-button [matMenuTriggerFor]="userMenu" aria-label="Account">
+        <mat-icon>account_circle</mat-icon>
+        <span class="identity">{{ session.identity()?.displayName }}</span>
       </button>
-    </mat-menu>
-  </div>
-</mat-toolbar>
+      <mat-menu #userMenu="matMenu">
+        <button class="navbar-item" mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Logout</span>
+        </button>
+      </mat-menu>
+    </div>
+  </mat-toolbar>
 
-<main class="shell-content container">
-  <router-outlet></router-outlet>
-</main>
+  <main class="shell-content container">
+    <router-outlet></router-outlet>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <span>LEO Classroom v1.0.1</span>
+      <span>
+        Complaints:
+        <a href="mailto:k.polimac@students.htl-leonding.ac.at">k.polimac@students.htl-leonding.ac.at</a>
+      </span>
+    </div>
+  </footer>
+</div>

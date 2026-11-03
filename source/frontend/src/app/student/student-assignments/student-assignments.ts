@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, signal, WritableSignal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
 import { MatButton } from '@angular/material/button';
@@ -9,7 +10,7 @@ import { SnackbarService } from '../../../core/services/snackbar-service';
 
 @Component({
   selector: 'app-student-assignments',
-  imports: [RouterLink, MatCard, MatCardContent, MatCardTitle, MatListModule, MatProgressBar, MatButton],
+  imports: [DatePipe, RouterLink, MatCard, MatCardContent, MatCardTitle, MatListModule, MatProgressBar, MatButton],
   templateUrl: './student-assignments.html',
   styleUrl: './student-assignments.scss'
 })
@@ -20,6 +21,10 @@ export class StudentAssignments implements OnInit {
   protected readonly accepted: WritableSignal<AssignedAssignment[]> = signal([]);
   protected readonly unaccepted: WritableSignal<AssignedAssignment[]> = signal([]);
   protected readonly loading: WritableSignal<boolean> = signal(false);
+
+  protected formatDeadline(deadline: AssignedAssignment['deadline']): Date | null {
+    return deadline === null ? null : new Date(deadline.toEpochMilli());
+  }
 
   public async ngOnInit(): Promise<void> {
     this.loading.set(true);
