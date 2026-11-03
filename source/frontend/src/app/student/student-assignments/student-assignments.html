@@ -17,7 +17,7 @@
             <span matListItemLine>{{ a.courseTitle }}</span>
             <div matListItemMeta>
               @if (a.deadline; as deadline) {
-                <span>Deadline: {{ deadline.toString() }}</span>
+                <span>Deadline: {{ formatDeadline(deadline) | date: 'yyyy-MM-dd HH:mm' }}</span>
               }
               <a mat-button [routerLink]="['/my-assignments', a.id]">Open assignment</a>
             </div>
@@ -41,7 +41,7 @@
             <span matListItemLine>{{ a.courseTitle }} — {{ a.status }}</span>
             <div matListItemMeta>
               @if (a.deadline; as deadline) {
-                <span>Deadline: {{ deadline.toString() }}</span>
+                <span>Deadline: {{ formatDeadline(deadline) | date: 'yyyy-MM-dd HH:mm' }}</span>
               }
               <a mat-button [routerLink]="['/my-assignments', a.id]">Open assignment</a>
             </div>
