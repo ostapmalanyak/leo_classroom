@@ -7,7 +7,8 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "lint:styles": "stylelint \"src/**/*.scss\""
   },
   "private": true,
   "dependencies": {
@@ -35,6 +36,14 @@
     "@angular/build": "^21.1.4",
     "@angular/cli": "^21.1.4",
     "@angular/compiler-cli": "^21.1.5",
+    "stylelint": "^16.26.1",
+    "stylelint-config-standard-scss": "^14.0.0",
     "typescript": "~5.9.3"
+  },
+  "overrides": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "glob": "^14.0.2",
+    "minimatch": "^11.0.1",
+    "vite": "^7.3.7"
   }
 }

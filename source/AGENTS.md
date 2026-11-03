@@ -8,7 +8,7 @@ timestamp; the teacher pulls every submission down as one archive and answers wi
 **Read this file first, then the guide for the part you are touching.** The backend has considerably more
 detail of its own in `backend/AGENTS.md` - it is binding for everything under `backend/`, and this file does
 not repeat it. Choices that are deliberate but not readable from the code are in `DECISIONS.md`, newest
-first: consult it before re-litigating a design, and add to it when you make one.
+first:  consult it before re-litigating a design, and add to it when you make one.
 
 ## Layout
 

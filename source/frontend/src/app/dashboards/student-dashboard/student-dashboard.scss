@@ -1,5 +1,5 @@
 .welcome-card {
-  max-width: 42rem;
+  max-width: var(--container-narrow);
 }
 
 .welcome-card h1 {
@@ -7,7 +7,7 @@
 }
 
 .welcome-card p {
-  line-height: 1.5;
+  line-height: var(--line-height-base);
 }
 
 .motivation {

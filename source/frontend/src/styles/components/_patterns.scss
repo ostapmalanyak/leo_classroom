@@ -1,0 +1,602 @@
+@use "../abstracts/mixins" as mixins;
+
+.card,
+.mat-mdc-card {
+  @include mixins.surface;
+
+  box-shadow: none;
+}
+
+.mat-mdc-form-field-subscript-wrapper {
+  min-height: 0;
+  margin-top: 0;
+}
+
+.mat-mdc-form-field-bottom-align::before {
+  height: 0;
+}
+
+.card__header {
+  border-bottom: var(--border-width) solid var(--color-border);
+  background-color: var(--color-bg-input);
+  padding: var(--space-3) var(--space-4);
+  font-weight: var(--font-weight-medium);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.page-header > :first-child {
+  margin: 0;
+}
+
+.page-header > :last-child {
+  flex: 0 0 auto;
+}
+
+.btn {
+  @include mixins.control-base;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-4);
+  border-radius: var(--radius-button);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn--primary {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  color: var(--color-on-accent);
+
+  &:hover {
+    border-color: var(--color-accent-hover);
+    background-color: var(--color-accent-hover);
+  }
+}
+
+.btn--secondary {
+  background-color: var(--color-bg-input);
+}
+
+.btn--toggle-active {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.btn--icon {
+  width: var(--control-height);
+  padding-inline: 0;
+}
+
+.input {
+  @include mixins.field-box;
+  @include mixins.focus-ring;
+
+  width: 100%;
+  padding-inline: var(--space-3);
+}
+
+.input--invalid {
+  background-color: var(--color-danger-bg);
+}
+
+.input-group {
+  @include mixins.input-group;
+}
+
+.search-bar {
+  @include mixins.input-group;
+
+  flex: 1 1 auto;
+}
+
+.segmented {
+  display: inline-flex;
+
+  > :not(:first-child) {
+    margin-inline-start: calc(-1 * var(--border-width));
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  > :not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+
+.tabs {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.tabs__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-bottom: calc(var(--border-width) * 2) solid transparent;
+  color: var(--color-text-muted);
+  text-decoration: none;
+
+  &:hover,
+  &.is-active {
+    border-bottom-color: var(--color-accent);
+    color: var(--color-text-strong);
+  }
+}
+
+.tabs--compact {
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+}
+
+.badge {
+  border-radius: var(--radius-pill);
+  background-color: var(--color-bg-hover);
+  padding-inline: var(--space-2);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border-bottom: var(--border-width) solid var(--color-border);
+  padding-block: var(--space-3);
+}
+
+.error-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-4);
+  color: var(--color-text-muted);
+  text-align: center;
+
+  mat-icon {
+    @include mixins.large-muted-icon;
+  }
+}
+
+.empty-state--no-icon mat-icon {
+  display: none;
+}
+
+app-public-landing .landing[class] {
+  min-height: var(--viewport-height);
+  padding: var(--space-4);
+}
+
+app-public-landing mat-card-content[class] {
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+app-assignment-list .assignments[class] {
+  gap: var(--space-4);
+}
+
+app-assignment-list mat-card-content[class] {
+  gap: var(--space-4);
+}
+
+app-empty-state .empty-state[class] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-4);
+  color: var(--color-text-muted);
+  text-align: center;
+
+  h1 {
+    margin: 0;
+    color: var(--color-text);
+  }
+
+  mat-icon {
+    @include mixins.large-muted-icon;
+  }
+}
+
+.link {
+  color: var(--color-accent);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--color-accent-hover);
+    text-decoration: underline;
+  }
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.form-field__hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.alert {
+  border: var(--border-width) solid var(--color-danger-border);
+  border-radius: var(--radius);
+  background-color: var(--color-danger-bg);
+  padding: var(--space-3);
+  color: var(--color-text-strong);
+  text-align: center;
+}
+
+.alert--success {
+  border-color: var(--color-success-border);
+  background-color: var(--color-success-bg);
+}
+
+.code-block {
+  border-radius: var(--radius);
+  background-color: var(--color-bg-code);
+  padding: var(--space-4);
+  color: var(--color-text);
+  font: var(--font-size-base) / var(--line-height-base) var(--font-family-mono);
+  overflow-wrap: anywhere;
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.sidenav {
+  width: var(--sidenav-width);
+
+  @include mixins.surface;
+}
+
+.sidenav__item {
+  display: block;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text);
+  text-decoration: none;
+
+  @include mixins.hover-bg;
+}
+
+.mat-mdc-card,
+.mat-mdc-menu-panel,
+.mat-mdc-dialog-surface,
+.mat-mdc-button-base,
+.mat-mdc-snack-bar-container {
+  box-shadow: none;
+}
+
+app-inline-error .inline-error[role="alert"] {
+  @include mixins.inline-error;
+}
+
+mat-card.mat-mdc-card {
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text);
+  box-shadow: none;
+}
+
+.mat-mdc-card-content,
+.mat-mdc-card-header,
+.mat-mdc-card-title,
+.mat-mdc-card-subtitle {
+  color: var(--color-text);
+}
+
+.mat-mdc-card-subtitle,
+.mat-mdc-list-item-line {
+  color: var(--color-text-muted);
+}
+
+.mat-mdc-table,
+.mat-mdc-paginator,
+.mat-mdc-menu-panel,
+.mat-mdc-select-panel,
+.mat-mdc-autocomplete-panel {
+  background-color: var(--color-bg-surface);
+  color: var(--color-text);
+}
+
+.mat-mdc-header-row,
+.mat-mdc-row,
+.mat-mdc-cell,
+.mat-mdc-header-cell {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.mat-mdc-progress-bar {
+  --mdc-linear-progress-active-indicator-color: var(--color-accent);
+  --mdc-linear-progress-track-color: var(--color-bg-hover);
+}
+
+.mat-mdc-checkbox,
+.mat-mdc-slide-toggle {
+  --mdc-checkbox-selected-icon-color: var(--color-accent);
+  --mdc-checkbox-selected-checkmark-color: var(--color-on-accent);
+  --mdc-switch-selected-track-color: var(--color-accent);
+  --mdc-switch-selected-handle-color: var(--color-on-accent);
+}
+
+.mat-mdc-button,
+.mat-mdc-outlined-button {
+  transition: color var(--transition), background-color var(--transition), border-color var(--transition);
+}
+
+.mat-mdc-button-base {
+  @include mixins.material-button-tokens;
+  @include mixins.focus-ring;
+
+  height: var(--control-height);
+  min-height: var(--control-height);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-button);
+  background-color: var(--color-bg-input);
+  color: var(--color-text);
+  box-shadow: none;
+  transition: color var(--transition), background-color var(--transition), border-color var(--transition);
+}
+
+.mat-mdc-button.mat-mdc-button-base,
+.mat-mdc-outlined-button.mat-mdc-button-base {
+  background-color: var(--color-bg-input);
+}
+
+.mat-mdc-button-base.mat-primary {
+  --mat-button-filled-container-color: var(--color-accent);
+  --mat-button-filled-label-text-color: var(--color-on-accent);
+  --mat-button-protected-container-color: var(--color-accent);
+  --mat-button-protected-label-text-color: var(--color-on-accent);
+  --mat-button-outlined-outline-color: var(--color-accent);
+  --mat-button-outlined-label-text-color: var(--color-accent);
+  --mat-button-text-label-text-color: var(--color-accent);
+  --mat-button-tonal-container-color: var(--color-accent);
+  --mat-button-tonal-label-text-color: var(--color-on-accent);
+  --mat-icon-button-icon-color: var(--color-accent);
+
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  color: var(--color-on-accent);
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-accent-hover);
+    background-color: var(--color-accent-hover);
+    color: var(--color-on-accent);
+  }
+}
+
+.mat-mdc-button-base.mat-warn {
+  --mat-button-filled-container-color: var(--color-danger-bg);
+  --mat-button-filled-label-text-color: var(--color-danger-text);
+  --mat-button-protected-container-color: var(--color-danger-bg);
+  --mat-button-protected-label-text-color: var(--color-danger-text);
+  --mat-button-outlined-outline-color: var(--color-danger-border);
+  --mat-button-outlined-label-text-color: var(--color-danger-text);
+  --mat-button-text-label-text-color: var(--color-danger-text);
+  --mat-icon-button-icon-color: var(--color-danger-text);
+
+  border-color: var(--color-danger-border);
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.mat-mdc-icon-button.mat-mdc-button-base {
+  width: var(--control-height);
+  height: var(--control-height);
+  padding: 0;
+  border: var(--border-width) solid var(--color-border);
+  background-color: var(--color-bg-input);
+}
+
+.mat-mdc-button-base:disabled,
+.mat-mdc-button-base.mat-mdc-button-disabled {
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.mat-mdc-button-base.navbar-item {
+  border-color: var(--color-transparent);
+  background-color: var(--color-transparent);
+}
+
+.mat-mdc-button-base:not(:disabled):hover {
+  background-color: var(--color-bg-hover);
+}
+
+button:not(.mat-mdc-button-base, .mat-mdc-menu-item) {
+  @include mixins.control-base;
+
+  border-radius: var(--radius-button);
+}
+
+input:not(.mat-mdc-input-element),
+textarea:not(.mat-mdc-input-element),
+select:not(.mat-mdc-input-element) {
+  @include mixins.field-box;
+  @include mixins.focus-ring;
+}
+
+.mat-mdc-form-field {
+  @include mixins.material-field-box;
+
+  vertical-align: top;
+}
+
+.mat-mdc-form-field .mdc-text-field--filled {
+  @include mixins.field-box;
+}
+
+.mat-mdc-form-field.mat-focused .mdc-text-field--filled {
+  border-color: var(--color-accent);
+  background-color: var(--color-bg-input);
+}
+
+.mat-mdc-form-field.mat-form-field-invalid .mdc-text-field--filled {
+  --mat-form-field-filled-container-color: var(--color-danger-bg);
+
+  border-color: var(--color-danger-border);
+  background-color: var(--color-danger-bg);
+}
+
+.mat-mdc-form-field .mdc-notched-outline__leading,
+.mat-mdc-form-field .mdc-notched-outline__notch,
+.mat-mdc-form-field .mdc-notched-outline__trailing {
+  border-color: var(--color-border);
+}
+
+.mat-mdc-form-field .mdc-notched-outline__notch {
+  border-top: 0;
+}
+
+.mat-mdc-form-field.mat-focused .mdc-notched-outline__leading,
+.mat-mdc-form-field.mat-focused .mdc-notched-outline__notch,
+.mat-mdc-form-field.mat-focused .mdc-notched-outline__trailing {
+  border-color: var(--color-accent);
+}
+
+.mat-mdc-form-field.mat-form-field-invalid .mdc-notched-outline__leading,
+.mat-mdc-form-field.mat-form-field-invalid .mdc-notched-outline__notch,
+.mat-mdc-form-field.mat-form-field-invalid .mdc-notched-outline__trailing {
+  border-color: var(--color-danger-border);
+}
+
+.mat-mdc-form-field .mat-mdc-input-element,
+.mat-mdc-form-field .mat-mdc-select-value {
+  color: var(--color-text);
+}
+
+.mat-mdc-form-field .mat-mdc-input-element::placeholder {
+  color: var(--color-text-muted);
+}
+
+.mat-mdc-form-field .mat-mdc-form-field-label,
+.mat-mdc-form-field .mat-mdc-floating-label,
+.mat-mdc-form-field .mat-mdc-form-field-hint,
+.mat-mdc-form-field .mat-mdc-form-field-icon-prefix,
+.mat-mdc-form-field .mat-mdc-form-field-icon-suffix {
+  color: var(--color-text-muted);
+}
+
+.mat-mdc-form-field .mat-mdc-form-field-error {
+  color: var(--color-danger-text);
+}
+
+.mat-mdc-select-panel,
+.mat-mdc-autocomplete-panel,
+.mat-mdc-menu-panel,
+.mat-datepicker-content {
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text);
+  box-shadow: none;
+}
+
+.mat-mdc-option {
+  color: var(--color-text);
+}
+
+.mat-mdc-option:hover:not(.mdc-list-item--disabled),
+.mat-mdc-option.mat-mdc-option-active {
+  background-color: var(--color-bg-hover);
+}
+
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+  color: var(--color-text-strong);
+}
+
+.mat-mdc-select {
+  --mat-select-enabled-arrow-color: var(--color-text-muted);
+  --mat-select-focused-arrow-color: var(--color-accent);
+  --mat-select-disabled-arrow-color: var(--color-text-muted);
+  --mat-select-enabled-trigger-text-color: var(--color-text);
+  --mat-select-disabled-trigger-text-color: var(--color-text-muted);
+  --mat-select-placeholder-text-color: var(--color-text-muted);
+  --mat-select-panel-background-color: var(--color-bg-surface);
+  --mat-select-container-elevation-shadow: none;
+}
+
+.mat-mdc-autocomplete-panel {
+  --mat-autocomplete-background-color: var(--color-bg-surface);
+  --mat-autocomplete-container-elevation-shadow: none;
+  --mat-autocomplete-container-shape: var(--radius);
+}
+
+.mat-datepicker-content {
+  --mat-datepicker-calendar-container-background-color: var(--color-bg-surface);
+  --mat-datepicker-calendar-container-elevation-shadow: none;
+  --mat-datepicker-calendar-container-shape: var(--radius);
+  --mat-datepicker-calendar-container-text-color: var(--color-text);
+  --mat-datepicker-calendar-date-text-color: var(--color-text);
+  --mat-datepicker-calendar-body-label-text-color: var(--color-text-muted);
+  --mat-datepicker-calendar-date-hover-state-background-color: var(--color-bg-hover);
+  --mat-datepicker-calendar-date-selected-state-background-color: var(--color-accent);
+  --mat-datepicker-calendar-date-selected-state-text-color: var(--color-on-accent);
+  --mat-datepicker-calendar-date-today-outline-color: var(--color-accent);
+}
+
+.mat-mdc-menu-item {
+  border-radius: var(--radius-button);
+  color: var(--color-text);
+}
+
+.mat-mdc-menu-item.navbar-item {
+  height: var(--control-height);
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-base);
+}
+
+.mat-mdc-menu-item:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+@include mixins.breakpoint-md {
+  .layout-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .layout-split,
+  .sidenav {
+    width: 100%;
+  }
+
+  .filter-row {
+    align-items: stretch;
+  }
+
+  .page-header {
+    align-items: flex-start;
+  }
+}

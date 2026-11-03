@@ -204,9 +204,9 @@ export enum DeadlineKind {
 
 export enum StarterSourceKind {
   DescriptionOnly = 'DescriptionOnly',
-  Archive = 'Archive',
+  Archive = 'Archive(doesnt work)',
   ForkOwnRepo = 'ForkOwnRepo',
-  CopyRepo = 'CopyRepo'
+  CopyRepo = 'CopyRepo(doesnt work)'
 }
 
 export enum DownloadSnapshotMode {
@@ -285,7 +285,12 @@ const commitAnalyticsZod = z.object({
   commitsPerPush: z.number(),
   firstPushAt: InstantSchema.nullable(),
   lastPushAt: InstantSchema.nullable(),
-  activeDayCount: z.int()
+  activeDayCount: z.int(),
+  commits: z.object({
+    sha: z.string(),
+    at: InstantSchema,
+    late: z.boolean()
+  }).array()
 });
 export type CommitAnalytics = z.infer<typeof commitAnalyticsZod>;
 

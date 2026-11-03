@@ -1,18 +1,5 @@
-.app-title {
-  cursor: pointer;
-  font-weight: 500;
-}
+@use "../styles/abstracts/mixins" as mixins;
 
-.spacer {
-  flex: 1 1 auto;
-}
-
-.identity {
-  margin-right: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.app-content {
-  padding: 1.5rem;
-  display: block;
+:host {
+  @include mixins.component-host;
 }

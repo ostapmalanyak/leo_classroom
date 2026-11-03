@@ -27,7 +27,7 @@ public sealed class DownloadFolderNamerTests
     [Fact]
     public void Base_FallsBackToPlaceholder_WhenNoName()
     {
-        DownloadFolderNamer.Base("", "  ").Should().Be("student");
+        DownloadFolderNamer.Base("", "  ", "IF000001").Should().Be("student_if000001");
     }
 
     [Fact]

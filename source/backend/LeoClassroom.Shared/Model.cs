@@ -46,7 +46,10 @@ public sealed record CommitAnalyticsView(
     double CommitsPerPush,
     Instant? FirstPushAt,
     Instant? LastPushAt,
-    int ActiveDayCount);
+    int ActiveDayCount,
+    IReadOnlyCollection<CommitAnalyticsEntry> Commits);
+
+public sealed record CommitAnalyticsEntry(string Sha, Instant At, bool Late);
 
 public sealed record AuditEventView(
     long Id,

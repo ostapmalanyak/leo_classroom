@@ -1,52 +1,52 @@
 .intro {
-  max-width: 60ch;
-  color: var(--mat-sys-on-surface-variant);
+  max-width: var(--container-narrow);
+  color: var(--color-text-muted);
 }
 
 .summary {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 1.5rem;
-  font-weight: 500;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  font-weight: var(--font-weight-medium);
 }
 
 .summary--ok {
-  color: var(--mat-sys-primary);
+  color: var(--color-success-text);
 }
 
 .summary--bad {
-  color: var(--mat-sys-error);
+  color: var(--color-danger-text);
 }
 
 .target {
-  color: var(--mat-sys-on-surface-variant);
+  color: var(--color-text-muted);
 }
 
 .checks {
   list-style: none;
   padding: 0;
-  max-width: 80ch;
+  max-width: var(--container-narrow);
 }
 
 .check {
   display: grid;
-  grid-template-columns: 1.5rem 12rem 1fr;
-  gap: 0.5rem;
+  grid-template-columns: var(--avatar-md) var(--check-label-width) 1fr;
+  gap: var(--space-2);
   align-items: baseline;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  padding-block: var(--space-2);
+  border-bottom: var(--border-width) solid var(--color-border);
 }
 
 .check__name {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .check__detail {
-  color: var(--mat-sys-on-surface-variant);
+  color: var(--color-text-muted);
   overflow-wrap: anywhere;
 }
 
 .check--failed .check__detail {
-  color: var(--mat-sys-error);
+  color: var(--color-danger-text);
 }

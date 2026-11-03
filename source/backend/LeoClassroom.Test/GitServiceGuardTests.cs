@@ -44,6 +44,15 @@ public sealed class GitServiceGuardTests
         result.ShouldBe<GitError>().Reason.Should().Contain("http(s)");
     }
 
+    [Fact]
+    public void InternalCloneUrl_UsesBackendForgejoAddressAndKeepsRepositoryPath()
+    {
+        GitService service = Build();
+
+        service.InternalCloneUrl("http://localhost:3000/poseoo-1/student.git")
+               .Should().Be("https://git.test/poseoo-1/student.git");
+    }
+
     [Theory]
     [InlineData("--upload-pack=touch /tmp/pwned")]
     [InlineData("HEAD; rm -rf /")]
