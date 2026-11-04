@@ -1,4 +1,4 @@
-import { Component, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
+import { Component, computed, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButton } from '@angular/material/button';
@@ -22,11 +22,22 @@ export class AssignmentStudents implements OnInit {
   protected readonly FeedbackState = FeedbackState;
   protected readonly displayedColumns: string[] =
     ['student', 'status', 'late', 'lastCommit', 'feedback', 'repo', 'actions'];
+  /** Students open (and accept) the assignment here, so this is the page to send them. */
+  protected readonly studentUrl = computed(() => `${window.location.origin}/my-assignments/${this.id()}`);
   protected readonly students: WritableSignal<StudentSubmission[]> = signal([]);
   protected readonly loading: WritableSignal<boolean> = signal(false);
 
   public async ngOnInit(): Promise<void> {
     await this.reload();
+  }
+
+  protected async copyLink(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.studentUrl());
+      this.snackbar.show('Link copied to the clipboard');
+    } catch {
+      this.snackbar.show('Could not copy — select the link and copy it manually');
+    }
   }
 
   protected async handleEditClicked(): Promise<void> {
