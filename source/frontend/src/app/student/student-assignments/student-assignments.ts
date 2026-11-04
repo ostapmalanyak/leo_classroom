@@ -1,16 +1,21 @@
-import { Component, inject, OnInit, signal, WritableSignal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { Component, computed, inject, OnInit, signal, Signal, WritableSignal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
-import { MatButton } from '@angular/material/button';
-import { MatListModule } from '@angular/material/list';
 import { MatProgressBar } from '@angular/material/progress-bar';
+import { Instant } from '@js-joda/core';
 import { AssignedAssignment, AssignmentService } from '../../../core/services/assignment-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 
+interface CourseTile {
+  id: number;
+  title: string;
+  initials: string;
+  color: string;
+  open: number;
+}
+
 @Component({
   selector: 'app-student-assignments',
-  imports: [DatePipe, RouterLink, MatCard, MatCardContent, MatCardTitle, MatListModule, MatProgressBar, MatButton],
+  imports: [RouterLink, MatProgressBar],
   templateUrl: './student-assignments.html',
   styleUrl: './student-assignments.scss'
 })
@@ -18,13 +23,29 @@ export class StudentAssignments implements OnInit {
   private readonly service = inject(AssignmentService);
   private readonly snackbar = inject(SnackbarService);
 
-  protected readonly accepted: WritableSignal<AssignedAssignment[]> = signal([]);
-  protected readonly unaccepted: WritableSignal<AssignedAssignment[]> = signal([]);
+  private readonly all: WritableSignal<AssignedAssignment[]> = signal([]);
   protected readonly loading: WritableSignal<boolean> = signal(false);
 
-  protected formatDeadline(deadline: AssignedAssignment['deadline']): Date | null {
-    return deadline === null ? null : new Date(deadline.toEpochMilli());
-  }
+  protected readonly courses: Signal<CourseTile[]> = computed(() => {
+    const now = Instant.now();
+    const byCourse = new Map<number, CourseTile>();
+    for (const a of this.all()) {
+      const tile = byCourse.get(a.courseId) ?? {
+        id: a.courseId,
+        title: a.courseTitle,
+        initials: a.courseTitle.trim().slice(0, 2).toUpperCase(),
+        // stable per course, so a class keeps its colour between visits
+        color: `hsl(${(a.courseId * 137) % 360} 45% 38%)`,
+        open: 0
+      };
+      if (a.deadline === null || !a.deadline.isBefore(now)) {
+        tile.open++;
+      }
+      byCourse.set(a.courseId, tile);
+    }
+
+    return [...byCourse.values()].sort((l, r) => l.title.localeCompare(r.title));
+  });
 
   public async ngOnInit(): Promise<void> {
     this.loading.set(true);
@@ -35,23 +56,6 @@ export class StudentAssignments implements OnInit {
 
       return;
     }
-    this.accepted.set(this.sortAssignments(result.accepted));
-    this.unaccepted.set(this.sortAssignments(result.unaccepted));
-  }
-
-  private sortAssignments(assignments: AssignedAssignment[]): AssignedAssignment[] {
-    return [...assignments].sort((left, right) => {
-      if (left.deadline === null && right.deadline === null) {
-        return left.title.localeCompare(right.title);
-      }
-      if (left.deadline === null) {
-        return 1;
-      }
-      if (right.deadline === null) {
-        return -1;
-      }
-
-      return left.deadline.compareTo(right.deadline);
-    });
+    this.all.set([...result.accepted, ...result.unaccepted]);
   }
 }

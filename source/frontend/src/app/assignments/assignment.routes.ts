@@ -5,6 +5,7 @@ import { AssignmentAnalytics } from './assignment-analytics/assignment-analytics
 import { AssignmentDownload } from './assignment-download/assignment-download';
 import { StudentAssignments } from '../student/student-assignments/student-assignments';
 import { StudentAssignmentDetail } from '../student/assignment-detail/assignment-detail';
+import { CourseAssignments } from '../student/course-assignments/course-assignments';
 import { AssignmentList } from './assignment-list/assignment-list';
 import { authGuard } from '../../core/auth/auth-guard';
 import { Role } from '../../core/auth/roles';
@@ -47,5 +48,6 @@ export const assignmentRoutes: Routes = [
     data: { role: Role.Teacher }
   },
   { path: 'my-assignments', component: StudentAssignments, canActivate: [authGuard] },
+  { path: 'my-assignments/course/:courseId', component: CourseAssignments, canActivate: [authGuard] },
   { path: 'my-assignments/:id', component: StudentAssignmentDetail, canActivate: [authGuard] }
 ];

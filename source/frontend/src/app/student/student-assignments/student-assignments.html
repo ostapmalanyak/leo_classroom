@@ -1,53 +1,25 @@
-<h1>My assignments</h1>
+<h1>My classes</h1>
 
 @if (loading()) {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+} @else if (courses().length === 0) {
+  <p class="empty">You have no assignments yet.</p>
 }
 
-<mat-card class="section">
-  <mat-card-title>New</mat-card-title>
-  <mat-card-content>
-    @if (unaccepted().length === 0) {
-      <p class="empty">Nothing new.</p>
-    } @else {
-      <mat-list>
-        @for (a of unaccepted(); track a.id) {
-          <mat-list-item class="row">
-            <span matListItemTitle>{{ a.title }}</span>
-            <span matListItemLine>{{ a.courseTitle }}</span>
-            <div matListItemMeta>
-              @if (a.deadline; as deadline) {
-                <span>Deadline: {{ formatDeadline(deadline) | date: 'yyyy-MM-dd HH:mm' }}</span>
-              }
-              <a mat-button [routerLink]="['/my-assignments', a.id]">Open assignment</a>
-            </div>
-          </mat-list-item>
-        }
-      </mat-list>
-    }
-  </mat-card-content>
-</mat-card>
-
-<mat-card class="section">
-  <mat-card-title>Accepted</mat-card-title>
-  <mat-card-content>
-    @if (accepted().length === 0) {
-      <p class="empty">None accepted yet.</p>
-    } @else {
-      <mat-list>
-        @for (a of accepted(); track a.id) {
-          <mat-list-item class="row">
-            <span matListItemTitle>{{ a.title }}</span>
-            <span matListItemLine>{{ a.courseTitle }} — {{ a.status }}</span>
-            <div matListItemMeta>
-              @if (a.deadline; as deadline) {
-                <span>Deadline: {{ formatDeadline(deadline) | date: 'yyyy-MM-dd HH:mm' }}</span>
-              }
-              <a mat-button [routerLink]="['/my-assignments', a.id]">Open assignment</a>
-            </div>
-          </mat-list-item>
-        }
-      </mat-list>
-    }
-  </mat-card-content>
-</mat-card>
+<div class="tiles">
+  @for (course of courses(); track course.id) {
+    <a class="tile" [routerLink]="['/my-assignments/course', course.id]">
+      <span class="tile__badge" [style.background]="course.color">{{ course.initials }}</span>
+      <span class="tile__body">
+        <span class="tile__title">{{ course.title }}</span>
+        <span class="tile__meta">
+          @if (course.open > 0) {
+            {{ course.open }} open
+          } @else {
+            All caught up
+          }
+        </span>
+      </span>
+    </a>
+  }
+</div>
