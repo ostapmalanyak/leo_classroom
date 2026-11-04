@@ -19,6 +19,16 @@
         <span class="identity">{{ session.identity()?.displayName }}</span>
       </button>
       <mat-menu #userMenu="matMenu">
+        <a class="navbar-item" mat-menu-item routerLink="/account">
+          <mat-icon>account_circle</mat-icon>
+          <span>My account</span>
+        </a>
+        @if (isStudent()) {
+          <a class="navbar-item" mat-menu-item routerLink="/notification-settings">
+            <mat-icon>notifications</mat-icon>
+            <span>Notifications</span>
+          </a>
+        }
         <button class="navbar-item" mat-menu-item (click)="logout()">
           <mat-icon>logout</mat-icon>
           <span>Logout</span>

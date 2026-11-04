@@ -129,25 +129,13 @@
   order: 6;
 }
 
-.navbar__items [data-route="/notification-settings"] {
-  order: 7;
-  margin-inline-start: auto;
-}
-
 .navbar__items [data-route="/admin/forgejo"] {
   order: 8;
 }
 
-.navbar__items [data-route="/account"] {
-  order: 9;
-}
-
-.navbar__items:not(:has([data-route="/notification-settings"])) [data-route="/account"] {
-  margin-inline-start: auto;
-}
-
 .navbar-account {
   order: 10;
+  margin-inline-start: auto;
 }
 
 .navbar-item.active-nav,
