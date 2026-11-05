@@ -4,6 +4,17 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-04 — Forgejo logins stay IF numbers; profile names come from the directory
+
+**Status:** accepted.
+
+The IF number remains the Forgejo login because it is the stable identity used for ownership, team membership,
+and authorization. The Forgejo profile's `full_name` is a separate, human-facing field: set it from LDAP's given
+and family names whenever the account is provisioned or reconciled. This changes neither usernames nor repository
+paths and lets existing accounts acquire updated names on the next LDAP sync.
+
+---
+
 ## 2026-09-01 — The entry point owns the transaction
 
 **Status:** accepted; `TransactionProviderExtensions.ExecuteAsync` is the shape.
