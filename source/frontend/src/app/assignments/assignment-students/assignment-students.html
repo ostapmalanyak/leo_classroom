@@ -6,6 +6,13 @@
   </span>
 </div>
 
+<div class="share">
+  <span class="share__label">Student link</span>
+  <input class="share__url" readonly [value]="studentUrl()" aria-label="Link to send to students"
+         (focus)="$any($event.target).select()">
+  <button mat-stroked-button (click)="copyLink()">Copy link</button>
+</div>
+
 @if (loading()) {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
 }

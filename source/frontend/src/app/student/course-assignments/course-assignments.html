@@ -1,0 +1,32 @@
+<a mat-button routerLink="/my-assignments"><mat-icon>arrow_back</mat-icon> All classes</a>
+<h1>{{ title() }}</h1>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+@for (section of sections(); track section.label) {
+  <mat-card class="section">
+    <mat-card-title>{{ section.label }}</mat-card-title>
+    <mat-card-content>
+      @if (section.items.length === 0) {
+        <p class="empty">Nothing here.</p>
+      } @else {
+        <mat-list>
+          @for (a of section.items; track a.id) {
+            <mat-list-item>
+              <span matListItemTitle>{{ a.title }}</span>
+              <span matListItemLine>{{ a.accepted ? a.status : 'Not accepted yet' }}</span>
+              <div matListItemMeta>
+                @if (a.deadline; as deadline) {
+                  <span>Deadline: {{ toDate(deadline) | date: 'yyyy-MM-dd HH:mm' }}</span>
+                }
+                <a mat-button [routerLink]="['/my-assignments', a.id]">Open assignment</a>
+              </div>
+            </mat-list-item>
+          }
+        </mat-list>
+      }
+    </mat-card-content>
+  </mat-card>
+}
