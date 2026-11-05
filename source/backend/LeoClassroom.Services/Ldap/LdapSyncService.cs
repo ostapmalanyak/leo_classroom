@@ -218,7 +218,7 @@ internal sealed class LdapSyncService(
     {
         OneOf<Success, ForgejoError> result =
             await forgejo.EnsureUserAsync(
-                person.StudentId, person.Email, $"{person.FirstName} {person.LastName}".Trim(),
+                person.StudentId, person.Email, ForgejoNaming.UserDisplayName(person.FirstName, person.LastName),
                 forgejoSettings.Value.AuthSourceId);
         if (result.Failure is { } failed)
         {
