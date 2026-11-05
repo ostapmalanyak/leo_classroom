@@ -37,7 +37,7 @@ public sealed class LdapSyncServiceTests
                    .Returns(_ => new ValueTask<IReadOnlyCollection<Roster>>(_autoRosters.AsReadOnly()));
         _rosterRepo.When(r => r.Add(Arg.Any<Roster>())).Do(ci => _autoRosters.Add(ci.Arg<Roster>()));
 
-        _forgejo.EnsureUserAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<long>())
+        _forgejo.EnsureUserAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<long>())
                 .Returns(new ValueTask<OneOf<Success, ForgejoError>>(new Success()));
         _forgejo.SetUserActiveAsync(Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<long>())
                 .Returns(new ValueTask<OneOf<Success, ForgejoError>>(new Success()));
@@ -87,7 +87,7 @@ public sealed class LdapSyncServiceTests
 
         outcome.Created.Should().Be(1);
         _users.Should().ContainSingle(u => u.StudentId == "IF123456" && u.State == UserState.Active);
-        await _forgejo.Received(1).EnsureUserAsync("IF123456", "IF123456@s.local", 9);
+        await _forgejo.Received(1).EnsureUserAsync("IF123456", "IF123456@s.local", "First Last", 9);
     }
 
     [Fact]
