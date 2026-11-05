@@ -107,6 +107,8 @@ services:
       Ldap__BindDn: ${LDAP_BIND_DN}
       Ldap__StudentBaseDn: ${LDAP_STUDENT_BASE_DN}
       Ldap__TeacherBaseDn: ${LDAP_TEACHER_BASE_DN}
+      # Quartz cron expression; defaults to 02:00 every day. Override in .env for testing.
+      #Ldap__NightlyCron: "${LDAP_NIGHTLY_CRON:-0 0 2 * * ?}"
       Smtp__Host: ${SMTP_HOST}
       Smtp__Port: ${SMTP_PORT}
       Smtp__Security: ${SMTP_SECURITY}
