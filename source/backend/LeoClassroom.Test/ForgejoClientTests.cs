@@ -115,26 +115,45 @@ public sealed class ForgejoClientTests
     }
 
     [Fact]
-    public async Task EnsureUserAsync_LocalAccount_SendsAPasswordSoForgejoAcceptsIt()
+    public async Task EnsureUserAsync_LocalAccount_SendsPasswordAndFullName()
     {
         Respond(HttpStatusCode.Created, """{"id":1,"login":"IF000001"}""");
 
-        await Build().EnsureUserAsync("IF000001", "a@b.at", authSourceId: 0);
+        await Build().EnsureUserAsync("IF000001", "a@b.at", "Ada Student", authSourceId: 0);
 
         string body = await _requests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        body.Should().Contain("\"password\"").And.Contain("\"source_id\":0");
+        body.Should().Contain("\"password\"").And.Contain("\"source_id\":0").And
+            .Contain("\"full_name\":\"Ada Student\"");
     }
 
     [Fact]
     public async Task EnsureUserAsync_AlreadyExists_IsSuccessWithoutCreatingAgain()
     {
         Respond(HttpStatusCode.UnprocessableEntity, """{"message":"user already exists [name: IF000001]"}""");
-        Respond(HttpStatusCode.OK, """{"id":1,"login":"IF000001"}""");
+        Respond(HttpStatusCode.OK, """{"id":1,"login":"IF000001","full_name":"Ada Student"}""");
 
-        OneOf<Success, ForgejoError> result = await Build().EnsureUserAsync("IF000001", "a@b.at", authSourceId: 0);
+        OneOf<Success, ForgejoError> result =
+            await Build().EnsureUserAsync("IF000001", "a@b.at", "Ada Student", authSourceId: 0);
 
         result.ShouldBe<Success>();
         _requests[1].RequestUri!.AbsolutePath.Should().Be("/api/v1/users/IF000001");
+    }
+
+    [Fact]
+    public async Task EnsureUserAsync_ExistingAccount_UpdatesItsFullName()
+    {
+        Respond(HttpStatusCode.UnprocessableEntity, """{"message":"user already exists"}""");
+        Respond(HttpStatusCode.OK, """{"id":1,"login":"IF000001","full_name":"IF000001"}""");
+        Respond(HttpStatusCode.OK);
+
+        OneOf<Success, ForgejoError> result =
+            await Build().EnsureUserAsync("IF000001", "a@b.at", "Ada Student", authSourceId: 0);
+
+        result.ShouldBe<Success>();
+        _requests[2].Method.Should().Be(HttpMethod.Patch);
+        _requests[2].RequestUri!.AbsolutePath.Should().Be("/api/v1/admin/users/IF000001");
+        (await _requests[2].Content!.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .Should().Contain("\"full_name\":\"Ada Student\"");
     }
 
     [Fact]
@@ -146,7 +165,8 @@ public sealed class ForgejoClientTests
         Respond(HttpStatusCode.UnprocessableEntity, """{"message":"e-mail already in use [email: a@b.at]"}""");
         Respond(HttpStatusCode.NotFound);
 
-        OneOf<Success, ForgejoError> result = await Build().EnsureUserAsync("IF000001", "a@b.at", authSourceId: 0);
+        OneOf<Success, ForgejoError> result =
+            await Build().EnsureUserAsync("IF000001", "a@b.at", "Ada Student", authSourceId: 0);
 
         ForgejoError error = result.ShouldBe<ForgejoError>();
         error.StatusCode.Should().Be(422);
