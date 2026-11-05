@@ -211,9 +211,9 @@ services:
       FORGEJO__service__DISABLE_REGISTRATION: "true"
       FORGEJO__service__ALLOW_ONLY_EXTERNAL_REGISTRATION: "true"
       FORGEJO__security__INSTALL_LOCK: "true"
-      # Allow Forgejo's migration/copy flow to import repos from this host; keep the bare hostname,
-      # without scheme or port, in the list. Example: vm123.htl-leonding.ac.at
-      FORGEJO__migrations__ALLOWED_DOMAINS: "localhost,vm123.htl-leonding.ac.at"
+      # Same-instance CopyRepo URLs are rewritten to the internal service hostname before Forgejo migrates them.
+      # The public hostname is also allowed for starter repos reached by their public clone URL.
+      FORGEJO__migrations__ALLOWED_DOMAINS: "localhost,forgejo,vm123.htl-leonding.ac.at"
     secrets:
       - forgejo_db_password
       - Keycloak__ForgejoClientSecret
