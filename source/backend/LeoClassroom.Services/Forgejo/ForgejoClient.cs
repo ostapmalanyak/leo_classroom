@@ -68,7 +68,8 @@ public interface IForgejoClient
 
     public ValueTask<OneOf<Success, ForgejoError>> EnsureOrgWebhookAsync(string org, string url, string secret);
 
-    public ValueTask<OneOf<Success, ForgejoError>> EnsureUserAsync(string studentId, string? email, long authSourceId);
+    public ValueTask<OneOf<Success, ForgejoError>> EnsureUserAsync(
+        string studentId, string? email, string fullName, long authSourceId);
 
     /// <summary>
     ///     Replaces the password of a local Forgejo account
@@ -546,15 +547,16 @@ internal sealed class ForgejoClient(
         return response.IsSuccessStatusCode ? new Success() : await ErrorAsync(response, "ensure webhook");
     }
 
-    public async ValueTask<OneOf<Success, ForgejoError>> EnsureUserAsync(string studentId, string? email,
-                                                                         long authSourceId)
+    public async ValueTask<OneOf<Success, ForgejoError>> EnsureUserAsync(
+        string studentId, string? email, string fullName, long authSourceId)
     {
         // a local account needs some password to be created at all; it is random and immediately forgotten,
         // because the student's usable one is issued on demand by IGitCredentialService
         string? initialPassword = authSourceId == 0 ? GitCredentialGenerator.Generate() : null;
 
-        var body = new CreateUserBody(studentId, email ?? $"{studentId}@users.noreply.local", studentId, authSourceId,
-                                      MustChangePassword: false, initialPassword);
+        string normalizedFullName = fullName.Trim();
+        var body = new CreateUserBody(studentId, email ?? $"{studentId}@users.noreply.local", normalizedFullName,
+                                      studentId, authSourceId, MustChangePassword: false, initialPassword);
         HttpResponseMessage response = await http.PostAsJsonAsync("api/v1/admin/users", body);
         if (response.IsSuccessStatusCode)
         {
@@ -574,12 +576,23 @@ internal sealed class ForgejoClient(
             OneOf<ForgejoUser, NotFound, ForgejoError> existing = await GetUserAsync(studentId);
 
             return await existing.Match<ValueTask<OneOf<Success, ForgejoError>>>(
-                found => ValueTask.FromResult<OneOf<Success, ForgejoError>>(new Success()),
+                found => found.FullName == normalizedFullName
+                    ? ValueTask.FromResult<OneOf<Success, ForgejoError>>(new Success())
+                    : SetUserFullNameAsync(studentId, normalizedFullName),
                 async notFound => await ErrorAsync(response, "ensure user"),
                 error => ValueTask.FromResult<OneOf<Success, ForgejoError>>(error));
         }
 
         return await ErrorAsync(response, "ensure user");
+    }
+
+    private async ValueTask<OneOf<Success, ForgejoError>> SetUserFullNameAsync(string studentId, string fullName)
+    {
+        var body = new EditUserFullNameBody(fullName);
+        HttpResponseMessage response =
+            await http.PatchAsJsonAsync($"api/v1/admin/users/{Escape(studentId)}", body);
+
+        return response.IsSuccessStatusCode ? new Success() : await ErrorAsync(response, "set user full name");
     }
 
     public async ValueTask<OneOf<Success, NotFound, ForgejoError>> SetUserPasswordAsync(

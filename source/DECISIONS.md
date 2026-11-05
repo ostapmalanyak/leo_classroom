@@ -4,6 +4,31 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-05 — Forgejo `full_name` is `FamilyGiven`, no space
+
+**Status:** accepted.
+
+`ForgejoNaming.UserDisplayName` builds the profile name as family name then given name with no separator
+(`MukhinOleksandr`), used by the LDAP sync and by git-credential issuing so both write the same value.
+Forgejo shows `full_name` in repo and commit views only for commits whose author e-mail matches the account's
+e-mail; the author name inside a commit is set by the student's own git client and cannot be forced.
+
+Forgejo only renders `full_name` instead of the login when `[ui] DEFAULT_SHOW_FULL_NAME` is on, so
+`compose.yaml` sets `FORGEJO__ui__DEFAULT_SHOW_FULL_NAME=true`. Recreate the forgejo container to apply it.
+
+---
+
+## 2026-11-04 — Forgejo logins stay IF numbers; profile names come from the directory
+
+**Status:** accepted.
+
+The IF number remains the Forgejo login because it is the stable identity used for ownership, team membership,
+and authorization. The Forgejo profile's `full_name` is a separate, human-facing field: set it from LDAP's given
+and family names whenever the account is provisioned or reconciled. This changes neither usernames nor repository
+paths and lets existing accounts acquire updated names on the next LDAP sync.
+
+---
+
 ## 2026-09-01 — The entry point owns the transaction
 
 **Status:** accepted; `TransactionProviderExtensions.ExecuteAsync` is the shape.

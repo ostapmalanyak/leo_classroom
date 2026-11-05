@@ -193,6 +193,7 @@ services:
       USER_GID: "1000"
       # HTTPS-only git: no built-in SSH server, no SSH port.
       FORGEJO__server__DISABLE_SSH: "true"
+      FORGEJO__ui__DEFAULT_SHOW_FULL_NAME: "true"
       FORGEJO__server__START_SSH_SERVER: "false"
       FORGEJO__server__ROOT_URL: ${PUBLIC_SCHEME}://${FORGEJO_DOMAIN}/
       FORGEJO__server__DOMAIN: ${FORGEJO_HOST}

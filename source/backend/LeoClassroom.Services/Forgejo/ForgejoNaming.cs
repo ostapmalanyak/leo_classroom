@@ -13,4 +13,8 @@ public static class ForgejoNaming
 
     public static string RepoName(string courseTitle, string assignmentSlug, string studentId) =>
         $"{Slugifier.Slugify(courseTitle)}-{assignmentSlug}-{studentId}";
+
+    /// <summary>Family name first, no space: "Mukhin" + "Oleksandr" -> "MukhinOleksandr".</summary>
+    public static string UserDisplayName(string givenName, string familyName) =>
+        familyName.Trim() + givenName.Trim();
 }
