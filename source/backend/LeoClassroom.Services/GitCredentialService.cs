@@ -84,7 +84,8 @@ internal sealed class GitCredentialService(
 
         // the account may not exist yet: without the LDAP sync nothing else creates it
         OneOf<Success, ForgejoError> ensured =
-            await forgejo.EnsureUserAsync(user.StudentId, user.Email, settings.Value.AuthSourceId);
+            await forgejo.EnsureUserAsync(
+                user.StudentId, user.Email, $"{user.FirstName} {user.LastName}".Trim(), settings.Value.AuthSourceId);
         if (ensured.Failure is { } ensureFailed)
         {
             return ensureFailed;

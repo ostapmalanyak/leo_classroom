@@ -29,7 +29,7 @@ public sealed class GitCredentialServiceTests
     {
         _uow.UserRepository.Returns(_users);
         _currentUser.StudentId.Returns(StudentId);
-        _forgejo.EnsureUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>())
+        _forgejo.EnsureUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>())
                 .Returns(new ValueTask<OneOf<Success, ForgejoError>>(new Success()));
         _forgejo.SetUserPasswordAsync(Arg.Any<string>(), Arg.Any<string>())
                 .Returns(new ValueTask<OneOf<Success, NotFound, ForgejoError>>(new Success()));
@@ -104,7 +104,7 @@ public sealed class GitCredentialServiceTests
         // nothing else creates the Forgejo account when the LDAP sync is not running
         Received.InOrder(() =>
         {
-            _forgejo.EnsureUserAsync(StudentId, "sam@school.at", 0);
+            _forgejo.EnsureUserAsync(StudentId, "sam@school.at", "Sam Student", 0);
             _forgejo.SetUserPasswordAsync(StudentId, Arg.Any<string>());
         });
     }
