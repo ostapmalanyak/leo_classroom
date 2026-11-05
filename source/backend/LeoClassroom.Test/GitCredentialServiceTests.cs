@@ -104,7 +104,7 @@ public sealed class GitCredentialServiceTests
         // nothing else creates the Forgejo account when the LDAP sync is not running
         Received.InOrder(() =>
         {
-            _forgejo.EnsureUserAsync(StudentId, "sam@school.at", "Sam Student", 0);
+            _forgejo.EnsureUserAsync(StudentId, "sam@school.at", "StudentSam", 0);
             _forgejo.SetUserPasswordAsync(StudentId, Arg.Any<string>());
         });
     }

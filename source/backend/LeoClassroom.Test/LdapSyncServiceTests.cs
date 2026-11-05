@@ -91,7 +91,7 @@ public sealed class LdapSyncServiceTests
 
         outcome.Created.Should().Be(1);
         _users.Should().ContainSingle(u => u.StudentId == "IF123456" && u.State == UserState.Active);
-        await _forgejo.Received(1).EnsureUserAsync("IF123456", "IF123456@s.local", "First Last", 9);
+        await _forgejo.Received(1).EnsureUserAsync("IF123456", "IF123456@s.local", "LastFirst", 9);
     }
 
     [Fact]
