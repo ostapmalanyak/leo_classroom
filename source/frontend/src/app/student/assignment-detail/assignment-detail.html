@@ -45,7 +45,7 @@
           <p class="hint">Preparing your repository…</p>
         }
         @if (submission.status === SubmissionStatus.Ready && submission.repoUrl) {
-          <p>Clone URL: <code>{{ submission.repoUrl }}</code></p>
+          <p>Clone URL: <a [href]="submission.repoUrl" target="_blank" rel="noopener"><code>{{ submission.repoUrl }}</code></a></p>
         }
         @if (submission.status === SubmissionStatus.Failed) {
           <p class="failed">Provisioning failed.</p>
