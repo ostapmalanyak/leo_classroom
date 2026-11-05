@@ -1,5 +1,5 @@
 # Builds the Angular SPA and serves the static bundle behind Caddy on the internal network.
-FROM docker.io/library/node:24-alpine AS build
+FROM docker.io/library/node:22-alpine AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci

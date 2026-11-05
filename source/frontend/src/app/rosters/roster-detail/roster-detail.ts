@@ -68,9 +68,7 @@ export class RosterDetail implements OnInit {
     }
     this.roster.set(found);
     this.name.set(found.name);
-    if (found.kind === RosterKind.Custom) {
-      await this.loadMembers(found.id);
-    }
+    await this.loadMembers(found.id);
   }
 
   private async loadMembers(rosterId: number): Promise<void> {

@@ -1,37 +1,38 @@
 .section {
-  margin: 1.5rem 0;
+  margin-block: var(--space-5);
 }
 
 .deadline {
-  color: rgba(0, 0, 0, 0.7);
+  color: var(--color-text-muted);
 }
 
 .hint {
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--color-text-muted);
 }
 
 .failed {
-  color: #b00020;
+  color: var(--color-danger-text);
 }
 
 .late {
-  color: #b3261e;
+  color: var(--color-danger-text);
 }
 
 .feedback-banner {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-4);
   flex-wrap: wrap;
-  padding: 0.75rem 1rem;
-  margin: 0.75rem 0;
-  border-radius: 0.5rem;
-  background: #e8f0fe;
+  padding: var(--space-3) var(--space-4);
+  margin-block: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: var(--color-bg-surface);
 }
 
 code {
-  font-family: monospace;
-  background: rgba(0, 0, 0, 0.05);
-  padding: 0.1rem 0.3rem;
-  border-radius: 3px;
+  font-family: var(--font-family-mono);
+  background-color: var(--color-bg-code);
+  padding: var(--space-1);
+  border-radius: var(--radius);
 }

@@ -1,28 +1,28 @@
 .note {
-  color: rgba(0, 0, 0, 0.6);
-  max-width: 50rem;
+  color: var(--color-text-muted);
+  max-width: var(--container-narrow);
 }
 
 .field-label {
-  font-weight: 600;
-  margin-bottom: 0.5rem;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-2);
 }
 
 .actions {
-  margin-top: 1rem;
+  margin-top: var(--space-4);
 }
 
 .status {
-  margin-top: 1rem;
+  margin-top: var(--space-4);
 }
 
 .error {
-  color: var(--mat-sys-error, #b3261e);
+  color: var(--color-danger-text);
 }
 
 .notes {
   white-space: pre-wrap;
-  font-size: 0.85rem;
-  color: rgba(0, 0, 0, 0.6);
-  margin-top: 0.5rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
 }

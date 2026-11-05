@@ -87,8 +87,15 @@ Leave `FORGEJO_AUTH_SOURCE_ID=0`; step 7 sets it.
 ## 3. Create the secrets
 
 ```sh
+
 ./init-secrets.sh --scaffold     # generates ./secrets/ with random values where it can
 ./init-secrets.sh                # verifies the set is complete and fixes permissions
+```
+
+If you are getting permission denied:
+
+```sh
+chmod +x init-secrets.sh
 ```
 
 These are plain files that compose mounts at `/run/secrets`; there is no `podman secret create` step. On the

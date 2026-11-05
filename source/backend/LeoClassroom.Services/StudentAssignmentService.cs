@@ -131,6 +131,7 @@ internal sealed class StudentAssignmentService(
         if (needsProvisioning)
         {
             acceptance.Status = SubmissionStatus.Provisioning;
+            acceptance.FailureReason = null;
             await uow.SaveChangesAsync();
         }
 

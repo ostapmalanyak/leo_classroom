@@ -132,6 +132,16 @@ internal sealed class DownloadJobProcessor(
             }
         }
 
+        if (exported == 0)
+        {
+            job.Status = DownloadJobStatus.Failed;
+            job.Error = "nothing to download: no submission has any commits" +
+                        (job.Mode == DownloadSnapshotMode.Deadline ? " before the deadline" : "");
+            job.Notes = notes.Length > 0 ? notes.ToString().TrimEnd() : null;
+
+            return;
+        }
+
         string artifactPath = PackageArtifact(job, settings, workDir);
 
         job.Status = DownloadJobStatus.Ready;

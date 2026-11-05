@@ -1,5 +1,5 @@
 .course-card {
-  max-width: 32rem;
+  max-width: var(--container-narrow);
 }
 
 .full-width {
@@ -9,15 +9,15 @@
 .toggles {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .meta {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.25rem 1rem;
-  margin-bottom: 1.5rem;
+  gap: var(--space-1) var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
 .meta dt {
@@ -26,5 +26,5 @@
 
 .actions {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-4);
 }

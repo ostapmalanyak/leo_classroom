@@ -1,8 +1,10 @@
 using System.Net;
 using System.Text;
 using LeoClassroom.Services.Forgejo;
+using LeoClassroom.Services.Util;
 using LeoClassroom.Shared;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using OneOf;
 using OneOf.Types;
@@ -17,12 +19,21 @@ public sealed class ForgejoClientTests
     private readonly List<HttpRequestMessage> _requests = [];
     private readonly Queue<HttpResponseMessage> _responses = new();
 
-    private ForgejoClient Build()
+    private ForgejoClient Build(ILogger<ForgejoClient>? logger = null)
     {
         var handler = new StubHandler(_requests, _responses);
         var http = new HttpClient(handler) { BaseAddress = new Uri("http://forgejo.test/") };
 
-        return new ForgejoClient(http, Substitute.For<ILogger<ForgejoClient>>());
+        return new ForgejoClient(
+            http,
+            Options.Create(new ForgejoSettings
+            {
+                BaseUrl = "http://forgejo.test",
+                AdminToken = "admin-token",
+                WebhookSecret = "webhook-secret",
+                WebhookTargetUrl = "http://backend/webhook"
+            }),
+            logger ?? Substitute.For<ILogger<ForgejoClient>>());
     }
 
     private void Respond(HttpStatusCode status, string? json = null) =>
@@ -216,6 +227,51 @@ public sealed class ForgejoClientTests
             await Build().CreateBranchAsync("algorithms-10", "repo", "feedback", "nope");
 
         result.ShouldBe<ForgejoError>().Reason.Should().Contain("invalid ref name");
+    }
+
+    [Fact]
+    public async Task MigrateRepoAsync_PrivateSource_SendsSourceCredentials()
+    {
+        Respond(HttpStatusCode.Created,
+                """{"id":1,"name":"copy","full_name":"course/copy","clone_url":"http://forgejo.test/course/copy.git","html_url":"http://forgejo.test/course/copy","default_branch":"main"}""");
+
+        await Build().MigrateRepoAsync("http://forgejo.test/teacher/starter.git", "course", "copy", isPrivate: true,
+                                       authUsername: "leo-classroom-bot", authPassword: "source-token");
+
+        string body = await _requests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("\"auth_username\":\"leo-classroom-bot\"")
+            .And.Contain("\"auth_password\":\"source-token\"");
+    }
+
+    [Fact]
+    public async Task MigrateRepoAsync_PublicSource_OmitsSourceCredentials()
+    {
+        Respond(HttpStatusCode.Created,
+                """{"id":1,"name":"copy","full_name":"course/copy","clone_url":"http://forgejo.test/course/copy.git","html_url":"http://forgejo.test/course/copy","default_branch":"main"}""");
+
+        await Build().MigrateRepoAsync("https://example.test/teacher/starter.git", "course", "copy", isPrivate: true);
+
+        string body = await _requests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().NotContain("auth_username").And.NotContain("auth_password");
+    }
+
+    [Fact]
+    public async Task MigrateRepoAsync_Error_RedactsCredentialsFromFailureAndLog()
+    {
+        const string adminToken = "admin-token";
+        const string sourcePassword = "source-token";
+        Respond(HttpStatusCode.BadGateway,
+                $$"""{"message":"migration failed using {{adminToken}} and {{sourcePassword}}"}""");
+        ILogger<ForgejoClient> logger = Substitute.For<ILogger<ForgejoClient>>();
+
+        OneOf<Success<ForgejoRepo>, ForgejoError> result = await Build(logger).MigrateRepoAsync(
+            "http://forgejo.test/teacher/starter.git", "course", "copy", isPrivate: true,
+            authUsername: "leo-classroom-bot", authPassword: sourcePassword);
+
+        string failure = result.ShouldBe<ForgejoError>().Reason;
+        failure.Should().NotContain(adminToken).And.NotContain(sourcePassword);
+        string logs = string.Join('\n', logger.ReceivedCalls().Select(call => call.GetArguments()[2]?.ToString()));
+        logs.Should().Contain("502").And.NotContain(adminToken).And.NotContain(sourcePassword);
     }
 
     [Fact]

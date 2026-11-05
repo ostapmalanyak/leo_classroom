@@ -1,0 +1,5 @@
+@use "../abstracts/tokens" as tokens;
+
+:root {
+  @include tokens.custom-properties;
+}
