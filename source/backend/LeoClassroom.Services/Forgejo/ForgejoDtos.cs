@@ -84,7 +84,11 @@ internal sealed record MigrateRepoBody(
     [property: JsonPropertyName("repo_owner")] string RepoOwner,
     [property: JsonPropertyName("repo_name")] string RepoName,
     [property: JsonPropertyName("mirror")] bool Mirror,
-    [property: JsonPropertyName("private")] bool Private);
+    [property: JsonPropertyName("private")] bool Private,
+    [property: JsonPropertyName("auth_username")]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? AuthUsername,
+    [property: JsonPropertyName("auth_password")]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? AuthPassword);
 
 internal sealed record CollaboratorBody(
     [property: JsonPropertyName("permission")] string Permission);

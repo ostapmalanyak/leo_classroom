@@ -131,8 +131,8 @@ internal sealed class RepoProvisioningService(
                     org, acceptance.RepoName, ForgejoNaming.FeedbackBranchName, baseline);
                 if (branch.Failure is { } branchFailed)
                 {
-                    logger.LogWarning("Could not pin feedback branch for acceptance {AcceptanceId}: {Reason}",
-                                      acceptance.Id, branchFailed.Reason);
+                    logger.LogError("Could not pin feedback branch for acceptance {AcceptanceId} (HTTP {Status}): {Reason}",
+                                    acceptance.Id, branchFailed.StatusCode, branchFailed.Reason);
                 }
 
                 return await StoreReadyAsync(acceptance, org, repo.CloneUrl);
@@ -146,14 +146,16 @@ internal sealed class RepoProvisioningService(
         acceptance.RepoOwner = org;
         acceptance.RepoUrl = cloneUrl;
         acceptance.Status = SubmissionStatus.Ready;
+        acceptance.FailureReason = null;
         await uow.SaveChangesAsync();
 
         OneOf<Success, NotFound, ForgejoError> reconcile = await reconciliation.ReconcileAsync(acceptance.AssignmentId);
         reconcile.Switch(
             success => { },
             notFound => { },
-            error => logger.LogWarning("Acceptance {AcceptanceId} provisioned but access reconcile failed: {Reason}",
-                                       acceptance.Id, error.Reason));
+            error => logger.LogError(
+                "Acceptance {AcceptanceId} provisioned but access reconcile failed (HTTP {Status}): {Reason}",
+                acceptance.Id, error.StatusCode, error.Reason));
 
         return new Success();
     }
@@ -161,8 +163,9 @@ internal sealed class RepoProvisioningService(
     private async ValueTask<ProvisioningError> FailAsync(Acceptance acceptance, string reason)
     {
         acceptance.Status = SubmissionStatus.Failed;
+        acceptance.FailureReason = reason;
         await uow.SaveChangesAsync();
-        logger.LogWarning("Provisioning failed for acceptance {AcceptanceId}: {Reason}", acceptance.Id, reason);
+        logger.LogError("Provisioning failed for acceptance {AcceptanceId}: {Reason}", acceptance.Id, reason);
 
         return new ProvisioningError(reason);
     }
@@ -291,7 +294,7 @@ internal sealed class RepoProvisioningService(
                 new ProvisioningError(error.Reason)));
     }
 
-    private async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> SeedByMigrateAsync(
+    internal async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> SeedByMigrateAsync(
         Assignment assignment, string org, string repoName)
     {
         if (string.IsNullOrWhiteSpace(assignment.StarterRepoUrl))
@@ -299,14 +302,50 @@ internal sealed class RepoProvisioningService(
             return new ProvisioningError("missing copy source repository URL");
         }
 
+        string sourceUrl = assignment.StarterRepoUrl;
+        string? authUsername = null;
+        string? authPassword = null;
+        if (TryParseOwnerRepo(sourceUrl, out string sourceOwner, out string sourceRepo)
+            && Uri.TryCreate(sourceUrl, UriKind.Absolute, out Uri? requestedUri))
+        {
+            OneOf<ForgejoRepo, NotFound, ForgejoError> ownRepo =
+                await forgejo.GetRepoAsync(sourceOwner, sourceRepo);
+            ownRepo.Switch(
+                repo =>
+                {
+                    if (Uri.TryCreate(repo.CloneUrl, UriKind.Absolute, out Uri? canonicalUri)
+                        && HasSameAuthority(requestedUri, canonicalUri))
+                    {
+                        sourceUrl = InternalCloneUrl(canonicalUri);
+                        authUsername = settings.Value.BotName;
+                        authPassword = settings.Value.AdminToken;
+                    }
+                },
+                notFound => { },
+                error => logger.LogDebug("Could not check whether starter repository is local: {Reason}",
+                                         error.Reason));
+        }
+
         OneOf<Success<ForgejoRepo>, ForgejoError> migrated =
-            await forgejo.MigrateRepoAsync(assignment.StarterRepoUrl, org, repoName, isPrivate: true);
+            await forgejo.MigrateRepoAsync(sourceUrl, org, repoName, isPrivate: true,
+                                           authUsername: authUsername, authPassword: authPassword);
 
         return await migrated.Match(
             copied => ApplyReadmeOverrideAsync(assignment, copied.Value),
             error => ValueTask.FromResult<OneOf<ForgejoRepo, ProvisioningError>>(
                 new ProvisioningError(error.Reason)));
     }
+
+    private string InternalCloneUrl(Uri cloneUri)
+    {
+        Uri forgejoUri = new(settings.Value.BaseUrl.TrimEnd('/') + "/", UriKind.Absolute);
+        var internalUri = new UriBuilder(forgejoUri) { Path = cloneUri.AbsolutePath };
+
+        return internalUri.Uri.AbsoluteUri;
+    }
+
+    private static bool HasSameAuthority(Uri left, Uri right) =>
+        string.Equals(left.Host, right.Host, StringComparison.OrdinalIgnoreCase) && left.Port == right.Port;
 
     private async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> CreateEmptyRepoAsync(string org, string repoName)
     {
