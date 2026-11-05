@@ -208,6 +208,8 @@ services:
       FORGEJO__service__DISABLE_REGISTRATION: "true"
       FORGEJO__service__ALLOW_ONLY_EXTERNAL_REGISTRATION: "true"
       FORGEJO__security__INSTALL_LOCK: "true"
+      FORGEJO__migrations__ALLOW_LOCALNETWORKS: "true"
+      FORGEJO__migrations__ALLOWED_DOMAINS: "forgejo,localhost"
     secrets:
       - forgejo_db_password
       - Keycloak__ForgejoClientSecret

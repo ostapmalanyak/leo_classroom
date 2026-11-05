@@ -2,7 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using LeoClassroom.Services.Security;
+using LeoClassroom.Services.Util;
 using LeoClassroom.Shared;
+using Microsoft.Extensions.Options;
 using OneOf;
 using OneOf.Types;
 
@@ -46,7 +48,8 @@ public interface IForgejoClient
     public ValueTask<OneOf<Success<ForgejoRepo>, ForgejoError>> ForkRepoAsync(
         string sourceOwner, string sourceRepo, string targetOrg, string newName);
     public ValueTask<OneOf<Success<ForgejoRepo>, ForgejoError>> MigrateRepoAsync(
-        string cloneUrl, string targetOrg, string newName, bool isPrivate);
+        string cloneUrl, string targetOrg, string newName, bool isPrivate,
+        string? authUsername = null, string? authPassword = null);
     public ValueTask<OneOf<Success, ForgejoError>> CreateFileAsync(
         string owner, string repo, string path, string content, string message);
 
@@ -78,7 +81,8 @@ public interface IForgejoClient
     public ValueTask<OneOf<Success, ForgejoError>> SetUserActiveAsync(string studentId, bool active, long authSourceId);
 }
 
-internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logger) : IForgejoClient
+internal sealed class ForgejoClient(
+    HttpClient http, IOptions<ForgejoSettings> settings, ILogger<ForgejoClient> logger) : IForgejoClient
 {
     public async ValueTask<OneOf<ForgejoOrg, NotFound, ForgejoError>> GetOrgAsync(string org)
     {
@@ -382,13 +386,14 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
     }
 
     public async ValueTask<OneOf<Success<ForgejoRepo>, ForgejoError>> MigrateRepoAsync(
-        string cloneUrl, string targetOrg, string newName, bool isPrivate)
+        string cloneUrl, string targetOrg, string newName, bool isPrivate,
+        string? authUsername = null, string? authPassword = null)
     {
-        var body = new MigrateRepoBody(cloneUrl, targetOrg, newName, false, isPrivate);
+        var body = new MigrateRepoBody(cloneUrl, targetOrg, newName, false, isPrivate, authUsername, authPassword);
         HttpResponseMessage response = await http.PostAsJsonAsync("api/v1/repos/migrate", body);
         if (!response.IsSuccessStatusCode)
         {
-            return await ErrorAsync(response, "migrate repo");
+            return await ErrorAsync(response, "migrate repo", authPassword);
         }
 
         return new Success<ForgejoRepo>((await ReadAsync<ForgejoRepo>(response))!);
@@ -609,28 +614,33 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
     /// </summary>
     /// <remarks>
     ///     The status alone is rarely enough to act on - "422" could be a duplicate e-mail, a rejected
-    ///     password or a name that is already taken, and Forgejo says which in the body. It is logged in full
-    ///     and a trimmed form travels back to the caller, which is what the 502's problem detail shows.
+    ///     password or a name that is already taken, and Forgejo says which in the body. The message is logged
+    ///     at error level and returned in a trimmed, credential-redacted form.
     /// </remarks>
-    private async ValueTask<ForgejoError> ErrorAsync(HttpResponseMessage response, string operation)
+    private async ValueTask<ForgejoError> ErrorAsync(
+        HttpResponseMessage response, string operation, params string?[] additionalSecrets)
     {
         int status = (int) response.StatusCode;
-        string reason = response.ReasonPhrase ?? response.StatusCode.ToString();
+        string fallback = response.ReasonPhrase ?? response.StatusCode.ToString();
 
         string body = string.Empty;
         try
         {
             body = (await response.Content.ReadAsStringAsync()).Trim();
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex)
         {
-            // the status is the useful part; a body we cannot read must not mask it
+            logger.LogError(ex, "Could not read Forgejo {Operation} error response (HTTP {Status})",
+                            operation, status);
         }
 
-        logger.LogWarning("Forgejo {Operation} failed with status {Status} ({Reason}): {Body}",
-                          operation, status, reason, body.Length == 0 ? "<no body>" : body);
-
-        string detail = ExtractMessage(body) ?? reason;
+        string detail = ExtractMessage(body, operation, status) ?? fallback;
+        detail = Redact(detail, settings.Value.AdminToken, additionalSecrets);
+        if (detail.Length > MaxDetailLength)
+        {
+            detail = detail[..MaxDetailLength];
+        }
+        logger.LogError("Forgejo {Operation} failed with HTTP {Status}: {Message}", operation, status, detail);
 
         return new ForgejoError(status, $"{operation}: {detail}");
     }
@@ -638,7 +648,7 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
     /// <summary>
     ///     Pulls the <c>message</c> out of Forgejo's error body, capped so a stack trace cannot travel on
     /// </summary>
-    private static string? ExtractMessage(string body)
+    private string? ExtractMessage(string body, string operation, int status)
     {
         if (body.Length == 0)
         {
@@ -651,15 +661,34 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
             if (document.RootElement.TryGetProperty("message", out JsonElement message)
                 && message.GetString() is { Length: > 0 } text)
             {
-                return text.Length <= MaxDetailLength ? text : text[..MaxDetailLength];
+                return text;
             }
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            // not JSON; the status and the logged body are enough
+            logger.LogError("Forgejo {Operation} returned an invalid error response (HTTP {Status}; {ExceptionType})",
+                            operation, status, ex.GetType().Name);
         }
 
         return null;
+    }
+
+    private static string Redact(string value, string? configuredSecret, IEnumerable<string?> additionalSecrets)
+    {
+        if (!string.IsNullOrEmpty(configuredSecret))
+        {
+            value = value.Replace(configuredSecret, "[REDACTED]", StringComparison.Ordinal);
+        }
+
+        foreach (string? secret in additionalSecrets)
+        {
+            if (!string.IsNullOrEmpty(secret))
+            {
+                value = value.Replace(secret, "[REDACTED]", StringComparison.Ordinal);
+            }
+        }
+
+        return value;
     }
 
     private const int MaxDetailLength = 200;

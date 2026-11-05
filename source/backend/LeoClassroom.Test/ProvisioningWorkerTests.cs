@@ -3,9 +3,11 @@ using LeoClassroom.Persistence.Repositories;
 using LeoClassroom.Persistence.Util;
 using LeoClassroom.Services.Forgejo;
 using LeoClassroom.Services.Provisioning;
+using LeoClassroom.Services.Util;
 using LeoClassroom.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using OneOf;
 using OneOf.Types;
@@ -45,7 +47,14 @@ public sealed class ProvisioningWorkerTests
             .AddSingleton(provisioning)
             .BuildServiceProvider();
         using var worker = new ProvisioningWorker(queue, provider.GetRequiredService<IServiceScopeFactory>(),
-                                                  Substitute.For<ILogger<ProvisioningWorker>>());
+            Options.Create(new ForgejoSettings
+            {
+                BaseUrl = "http://forgejo",
+                AdminToken = "test-token",
+                WebhookSecret = "test-secret",
+                WebhookTargetUrl = "http://backend/webhook"
+            }),
+            Substitute.For<ILogger<ProvisioningWorker>>());
         var cancellationToken = TestContext.Current.CancellationToken;
 
         await worker.StartAsync(cancellationToken);

@@ -204,9 +204,9 @@ export enum DeadlineKind {
 
 export enum StarterSourceKind {
   DescriptionOnly = 'DescriptionOnly',
-  Archive = 'Archive(doesnt work)',
+  Archive = 'Archive',
   ForkOwnRepo = 'ForkOwnRepo',
-  CopyRepo = 'CopyRepo(doesnt work)'
+  CopyRepo = 'CopyRepo'
 }
 
 export enum DownloadSnapshotMode {
