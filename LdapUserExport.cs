@@ -9,7 +9,7 @@
 // Requires the OpenLDAP client (`ldapsearch`) on PATH:
 //   Fedora:  sudo dnf install openldap-clients
 //   Debian:  sudo apt install ldap-utils
-
+// sorry
 using System.Text;
 using System.Text.RegularExpressions;
 using CliWrap;
