@@ -47,5 +47,43 @@
 # --- Forgejo -------------------------------------------------------------------------
 {$FORGEJO_SITE} {
 	import tls_config
-	reverse_proxy forgejo:3000
+
+	# Forgejo trusts X-WEBAUTH-USER as proof of login (reverse-proxy authentication), so a client must never
+	# be able to supply it. Drop every inbound copy before anything else runs; only the forward_auth step
+	# below may set it.
+	request_header -X-WEBAUTH-USER
+	request_header -X-WEBAUTH-EMAIL
+	request_header -X-WEBAUTH-FULLNAME
+
+	# oauth2-proxy's own endpoints: sign-in start, Keycloak callback, sign-out.
+	handle /oauth2/* {
+		reverse_proxy oauth2-proxy:4180
+	}
+
+	# Git over HTTPS and the REST API authenticate with a password or token, which is the only thing a git
+	# client or the backend can present; Forgejo's proxy login does not cover them, and an SSO redirect would
+	# break them. They go straight through, without the login header.
+	@machine {
+		path /api/*
+		path_regexp ^/[^/]+/[^/]+\.git/
+	}
+	handle @machine {
+		reverse_proxy forgejo:3000
+	}
+
+	# Everything else is a browser: sign in with Keycloak, then hand Forgejo the IF number.
+	handle {
+		forward_auth oauth2-proxy:4180 {
+			uri /oauth2/auth
+			copy_headers X-Auth-Request-User>X-WEBAUTH-USER
+
+			# /oauth2/auth answers 401 when nobody is signed in; Caddy would hand that to the browser as is.
+			# Send it to Keycloak instead, and back to the page it asked for afterwards.
+			@unauthenticated status 401
+			handle_response @unauthenticated {
+				redir * /oauth2/start?rd={http.request.uri.path_escaped}%3F{http.request.uri.query_escaped}
+			}
+		}
+		reverse_proxy forgejo:3000
+	}
 }

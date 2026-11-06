@@ -20,11 +20,12 @@ REQUIRED=(
   DataProtection__MasterKey
   backend_db_password
   forgejo_db_password
+  oauth2_proxy_config
+  Keycloak__ForgejoClientSecret
 )
 OPTIONAL=(
   Ldap__BindPassword
   Smtp__Password
-  Keycloak__ForgejoClientSecret
   restic_password
   backup_offsite_credentials
 )
@@ -40,6 +41,11 @@ scaffold() {
   [ -f "$SECRETS_DIR/forgejo_db_password" ]       || write forgejo_db_password    "$(openssl rand -hex 32)"
   # 256-bit base64 AES-GCM master key for Tier-2 encryption.
   [ -f "$SECRETS_DIR/DataProtection__MasterKey" ] || write DataProtection__MasterKey "$(openssl rand -base64 32)"
+  # oauth2-proxy needs exactly 16, 24 or 32 bytes: 32 hex characters is 32 bytes.
+  # The file is oauth2-proxy's config (see compose.yaml), holding only that secret.
+  [ -f "$SECRETS_DIR/oauth2_proxy_config" ] || write oauth2_proxy_config "cookie_secret = \"$(openssl rand -hex 16)\""
+  # Issued by the Keycloak administrator for the Forgejo login client - see DEPLOY.md step 7.
+  [ -f "$SECRETS_DIR/Keycloak__ForgejoClientSecret" ] || write Keycloak__ForgejoClientSecret "REPLACE_ME_FROM_KEYCLOAK"
   # A placeholder until Forgejo exists to mint a real one - see DEPLOY.md step 6. It is NOT a working token.
   [ -f "$SECRETS_DIR/Forgejo__AdminToken" ]       || write Forgejo__AdminToken "REPLACE_ME_AFTER_FORGEJO_STARTS"
   [ -f "$SECRETS_DIR/ConnectionStrings__Postgres" ] || write ConnectionStrings__Postgres \
