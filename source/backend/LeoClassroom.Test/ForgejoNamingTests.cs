@@ -19,4 +19,21 @@ public sealed class ForgejoNamingTests
 
         displayName.Should().Be("MukhinOleksandr");
     }
+
+    [Fact]
+    public void OrgName_TruncatesLongCourseTitlesAndKeepsCourseId()
+    {
+        string orgName = ForgejoNaming.OrgName(new string('a', 200), 123);
+
+        orgName.Should().Be(new string('a', 36) + "-123");
+        orgName.Should().HaveLength(40);
+    }
+
+    [Fact]
+    public void OrgName_UsesFallbackForTitlesWithoutSlugCharacters()
+    {
+        string orgName = ForgejoNaming.OrgName("你好", 123);
+
+        orgName.Should().Be("course-123");
+    }
 }

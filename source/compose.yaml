@@ -109,6 +109,8 @@ services:
       Ldap__BindDn: ${LDAP_BIND_DN}
       Ldap__StudentBaseDn: ${LDAP_STUDENT_BASE_DN}
       Ldap__TeacherBaseDn: ${LDAP_TEACHER_BASE_DN}
+      # Quartz cron expression; defaults to 02:00 every day. Override in .env for testing.
+      Ldap__NightlyCron: "${LDAP_NIGHTLY_CRON:-0 0 2 * * ?}"
       Smtp__Host: ${SMTP_HOST}
       Smtp__Port: ${SMTP_PORT}
       Smtp__Security: ${SMTP_SECURITY}
@@ -219,8 +221,9 @@ services:
       FORGEJO__service__DISABLE_REGISTRATION: "true"
       FORGEJO__service__ALLOW_ONLY_EXTERNAL_REGISTRATION: "true"
       FORGEJO__security__INSTALL_LOCK: "true"
-      FORGEJO__migrations__ALLOW_LOCALNETWORKS: "true"
-      FORGEJO__migrations__ALLOWED_DOMAINS: "forgejo,localhost"
+      # Same-instance CopyRepo URLs are rewritten to the internal service hostname before Forgejo migrates them.
+      # The public hostname is also allowed for starter repos reached by their public clone URL.
+      FORGEJO__migrations__ALLOWED_DOMAINS: "localhost,forgejo,vm123.htl-leonding.ac.at"
     secrets:
       - forgejo_db_password
       - Keycloak__ForgejoClientSecret
