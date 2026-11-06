@@ -1,3 +1,4 @@
+using System.Net;
 using LeoClassroom.Services.Util;
 using LeoClassroom.Persistence.Model;
 using LeoClassroom.Persistence.Util;
@@ -288,10 +289,25 @@ internal sealed class RepoProvisioningService(
         OneOf<Success<ForgejoRepo>, ForgejoError> fork =
             await forgejo.ForkRepoAsync(sourceOwner, sourceRepo, org, repoName);
 
-        return await fork.Match(
+        return await fork.Match<ValueTask<OneOf<ForgejoRepo, ProvisioningError>>>(
             forked => ApplyReadmeOverrideAsync(assignment, forked.Value),
-            error => ValueTask.FromResult<OneOf<ForgejoRepo, ProvisioningError>>(
-                new ProvisioningError(error.Reason)));
+            async error =>
+            {
+                if (error.StatusCode != (int) HttpStatusCode.Conflict)
+                {
+                    return new ProvisioningError(error.Reason);
+                }
+
+                OneOf<ForgejoRepo, NotFound, ForgejoError> existing =
+                    await forgejo.GetRepoAsync(org, repoName);
+
+                return await existing.Match(
+                    repo => ApplyReadmeOverrideAsync(assignment, repo),
+                    _ => ValueTask.FromResult<OneOf<ForgejoRepo, ProvisioningError>>(
+                        new ProvisioningError(error.Reason)),
+                    lookupError => ValueTask.FromResult<OneOf<ForgejoRepo, ProvisioningError>>(
+                        new ProvisioningError(lookupError.Reason)));
+            });
     }
 
     internal async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> SeedByMigrateAsync(

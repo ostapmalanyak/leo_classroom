@@ -1,3 +1,4 @@
+using System.Net;
 using LeoClassroom.Persistence.Model;
 using LeoClassroom.Persistence.Repositories;
 using LeoClassroom.Persistence.Util;
@@ -98,13 +99,91 @@ public sealed class RepoProvisioningServiceTests
         await uow.Received(1).SaveChangesAsync();
     }
 
-    private static RepoProvisioningService CreateService(IForgejoClient forgejo, IUnitOfWork? uow = null) =>
+    [Fact]
+    public async Task ProvisionAcceptanceAsync_ForkConflict_UsesExistingForkAndCompletesProvisioning()
+    {
+        const long acceptanceId = 12;
+        const long assignmentId = 34;
+        const long courseId = 56;
+        const string org = "course-org";
+        const string repoName = "student-assignment";
+        var uow = Substitute.For<IUnitOfWork>();
+        var acceptances = Substitute.For<IAcceptanceRepository>();
+        var assignments = Substitute.For<IAssignmentRepository>();
+        var courses = Substitute.For<ICourseRepository>();
+        var acceptance = new Acceptance
+        {
+            Id = acceptanceId,
+            AssignmentId = assignmentId,
+            StudentId = 78,
+            RepoOwner = org,
+            RepoName = repoName,
+            AcceptedAt = SystemClock.Instance.GetCurrentInstant(),
+            Status = SubmissionStatus.Provisioning
+        };
+        Assignment assignment = new()
+        {
+            Title = "Fork exercise",
+            Slug = "fork-exercise",
+            CourseId = courseId,
+            StarterSourceKind = StarterSourceKind.ForkOwnRepo,
+            StarterRepoUrl = "https://git.example.test/teacher/starter"
+        };
+        Course course = new()
+        {
+            Id = courseId,
+            Title = "Course",
+            Owner = new User { StudentId = "teacher", FirstName = "Teach", LastName = "Er" },
+            ForgejoOrg = org
+        };
+        ForgejoRepo existingFork = CreateRepo(
+            $"{org}/{repoName}", "http://forgejo:3000/course-org/student-assignment.git");
+        var forgejo = Substitute.For<IForgejoClient>();
+        var reconciliation = Substitute.For<IReconciliationService>();
+        uow.AcceptanceRepository.Returns(acceptances);
+        uow.AssignmentRepository.Returns(assignments);
+        uow.CourseRepository.Returns(courses);
+        acceptances.GetTrackedByIdAsync(acceptanceId)
+                   .Returns(new ValueTask<Acceptance?>(acceptance));
+        assignments.GetByIdAsync(assignmentId).Returns(new ValueTask<Assignment?>(assignment));
+        courses.GetTrackedByIdAsync(courseId).Returns(new ValueTask<Course?>(course));
+        forgejo.EnsureOrgAsync(org).Returns(new ValueTask<OneOf<Success, ForgejoError>>(new Success()));
+        forgejo.EnsureTeamAsync(org, ForgejoNaming.TeachersTeamName, CollaboratorPermission.Admin)
+               .Returns(new ValueTask<OneOf<Success<long>, ForgejoError>>(new Success<long>(42)));
+        forgejo.IsTeamMemberAsync(42, "teacher").Returns(new ValueTask<OneOf<bool, ForgejoError>>(true));
+        forgejo.GetRepoAsync(org, repoName)
+               .Returns(
+                   new ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>>(new NotFound()),
+                   new ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>>(existingFork));
+        forgejo.ForkRepoAsync("teacher", "starter", org, repoName)
+               .Returns(new ValueTask<OneOf<Success<ForgejoRepo>, ForgejoError>>(
+                   new ForgejoError((int) HttpStatusCode.Conflict, "already forked")));
+        forgejo.CreateBranchAsync(org, repoName, ForgejoNaming.FeedbackBranchName, "main")
+               .Returns(new ValueTask<OneOf<Success, ForgejoError>>(new Success()));
+        reconciliation.ReconcileAsync(assignmentId)
+                      .Returns(new ValueTask<OneOf<Success, NotFound, ForgejoError>>(new Success()));
+
+        RepoProvisioningService service = CreateService(forgejo, uow, reconciliation);
+
+        var result = await service.ProvisionAcceptanceAsync(acceptanceId);
+
+        result.ShouldBe<Success>();
+        acceptance.Status.Should().Be(SubmissionStatus.Ready);
+        acceptance.RepoUrl.Should().Be(existingFork.CloneUrl);
+        await forgejo.Received(2).GetRepoAsync(org, repoName);
+        await forgejo.Received(1).CreateBranchAsync(
+            org, repoName, ForgejoNaming.FeedbackBranchName, "main");
+        await reconciliation.Received(1).ReconcileAsync(assignmentId);
+    }
+
+    private static RepoProvisioningService CreateService(
+        IForgejoClient forgejo, IUnitOfWork? uow = null, IReconciliationService? reconciliation = null) =>
         new(
             uow ?? Substitute.For<IUnitOfWork>(),
             forgejo,
             Substitute.For<IGitService>(),
             Substitute.For<IArchiveExtractor>(),
-            Substitute.For<IReconciliationService>(),
+            reconciliation ?? Substitute.For<IReconciliationService>(),
             Options.Create(new ForgejoSettings
             {
                 BaseUrl = "http://forgejo:3000",
