@@ -13,7 +13,7 @@ namespace LeoClassroom.Services;
 public interface ICourseService
 {
     public ValueTask<OneOf<Success<Course>, NotFound, AlreadyExists>> AddCourseAsync(string title, long rosterId);
-    public ValueTask<OneOf<Course, NotFound>> GetCourseByIdAsync(long id);
+    public ValueTask<OneOf<Course, NotFound, Forbidden>> GetCourseByIdAsync(long id);
     public ValueTask<IReadOnlyCollection<CourseOverview>> GetCourseOverviewsAsync();
 
     public ValueTask<OneOf<Success<Course>, NotFound, AlreadyExists, Forbidden>>
@@ -58,7 +58,6 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
             Title = title,
             RosterId = rosterId,
             OwnerId = ownerId.Value,
-            IsReadOnly = false,
             StudentsRetainAccess = true,
             CreatedAt = clock.GetCurrentInstant()
         };
@@ -70,21 +69,36 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
         return new Success<Course>(course);
     }
 
-    public async ValueTask<OneOf<Course, NotFound>> GetCourseByIdAsync(long id)
+    public async ValueTask<OneOf<Course, NotFound, Forbidden>> GetCourseByIdAsync(long id)
     {
-        var course = await uow.CourseRepository.GetByIdAsync(id);
-        if (course is not null)
+        Course? course = await uow.CourseRepository.GetWithTeachersAsync(id);
+        if (course is null)
         {
-            return course;
+            logger.LogWarning("Course {CourseId} was not found", id);
+
+            return new NotFound();
+        }
+        if (!IsCourseTeacher(course))
+        {
+            return new Forbidden();
         }
 
-        logger.LogWarning("Course {CourseId} was not found", id);
-
-        return new NotFound();
+        return course;
     }
 
-    public ValueTask<IReadOnlyCollection<CourseOverview>> GetCourseOverviewsAsync() =>
-        uow.CourseRepository.GetOverviewsAsync();
+    public async ValueTask<IReadOnlyCollection<CourseOverview>> GetCourseOverviewsAsync()
+    {
+        if (currentUser.Roles.Contains(Role.Admin))
+        {
+            return await uow.CourseRepository.GetOverviewsAsync();
+        }
+
+        long? userId = await uow.UserRepository.GetIdByStudentIdAsync(currentUser.StudentId);
+
+        return userId is null
+            ? Array.Empty<CourseOverview>()
+            : await uow.CourseRepository.GetOverviewsForTeacherAsync(userId.Value);
+    }
 
     public async ValueTask<OneOf<Success<Course>, NotFound, ICourseService.AlreadyExists, Forbidden>>
         UpdateCourseAsync(long id, string title, bool isReadOnly, bool studentsRetainAccess)
@@ -150,4 +164,9 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
     private bool IsOwnerOrAdmin(string ownerStudentId) =>
         currentUser.Roles.Contains(Role.Admin)
         || string.Equals(ownerStudentId, currentUser.StudentId, StringComparison.Ordinal);
+
+    private bool IsCourseTeacher(Course course) =>
+        currentUser.Roles.Contains(Role.Admin)
+        || string.Equals(course.Owner.StudentId, currentUser.StudentId, StringComparison.Ordinal)
+        || course.CoTeachers.Any(t => string.Equals(t.StudentId, currentUser.StudentId, StringComparison.Ordinal));
 }

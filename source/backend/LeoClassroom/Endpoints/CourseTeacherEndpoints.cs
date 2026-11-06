@@ -27,7 +27,7 @@ public static class CourseTeacherEndpoints
         }
     }
 
-    private static async ValueTask<Results<Ok<CourseTeachers>, NotFound>> ListTeachersAsync(
+    private static async ValueTask<Results<Ok<CourseTeachers>, NotFound, ProblemHttpResult>> ListTeachersAsync(
         [FromRoute] long courseId, [FromServices] ICourseTeacherService service)
     {
         var result = await service.ListAsync(courseId);

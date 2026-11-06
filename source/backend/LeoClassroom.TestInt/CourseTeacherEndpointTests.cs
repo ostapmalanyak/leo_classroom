@@ -55,6 +55,36 @@ public sealed class CourseTeacherEndpointTests(WebApiTestFixture fixture) : WebA
     }
 
     [Fact]
+    public async Task ListTeachers_NonOwnerTeacher_Returns403()
+    {
+        long courseId = await CreateCourseAsOwnerAsync();
+        AuthenticateAsTeacher(OtherTeacherIf);
+
+        var response = await ApiClient.GetAsync($"api/courses/{courseId}/teachers", TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task CoTeacher_CanViewCourseAndTeachers()
+    {
+        long courseId = await CreateCourseAsOwnerAsync();
+        var added = await ApiClient.PostAsJsonAsync($"api/courses/{courseId}/teachers",
+            new CourseTeacherRequest(_coTeacherId), JsonOptions, TestCancellationToken);
+        added.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        AuthenticateAsTeacher(OtherTeacherIf);
+        var courseResponse = await ApiClient.GetAsync($"api/courses/{courseId}", TestCancellationToken);
+        var teachersResponse = await ApiClient.GetAsync($"api/courses/{courseId}/teachers", TestCancellationToken);
+        var overviews = await ApiClient.GetFromJsonAsync<CourseOverview[]>("api/courses", JsonOptions,
+                                                                           TestCancellationToken);
+
+        courseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        teachersResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        overviews.Should().ContainSingle(course => course.Id == courseId);
+    }
+
+    [Fact]
     public async Task Owner_AddsCoTeacher_Returns204()
     {
         long courseId = await CreateCourseAsOwnerAsync();

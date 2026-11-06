@@ -66,6 +66,7 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
 
         created.Title.Should().Be("Algorithms");
         created.RosterId.Should().Be(_rosterId);
+        created.IsReadOnly.Should().BeTrue();
     }
 
     [Fact]
@@ -129,6 +130,29 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
 
         overviews.Should().NotBeNull();
         overviews!.Should().ContainSingle(o => o.Title == "Algorithms");
+    }
+
+    [Fact]
+    public async Task GetCourses_NonOwnerTeacher_DoesNotReturnCourse()
+    {
+        await CreateCourseAsOwnerAsync();
+        AuthenticateAsTeacher(OtherTeacherIf);
+
+        var overviews = await ApiClient.GetFromJsonAsync<List<CourseOverview>>("api/courses", JsonOptions,
+                                                                               TestCancellationToken);
+
+        overviews.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetCourseById_NonOwnerTeacher_Returns403()
+    {
+        CourseDto created = await CreateCourseAsOwnerAsync();
+        AuthenticateAsTeacher(OtherTeacherIf);
+
+        var response = await ApiClient.GetAsync($"api/courses/{created.Id}", TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

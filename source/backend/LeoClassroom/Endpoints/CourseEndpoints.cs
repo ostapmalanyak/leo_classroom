@@ -49,7 +49,7 @@ public static class CourseEndpoints
         [FromServices] ICourseService service) =>
         TypedResults.Ok(await service.GetCourseOverviewsAsync());
 
-    private static async ValueTask<Results<Ok<CourseDto>, NotFound>> GetCourseByIdAsync(
+    private static async ValueTask<Results<Ok<CourseDto>, NotFound, ProblemHttpResult>> GetCourseByIdAsync(
         [FromRoute] long id, [FromServices] ICourseService service)
     {
         var result = await service.GetCourseByIdAsync(id);
