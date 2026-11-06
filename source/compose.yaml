@@ -42,6 +42,8 @@ services:
         condition: service_healthy
       forgejo:
         condition: service_started
+      oauth2-proxy:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
       interval: 30s
@@ -108,7 +110,7 @@ services:
       Ldap__StudentBaseDn: ${LDAP_STUDENT_BASE_DN}
       Ldap__TeacherBaseDn: ${LDAP_TEACHER_BASE_DN}
       # Quartz cron expression; defaults to 02:00 every day. Override in .env for testing.
-      #Ldap__NightlyCron: "${LDAP_NIGHTLY_CRON:-0 0 2 * * ?}"
+      Ldap__NightlyCron: "${LDAP_NIGHTLY_CRON:-0 0 2 * * ?}"
       Smtp__Host: ${SMTP_HOST}
       Smtp__Port: ${SMTP_PORT}
       Smtp__Security: ${SMTP_SECURITY}
@@ -196,6 +198,14 @@ services:
       # HTTPS-only git: no built-in SSH server, no SSH port.
       FORGEJO__server__DISABLE_SSH: "true"
       FORGEJO__ui__DEFAULT_SHOW_FULL_NAME: "true"
+      # Browser login arrives as the X-WEBAUTH-USER header set by Caddy after oauth2-proxy has signed the user
+      # in with Keycloak. The accounts already exist (the backend / LDAP sync creates them), so nothing is
+      # auto-registered. Forgejo ignores the header unless the request comes from a trusted proxy address:
+      # Caddy's address on the internal leo network, hence the private ranges. Nothing else may be able to
+      # reach forgejo:3000 from outside that network; Caddy is the only published service.
+      FORGEJO__service__ENABLE_REVERSE_PROXY_AUTHENTICATION: "true"
+      FORGEJO__service__ENABLE_REVERSE_PROXY_AUTO_REGISTRATION: "false"
+      FORGEJO__security__REVERSE_PROXY_TRUSTED_PROXIES: ${FORGEJO_TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
       FORGEJO__server__START_SSH_SERVER: "false"
       FORGEJO__server__ROOT_URL: ${PUBLIC_SCHEME}://${FORGEJO_DOMAIN}/
       FORGEJO__server__DOMAIN: ${FORGEJO_HOST}
@@ -228,6 +238,36 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
+
+  oauth2-proxy:
+    # Signs browsers in with Keycloak for Forgejo; Caddy asks it before every browser request (see Caddyfile).
+    # Authentication only: there is no upstream, Caddy does the proxying.
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.9.0
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      OAUTH2_PROXY_PROVIDER: keycloak-oidc
+      OAUTH2_PROXY_OIDC_ISSUER_URL: ${KEYCLOAK_AUTHORITY}
+      OAUTH2_PROXY_CLIENT_ID: ${KEYCLOAK_FORGEJO_CLIENT_ID}
+      OAUTH2_PROXY_CLIENT_SECRET_FILE: /run/secrets/Keycloak__ForgejoClientSecret
+      OAUTH2_PROXY_COOKIE_SECURE: ${FORGEJO_COOKIE_SECURE:-false}
+      OAUTH2_PROXY_REDIRECT_URL: ${PUBLIC_SCHEME}://${FORGEJO_DOMAIN}/oauth2/callback
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_UPSTREAMS: static://202
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+      OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
+      # The IF number, not the e-mail, is the identity everywhere (AGENTS.md), and it is Forgejo's login name.
+      OAUTH2_PROXY_USER_ID_CLAIM: preferred_username
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: "true"
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+    # oauth2-proxy has no *-file option for the cookie secret, and a value on the command line would sit in
+    # /proc/<pid>/cmdline. Its config file can carry it, so the secret lives in a file of that shape.
+    command: ["--config=/run/secrets/oauth2_proxy_config"]
+    secrets:
+      - Keycloak__ForgejoClientSecret
+      - oauth2_proxy_config
+    networks: [leo]
 
   forgejo-db:
     # PostgreSQL 18; Forgejo supports >= 14. Same volume-target note as backend-db.
@@ -339,6 +379,8 @@ secrets:
     file: ./secrets/DataProtection__MasterKey
   Keycloak__ForgejoClientSecret:
     file: ./secrets/Keycloak__ForgejoClientSecret
+  oauth2_proxy_config:
+    file: ./secrets/oauth2_proxy_config
   backend_db_password:
     file: ./secrets/backend_db_password
   forgejo_db_password:
