@@ -10,6 +10,7 @@ public interface ICourseRepository
     public ValueTask<Course?> GetByIdAsync(long id);
     public ValueTask<Course?> GetTrackedByIdAsync(long id);
     public ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsAsync();
+    public ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsForTeacherAsync(long userId);
     public ValueTask<bool> ExistsWithTitleInRosterAsync(string title, long rosterId, long? excludingCourseId = null);
     public ValueTask<string?> GetOwnerStudentIdAsync(long id);
     public ValueTask<bool> DeleteByIdAsync(long id);
@@ -47,12 +48,25 @@ internal sealed class CourseRepository(DbSet<Course> courses) : ICourseRepositor
 
     public async ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsAsync()
     {
-        List<CourseOverview> overviews = await courses.AsNoTracking()
-                                                      .OrderBy(c => c.Title)
-                                                      .Select(c => new CourseOverview(c.Id, c.Title, c.RosterId,
-                                                                  c.Roster.Name, c.Roster.Members.Count, c.IsReadOnly,
-                                                                  c.StudentsRetainAccess))
-                                                      .ToListAsync();
+        return await ProjectOverviews(courses.AsNoTracking());
+    }
+
+    public async ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsForTeacherAsync(long userId)
+    {
+        IQueryable<Course> visibleCourses = courses.AsNoTracking()
+                                                   .Where(c => c.OwnerId == userId
+                                                               || c.CoTeachers.Any(t => t.Id == userId));
+
+        return await ProjectOverviews(visibleCourses);
+    }
+
+    private static async ValueTask<IReadOnlyCollection<CourseOverview>> ProjectOverviews(IQueryable<Course> query)
+    {
+        List<CourseOverview> overviews = await query.OrderBy(c => c.Title)
+                                                    .Select(c => new CourseOverview(c.Id, c.Title, c.RosterId,
+                                                                c.Roster.Name, c.Roster.Members.Count, c.IsReadOnly,
+                                                                c.StudentsRetainAccess))
+                                                    .ToListAsync();
 
         return overviews.AsReadOnly();
     }
