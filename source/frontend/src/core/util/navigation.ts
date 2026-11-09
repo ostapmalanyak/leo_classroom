@@ -29,7 +29,7 @@ export function visibleNavEntries(entries: readonly NavEntry[], roles: readonly 
 
   return entries.filter(entry => {
     if (entry.teacherOnly) {
-      return roles.includes(Role.Teacher) && !isAdmin;
+      return roles.includes(Role.Teacher) || isAdmin;
     }
 
     return entry.requiredRole === undefined || isAdmin || roles.includes(entry.requiredRole);

@@ -116,6 +116,27 @@ public sealed class RosterEndpointTests(WebApiTestFixture fixture) : WebApiTestB
     }
 
     [Fact]
+    public async Task GetRosters_WithSearchQuery_ReturnsCaseInsensitiveMatchesInExistingShape()
+    {
+        AuthenticateAsTeacher(OwnerIf);
+        var additionalRoster = new Roster { Name = "5BHIF", Kind = RosterKind.Auto, ClassKey = "5BHIF" };
+        var laterRoster = new Roster { Name = "4AHIF", Kind = RosterKind.Auto, ClassKey = "4AHIF" };
+        await ModifyDatabaseContentAsync(async context =>
+        {
+            context.Rosters.AddRange(additionalRoster, laterRoster);
+            await context.SaveChangesAsync(TestCancellationToken);
+        });
+
+        var results = await ApiClient.GetFromJsonAsync<RosterOverview[]>(
+            "api/rosters?query=5a", JsonOptions, TestCancellationToken);
+
+        results.Should().ContainSingle();
+        results![0].Name.Should().Be("5AHIF");
+        results[0].Id.Should().Be(_autoRosterId);
+        results[0].Kind.Should().Be(RosterKind.Auto);
+    }
+
+    [Fact]
     public async Task AddMember_ToAutoRoster_Returns403()
     {
         AuthenticateAsTeacher(OwnerIf);

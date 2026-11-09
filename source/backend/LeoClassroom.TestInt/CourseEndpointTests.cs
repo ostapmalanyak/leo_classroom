@@ -20,7 +20,15 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
     protected override async ValueTask ImportSeedDataAsync(DatabaseContext context)
     {
         var roster = new Roster { Name = "5AHIF" };
+        var owner = new User
+        {
+            StudentId = OwnerIf,
+            FirstName = "Course",
+            LastName = "Owner",
+            Role = Role.Teacher
+        };
         context.Rosters.Add(roster);
+        context.Users.Add(owner);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         _rosterId = roster.Id;
     }
@@ -66,6 +74,49 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
 
         created.Title.Should().Be("Algorithms");
         created.RosterId.Should().Be(_rosterId);
+    }
+
+    [Fact]
+    public async Task PostCourse_ClassDialogPayload_CreatesCourse()
+    {
+        AuthenticateAsTeacher(OwnerIf);
+
+        var response = await ApiClient.PostAsJsonAsync("api/courses",
+            new { name = "Chemistry", rosterIds = new[] { _rosterId.ToString() } },
+            JsonOptions, TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await response.Content.ReadFromJsonAsync<CourseDto>(JsonOptions, TestCancellationToken);
+        created!.Title.Should().Be("Chemistry");
+        created.RosterId.Should().Be(_rosterId);
+    }
+
+    [Fact]
+    public async Task PostCourse_ClassDialogPayload_RejectsBlankName()
+    {
+        AuthenticateAsTeacher(OwnerIf);
+
+        var response = await ApiClient.PostAsJsonAsync("api/courses",
+            new { name = "   ", rosterIds = new[] { _rosterId.ToString() } },
+            JsonOptions, TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails = await response.Content
+                                           .ReadFromJsonAsync<HttpValidationProblemDetails>(
+                                               JsonOptions, TestCancellationToken);
+        problemDetails!.Errors.Should().ContainKey("name");
+    }
+
+    [Fact]
+    public async Task GetCourseAvatar_ReturnsSvgWithNameInitials()
+    {
+        AuthenticateAsTeacher(OwnerIf);
+
+        var response = await ApiClient.GetAsync("api/courses/avatar?name=Chemistry", TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("image/svg+xml");
+        (await response.Content.ReadAsStringAsync(TestCancellationToken)).Should().Contain(">CH</text>");
     }
 
     [Fact]

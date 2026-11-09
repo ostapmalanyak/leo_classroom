@@ -1,3 +1,4 @@
+using System.Security;
 using FluentValidation;
 using LeoClassroom.Auth;
 using LeoClassroom.Persistence.Model;
@@ -36,6 +37,7 @@ public static class CourseEndpoints
                              .WithTags("Courses")
                              .RequireAuthorization(AuthPolicies.RequireTeacher);
 
+            courses.MapGet("/avatar", GetAvatarAsync);
             courses.MapGet("/", GetCoursesAsync);
             courses.MapGet("/{id:long:min(1)}", GetCourseByIdAsync)
                    .WithName(nameof(GetCourseByIdAsync));
@@ -48,6 +50,29 @@ public static class CourseEndpoints
     private static async ValueTask<Ok<IReadOnlyCollection<CourseOverview>>> GetCoursesAsync(
         [FromServices] ICourseService service) =>
         TypedResults.Ok(await service.GetCourseOverviewsAsync());
+
+    private static ContentHttpResult GetAvatarAsync([FromQuery] string? name)
+    {
+        string displayName = string.IsNullOrWhiteSpace(name) ? "New class" : name.Trim();
+        displayName = displayName[..Math.Min(displayName.Length, 50)];
+        string initials = new string(displayName.Take(2).ToArray()).ToUpperInvariant();
+        uint hash = 2166136261;
+        foreach (char character in displayName)
+        {
+            hash = unchecked((hash ^ character) * 16777619);
+        }
+        int hue = (int)(hash % 360);
+        string safeInitials = SecurityElement.Escape(initials) ?? string.Empty;
+        string svg = $"""
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+              <rect width="100%" height="100%" rx="14%" fill="hsl({hue} 45% 38%)"/>
+              <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle"
+                    fill="white" font-family="sans-serif" font-size="35%" font-weight="700">{safeInitials}</text>
+            </svg>
+            """;
+
+        return TypedResults.Content(svg, "image/svg+xml; charset=utf-8");
+    }
 
     private static async ValueTask<Results<Ok<CourseDto>, NotFound>> GetCourseByIdAsync(
         [FromRoute] long id, [FromServices] ICourseService service)
@@ -67,7 +92,7 @@ public static class CourseEndpoints
         }
 
         await transaction.BeginTransactionAsync();
-        var result = await service.AddCourseAsync(request.Title, request.RosterId);
+        var result = await service.AddCourseAsync(request.EffectiveTitle, request.EffectiveRosterId);
 
         // the branches are local functions rather than lambdas, so that Match stays readable
         return await result.Match(OnCreatedAsync, OnNotFoundAsync, OnConflictAsync);
@@ -132,18 +157,41 @@ public static class CourseEndpoints
     }
 }
 
-public sealed record CourseCreateRequest(string Title, long RosterId)
+public sealed record CourseCreateRequest(
+    string? Title = null, long? RosterId = null, string? Name = null, string[]? RosterIds = null)
 {
     public sealed class Validator : AbstractValidator<CourseCreateRequest>
     {
-        private const int MaxTitleLength = 200;
-
         public Validator()
         {
-            RuleFor(c => c.Title).NotEmpty().MaximumLength(MaxTitleLength);
-            RuleFor(c => c.RosterId).GreaterThan(0);
+            RuleFor(c => c.Name)
+                .NotEmpty()
+                .Must(name => name is not null && name == name.Trim())
+                .MaximumLength(50)
+                .When(c => c.Name is not null || c.RosterIds is not null);
+            RuleFor(c => c.RosterIds)
+                .NotNull()
+                .Must(ids => ids is { Length: 1 } && long.TryParse(
+                    ids[0], System.Globalization.NumberStyles.None,
+                    System.Globalization.CultureInfo.InvariantCulture, out long rosterId) && rosterId > 0)
+                .When(c => c.Name is not null || c.RosterIds is not null)
+                .WithMessage("Select exactly one valid roster.");
+            RuleFor(c => c.Title)
+                .NotEmpty()
+                .MaximumLength(200)
+                .When(c => c.Name is null && c.RosterIds is null);
+            RuleFor(c => c.RosterId)
+                .NotNull()
+                .GreaterThan(0)
+                .When(c => c.Name is null && c.RosterIds is null);
         }
     }
+
+    public string EffectiveTitle => Name?.Trim() ?? Title!.Trim();
+
+    public long EffectiveRosterId => RosterIds is { Length: 1 }
+        ? long.Parse(RosterIds[0], System.Globalization.CultureInfo.InvariantCulture)
+        : RosterId!.Value;
 }
 
 public sealed record CourseUpdateRequest(string Title, bool IsReadOnly, bool StudentsRetainAccess)

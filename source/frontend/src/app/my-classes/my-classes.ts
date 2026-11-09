@@ -5,11 +5,14 @@ import { Instant } from '@js-joda/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, of } from 'rxjs';
 import { ZodError } from 'zod';
+import { MatDialog } from '@angular/material/dialog';
 import { Assignment, AssignmentService } from '../../core/services/assignment-service';
 import { SessionService } from '../../core/auth/session-service';
 import { CourseTeacherService } from '../../core/services/course-teacher-service';
 import { CourseOverview, CourseService } from '../../core/services/course-service';
 import { SnackbarService } from '../../core/services/snackbar-service';
+import { classAvatarColor, classInitials } from '../../core/util/class-avatar';
+import { CreateClassDialog } from './create-class-dialog/create-class-dialog';
 
 interface ClassTile {
   id: number;
@@ -31,12 +34,34 @@ export class MyClasses implements OnInit {
   private readonly courseService = inject(CourseService);
   private readonly snackbar = inject(SnackbarService);
   private readonly session = inject(SessionService);
+  private readonly dialog = inject(MatDialog);
 
   protected readonly loading: WritableSignal<boolean> = signal(false);
   protected readonly classes: WritableSignal<ClassTile[]> = signal([]);
   private assignmentsFailureNotified = false;
 
   public async ngOnInit(): Promise<void> {
+    await this.loadClasses();
+  }
+
+  protected openCreateDialog(): void {
+    const dialogRef = this.dialog.open(CreateClassDialog, {
+      width: '60rem',
+      maxWidth: '90%',
+      ariaLabelledBy: 'create-class-title',
+      ariaModal: true,
+      data: { titleId: 'create-class-title' }
+    });
+    dialogRef.afterClosed().subscribe(created => {
+      if (created) {
+        this.snackbar.show('Class created');
+        void this.loadClasses();
+      }
+    });
+  }
+
+  private async loadClasses(): Promise<void> {
+    this.assignmentsFailureNotified = false;
     this.loading.set(true);
     const courses = await this.courseService.getCourses();
     if (courses === null) {
@@ -62,14 +87,16 @@ export class MyClasses implements OnInit {
       return;
     }
 
-    const myCourses = courses.filter((course, index) => {
-      const teachers = teacherLists[index];
+    const myCourses = this.session.isAdmin()
+      ? courses
+      : courses.filter((course, index) => {
+        const teachers = teacherLists[index];
 
-      return teachers !== null
-        && teachers !== undefined
-        && (teachers.owner.studentId === teacherId
-          || teachers.coTeachers.some(teacher => teacher.studentId === teacherId));
-    });
+        return teachers !== null
+          && teachers !== undefined
+          && (teachers.owner.studentId === teacherId
+            || teachers.coTeachers.some(teacher => teacher.studentId === teacherId));
+      });
     const now = Instant.now();
     const tiles = myCourses.map(course => this.toTile(course, [], now));
     this.classes.set(tiles);
@@ -104,8 +131,8 @@ export class MyClasses implements OnInit {
     return {
       id: course.id,
       title: course.title,
-      initials: course.title.trim().slice(0, 2).toUpperCase(),
-      color: `hsl(${(course.id * 137) % 360} 45% 38%)`,
+      initials: classInitials(course.title),
+      color: classAvatarColor(course.title),
       open: assignments.filter(assignment => assignment.deadline === null || !assignment.deadline.isBefore(now)).length
     };
   }

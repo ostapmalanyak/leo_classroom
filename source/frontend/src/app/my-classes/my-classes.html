@@ -9,7 +9,7 @@
 }
 
 <div class="class-grid">
-  <button class="class-card class-card--add" type="button" aria-label="Add a class">
+  <button class="class-card class-card--add" type="button" aria-label="Add a class" (click)="openCreateDialog()">
     <span class="class-card__add-icon" aria-hidden="true">+</span>
   </button>
   @for (course of classes(); track course.id) {
