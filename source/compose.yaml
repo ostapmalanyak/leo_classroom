@@ -223,7 +223,7 @@ services:
       FORGEJO__security__INSTALL_LOCK: "true"
       # Same-instance CopyRepo URLs are rewritten to the internal service hostname before Forgejo migrates them.
       # The public hostname is also allowed for starter repos reached by their public clone URL.
-      FORGEJO__migrations__ALLOWED_DOMAINS: "localhost,forgejo,vm123.htl-leonding.ac.at"
+      FORGEJO__migrations__ALLOWED_DOMAINS: "localhost,forgejo,${FORGEJO_HOST}"
     secrets:
       - forgejo_db_password
       - Keycloak__ForgejoClientSecret
@@ -256,11 +256,19 @@ services:
       OAUTH2_PROXY_UPSTREAMS: static://202
       OAUTH2_PROXY_REVERSE_PROXY: "true"
       OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
-      # The IF number, not the e-mail, is the identity everywhere (AGENTS.md), and it is Forgejo's login name.
-      OAUTH2_PROXY_USER_ID_CLAIM: preferred_username
       OAUTH2_PROXY_EMAIL_DOMAINS: "*"
       OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: "true"
       OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      # Sign-out redirects to Keycloak's logout page, which is another host (see Caddyfile, @logout).
+      OAUTH2_PROXY_WHITELIST_DOMAINS: auth.htl-leonding.ac.at
+      # Logging out of LEO Classroom ends only the Keycloak session. Without a refresh, this proxy's own
+      # cookie would keep signing the previous user in to Forgejo for its whole lifetime, on a shared computer
+      # even as someone else. A refresh asks Keycloak again; once its session is gone the refresh fails and
+      # the user must sign in again. Keep it shorter than the access token lifespan (Keycloak default 5 min).
+      OAUTH2_PROXY_COOKIE_REFRESH: 1m
+      OAUTH2_PROXY_COOKIE_EXPIRE: 8h
+      # Keycloak clients commonly require PKCE; without it the login fails with invalid_request.
+      OAUTH2_PROXY_CODE_CHALLENGE_METHOD: S256
     # oauth2-proxy has no *-file option for the cookie secret, and a value on the command line would sit in
     # /proc/<pid>/cmdline. Its config file can carry it, so the secret lives in a file of that shape.
     command: ["--config=/run/secrets/oauth2_proxy_config"]
