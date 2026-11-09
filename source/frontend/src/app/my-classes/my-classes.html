@@ -9,13 +9,16 @@
 }
 
 <div class="class-grid">
+  <button class="class-card class-card--add" type="button" aria-label="Add a class">
+    <span class="class-card__add-icon" aria-hidden="true">+</span>
+  </button>
   @for (course of classes(); track course.id) {
     <a class="class-card" [routerLink]="['/courses', course.id, 'assignments']">
-      <span class="class-card__badge" [style.background]="course.color">{{ course.initials }}</span>
+      <span class="class-card__avatar" [style.background]="course.color">{{ course.initials }}</span>
       <span class="class-card__body">
         <span class="class-card__title">{{ course.title }}</span>
         <span class="class-card__meta">
-          @if (course.open > 0) {
+          @if (course.open !== null && course.open !== undefined && course.open > 0) {
             {{ course.open }} open
           } @else {
             All caught up
@@ -24,7 +27,4 @@
       </span>
     </a>
   }
-  <button class="class-card class-card--add" type="button" aria-label="Add a class">
-    <span class="class-card__add-icon" aria-hidden="true">+</span>
-  </button>
 </div>
