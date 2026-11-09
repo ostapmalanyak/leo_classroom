@@ -46,8 +46,9 @@ export class MyClasses implements OnInit {
 
   protected openCreateDialog(): void {
     const dialogRef = this.dialog.open(CreateClassDialog, {
-      width: '60rem',
-      maxWidth: '90%',
+      width: 'min(70rem, 92vw)',
+      maxWidth: '92vw',
+      maxHeight: '92vh',
       ariaLabelledBy: 'create-class-title',
       ariaModal: true,
       data: { titleId: 'create-class-title' }

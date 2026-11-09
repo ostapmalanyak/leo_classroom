@@ -1,0 +1,104 @@
+<div class="dialog-shell">
+  <header class="dialog-header">
+    <h2 mat-dialog-title [id]="data.titleId">Create Class</h2>
+    <button mat-icon-button type="button" aria-label="Close dialog" mat-dialog-close>
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  <mat-dialog-content>
+    <div class="dialog-columns">
+      <section class="preview" aria-label="Class preview">
+        <div class="preview__image">
+          @if (avatarUrl(); as url) {
+            <img [src]="url" [alt]="previewName() + ' class image'">
+          }
+          @if (avatarLoading()) {
+            <mat-progress-spinner class="preview__spinner" mode="indeterminate" diameter="36"></mat-progress-spinner>
+          }
+        </div>
+        <h3>{{ previewName() }}</h3>
+      </section>
+
+      <section class="form-area">
+        <label class="field">
+          <span>Enter Name...</span>
+          <input [formControl]="name" maxlength="50" autocomplete="off" aria-label="Class name">
+        </label>
+        @if (nameError()) {
+          <p class="field-error" role="alert">{{ nameError() }}</p>
+        }
+
+        <div class="field">
+          <span>Search Class...</span>
+          <div #rosterSearch class="roster-search" (click)="$event.stopPropagation()"
+               (keydown)="handleSearchKeydown($event)">
+            <input [formControl]="search" autocomplete="off" aria-label="Search rosters"
+                   role="combobox" aria-autocomplete="list" aria-controls="roster-results"
+                   [attr.aria-expanded]="resultsOpen()"
+                   [attr.aria-activedescendant]="activeOptionId()"
+                   (focus)="openRosterResults()">
+            @if (resultsOpen()) {
+              <div id="roster-results" class="results" role="listbox" aria-label="Roster results">
+                @if (searchState() === 'loading') {
+                  <div class="status">
+                    <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+                    <span>Searching rosters…</span>
+                  </div>
+                } @else if (searchState() === 'error') {
+                  <div class="status status--error" role="alert">
+                    <span>{{ searchError() }}</span>
+                    <button mat-button type="button" (click)="retry()">Retry</button>
+                  </div>
+                } @else if (rosters().length === 0) {
+                  <p class="status">No rosters found</p>
+                } @else {
+                  @for (roster of rosters(); track roster.id; let index = $index) {
+                    <button class="result" type="button" role="option"
+                            [id]="'roster-option-' + roster.id"
+                            [class.result--active]="index === activeIndex()"
+                            [attr.aria-selected]="selectedRoster()?.id === roster.id"
+                            (click)="selectRoster(roster)"
+                            (mouseenter)="activeIndex.set(index)">
+                      <span>
+                        @let highlighted = highlight(roster.name);
+                        {{ highlighted.before }}<mark>{{ highlighted.match }}</mark>{{ highlighted.after }}
+                      </span>
+                      <span class="result__count">{{ roster.memberCount }} members</span>
+                      @if (selectedRoster()?.id === roster.id) {
+                        <mat-icon aria-hidden="true">check</mat-icon>
+                      }
+                    </button>
+                  }
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="selection" aria-label="Selected roster">
+          @if (selectedRoster(); as roster) {
+            <span class="chip">
+              {{ roster.name }}
+              <button type="button" [attr.aria-label]="'Remove ' + roster.name" (click)="removeSelectedRoster()">
+                <mat-icon>close</mat-icon>
+              </button>
+            </span>
+          } @else {
+            <span class="selection__hint">Select one roster</span>
+          }
+        </div>
+
+        <div class="actions">
+          <button class="create-button" type="button" [disabled]="createIsDisabled()" (click)="create()">
+            @if (submitting()) {
+              <mat-progress-spinner mode="indeterminate" diameter="18"></mat-progress-spinner>
+            } @else {
+              Create
+            }
+          </button>
+        </div>
+      </section>
+    </div>
+  </mat-dialog-content>
+</div>
