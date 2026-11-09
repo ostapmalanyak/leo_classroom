@@ -9,6 +9,8 @@ import { CourseAssignments } from '../student/course-assignments/course-assignme
 import { AssignmentList } from './assignment-list/assignment-list';
 import { authGuard } from '../../core/auth/auth-guard';
 import { Role } from '../../core/auth/roles';
+import { teacherOnlyGuard } from '../../core/auth/teacher-only-guard';
+import { MyClasses } from '../my-classes/my-classes';
 
 export const assignmentRoutes: Routes = [
   {
@@ -45,6 +47,12 @@ export const assignmentRoutes: Routes = [
     path: 'assignments/:id/download',
     component: AssignmentDownload,
     canActivate: [authGuard],
+    data: { role: Role.Teacher }
+  },
+  {
+    path: 'my-classes',
+    component: MyClasses,
+    canActivate: [authGuard, teacherOnlyGuard],
     data: { role: Role.Teacher }
   },
   { path: 'my-assignments', component: StudentAssignments, canActivate: [authGuard] },

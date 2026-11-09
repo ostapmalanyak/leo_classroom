@@ -1,0 +1,84 @@
+.empty {
+  color: var(--color-text-muted);
+}
+
+.class-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 24rem));
+}
+
+.class-card {
+  aspect-ratio: 2 / 1;
+  align-items: flex-start;
+  background-color: var(--color-bg-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  display: flex;
+  gap: var(--space-4);
+  min-height: 0;
+  padding: var(--space-4);
+  text-decoration: none;
+  transition: background-color var(--transition), border-color var(--transition);
+  width: 100%;
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--color-bg-hover);
+  }
+}
+
+.class-card__badge {
+  align-items: center;
+  border-radius: var(--radius);
+  color: #fff;
+  display: flex;
+  flex: none;
+  font-size: 1.75rem;
+  font-weight: 600;
+  height: 5rem;
+  justify-content: center;
+  width: 5rem;
+}
+
+.class-card__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.class-card__title {
+  color: var(--color-text-strong);
+  font-size: 1.125rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.class-card__meta {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.class-card--add {
+  align-items: center;
+  appearance: none;
+  background-color: color-mix(in srgb, var(--color-bg-body) 90%, var(--color-text-muted) 10%);
+  border: 0.125rem dashed color-mix(in srgb, var(--color-text-muted) 50%, transparent);
+  cursor: pointer;
+  font: inherit;
+  justify-content: center;
+
+  &:hover,
+  &:focus-visible {
+    background-color: color-mix(in srgb, var(--color-bg-body) 84%, var(--color-text-muted) 16%);
+    border-color: color-mix(in srgb, var(--color-text-muted) 80%, transparent);
+  }
+}
+
+.class-card__add-icon {
+  color: var(--color-text-muted);
+  font-size: 3rem;
+  font-weight: 300;
+  line-height: 1;
+}

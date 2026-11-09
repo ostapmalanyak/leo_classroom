@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { firstValueFrom, Observable } from 'rxjs';
+import { firstValueFrom, map, Observable } from 'rxjs';
 import { z } from 'zod';
 import { BackendServiceBase } from './backend-service-base';
 import { InstantSchema } from '../util/zod-schemas';
@@ -31,6 +31,12 @@ export class AssignmentService extends BackendServiceBase {
       }
       throw error;
     }
+  }
+
+  public listForCourse$(courseId: number): Observable<Assignment[]> {
+    return this.http.get<unknown>(this.buildUrl(`course/${courseId}`)).pipe(
+      map(response => assignmentZod.array().parse(response))
+    );
   }
 
   public async getForEdit(id: number): Promise<Assignment | 'forbidden' | null> {
@@ -204,9 +210,9 @@ export enum DeadlineKind {
 
 export enum StarterSourceKind {
   DescriptionOnly = 'DescriptionOnly',
-  Archive = 'Archive(doesnt work)',
+  Archive = 'Archive',
   ForkOwnRepo = 'ForkOwnRepo',
-  CopyRepo = 'CopyRepo(doesnt work)'
+  CopyRepo = 'CopyRepo'
 }
 
 export enum DownloadSnapshotMode {
