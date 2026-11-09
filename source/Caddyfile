@@ -63,19 +63,41 @@
 	# Git over HTTPS and the REST API authenticate with a password or token, which is the only thing a git
 	# client or the backend can present; Forgejo's proxy login does not cover them, and an SSO redirect would
 	# break them. They go straight through, without the login header.
+	#
+	# Only the git protocol's own endpoints are listed, not every `*.git` path: the link the app shows
+	# students is the bare `.../repo.git` URL, which a browser opens, and Forgejo answers an anonymous
+	# request for a private repository with 404. That one must go through the sign-in below, after which
+	# Forgejo redirects it to the repository page.
 	@machine {
-		path /api/*
-		path_regexp ^/[^/]+/[^/]+\.git/
+		expression {path}.startsWith("/api/") || {path}.matches("^/[^/]+/[^/]+\\.git/(info/refs|git-upload-pack|git-receive-pack|HEAD|objects/|info/lfs)")
 	}
 	handle @machine {
 		reverse_proxy forgejo:3000
+	}
+
+	# Forgejo's logout only ends Forgejo's own session; oauth2-proxy and Keycloak would sign the user straight
+	# back in on the next request. Forgejo answers the logout request with JSON ({"redirect":"/"}) that its
+	# page script follows, so let it clear its cookies as usual but swap that JSON for one that goes through
+	# oauth2-proxy's sign-out and then Keycloak's logout. Needs no login header: the session cookie is enough.
+	# Override KEYCLOAK_LOGOUT_RD (the URL-encoded Keycloak logout endpoint) for another realm.
+	@logout path /user/logout
+	handle @logout {
+		reverse_proxy forgejo:3000 {
+			@done status 2xx
+			handle_response @done {
+				copy_response_headers {
+					exclude Content-Length
+				}
+				respond `{"redirect":"/oauth2/sign_out?rd={$KEYCLOAK_LOGOUT_RD:https%3A%2F%2Fauth.htl-leonding.ac.at%2Frealms%2Fhtlleonding%2Fprotocol%2Fopenid-connect%2Flogout}"}` 200
+			}
+		}
 	}
 
 	# Everything else is a browser: sign in with Keycloak, then hand Forgejo the IF number.
 	handle {
 		forward_auth oauth2-proxy:4180 {
 			uri /oauth2/auth
-			copy_headers X-Auth-Request-User>X-WEBAUTH-USER
+			copy_headers X-Auth-Request-Preferred-Username>X-WEBAUTH-USER
 
 			# /oauth2/auth answers 401 when nobody is signed in; Caddy would hand that to the browser as is.
 			# Send it to Keycloak instead, and back to the page it asked for afterwards.
@@ -84,6 +106,7 @@
 				redir * /oauth2/start?rd={http.request.uri.path_escaped}%3F{http.request.uri.query_escaped}
 			}
 		}
+
 		reverse_proxy forgejo:3000
 	}
 }
