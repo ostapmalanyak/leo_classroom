@@ -60,6 +60,21 @@ public sealed class StudentAssignmentServiceTests
     }
 
     [Fact]
+    public async Task Accept_ForkOwnRepo_UsesTheStudentAsRepositoryOwner()
+    {
+        Assignment assignment = AssignmentInCourse();
+        assignment.StarterSourceKind = StarterSourceKind.ForkOwnRepo;
+        _assignmentRepo.GetByIdAsync(AssignmentId).Returns(new ValueTask<Assignment?>(assignment));
+        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId).Returns(new ValueTask<bool>(true));
+        _acceptanceRepo.ExistsAsync(AssignmentId, StudentLocalId).Returns(new ValueTask<bool>(false));
+
+        var result = await _sut.AcceptAsync(AssignmentId);
+
+        result.ShouldBe<Success<Acceptance>>().Value.RepoOwner.Should().Be(StudentNumber);
+        _acceptanceRepo.Received(1).Add(Arg.Is<Acceptance>(a => a.RepoOwner == StudentNumber));
+    }
+
+    [Fact]
     public async Task Accept_NotInRoster_ReturnsForbidden()
     {
         _assignmentRepo.GetByIdAsync(AssignmentId).Returns(new ValueTask<Assignment?>(AssignmentInCourse()));

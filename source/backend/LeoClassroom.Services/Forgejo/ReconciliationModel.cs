@@ -32,9 +32,13 @@ public static class DesiredStateComputer
 
         foreach (AcceptanceInput acceptance in input.Acceptances)
         {
-            collaborators.Add(new DesiredCollaborator(acceptance.RepoOwner, acceptance.RepoName,
-                                                     acceptance.StudentStudentId, studentLevel));
-            seen.Add((acceptance.RepoOwner, acceptance.RepoName, acceptance.StudentStudentId));
+            // Owners have implicit admin access and cannot be restricted through collaborator permissions.
+            if (!string.Equals(acceptance.RepoOwner, acceptance.StudentStudentId, StringComparison.OrdinalIgnoreCase))
+            {
+                collaborators.Add(new DesiredCollaborator(acceptance.RepoOwner, acceptance.RepoName,
+                                                         acceptance.StudentStudentId, studentLevel));
+                seen.Add((acceptance.RepoOwner, acceptance.RepoName, acceptance.StudentStudentId));
+            }
 
             foreach (string teacherId in input.TeacherStudentIds)
             {

@@ -65,6 +65,20 @@ public sealed class DesiredStateComputerTests
     }
 
     [Fact]
+    public void StudentOwnedFork_DoesNotTryToManageTheOwnerAsACollaborator()
+    {
+        ReconciliationInput input = Input(DeadlineKind.None, false) with
+        {
+            Acceptances = [new AcceptanceInput("IF_S", "IF_S", "algo-a1-if_s")]
+        };
+
+        DesiredState state = DesiredStateComputer.Compute(input, Deadline);
+
+        state.Collaborators.Should().NotContain(c => c.Username == "IF_S");
+        state.Collaborators.Should().Contain(c => c.Username == "IF_T" && c.Permission == CollaboratorPermission.Write);
+    }
+
+    [Fact]
     public void Computation_IsDeterministic_ForFixedInputs()
     {
         ReconciliationInput input = Input(DeadlineKind.Hard, true);

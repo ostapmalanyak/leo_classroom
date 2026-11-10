@@ -79,7 +79,8 @@ internal sealed record CreateRepoBody(
     [property: JsonPropertyName("auto_init")] bool AutoInit);
 
 internal sealed record ForkRepoBody(
-    [property: JsonPropertyName("organization")] string Organization,
+    [property: JsonPropertyName("organization")]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Organization,
     [property: JsonPropertyName("name")] string Name);
 
 internal sealed record MigrateRepoBody(
