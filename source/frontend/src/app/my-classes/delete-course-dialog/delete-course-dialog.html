@@ -2,7 +2,6 @@
   <h2 mat-dialog-title id="delete-course-title">Delete course?</h2>
   <mat-dialog-content>
     <p>This will permanently delete "{{ data.title }}". This cannot be undone.</p>
-    <p>Its assignments and associated student repositories will also be removed; the course's Forgejo organization will be deleted when cleanup succeeds.</p>
     @if (error()) {
       <p class="delete-dialog__error" role="alert">{{ error() }}</p>
     }
