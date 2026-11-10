@@ -3,3 +3,25 @@
 html {
   color-scheme: dark;
 }
+
+.course-menu-panel {
+  .mat-mdc-menu-item.delete-item:hover,
+  .mat-mdc-menu-item.delete-item:focus,
+  .mat-mdc-menu-item.delete-item:focus-visible,
+  .mat-mdc-menu-item.delete-item.mat-mdc-menu-item-highlighted,
+  .mat-mdc-menu-item.delete-item.cdk-keyboard-focused,
+  .mat-mdc-menu-item.delete-item.cdk-program-focused {
+    --mat-menu-item-label-text-color: #f87171;
+    --mat-menu-item-icon-color: #f87171;
+    --mat-menu-item-hover-state-layer-color: rgba(248, 113, 113, 0.12);
+    --mat-menu-item-focus-state-layer-color: rgba(248, 113, 113, 0.12);
+
+    background-color: rgba(248, 113, 113, 0.12) !important;
+    color: #f87171 !important;
+
+    .mat-mdc-menu-item-text,
+    .mat-icon {
+      color: #f87171 !important;
+    }
+  }
+}

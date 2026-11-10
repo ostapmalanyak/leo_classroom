@@ -52,14 +52,27 @@
 
   &__body {
     display: flex;
+    flex: 1 1 0%;
     flex-direction: column;
     min-width: 0;
+    width: 100%;
+  }
+
+  &__heading {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: space-between;
+    min-width: 0;
+    width: 100%;
   }
 
   &__title {
     color: var(--color-text-strong);
+    flex: 1 1 auto;
     font-size: var(--class-title-font-size);
     font-weight: 700;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -68,28 +81,53 @@
   &__menu-button {
     align-items: center;
     background: transparent;
-    border-radius: 50%;
+    border: none;
+    box-shadow: none;
     color: var(--color-text-muted);
     display: grid;
-    height: 2.25rem;
+    flex: 0 0 2rem;
+    height: 2rem;
     justify-content: center;
+    min-height: 2rem;
+    min-width: 2rem;
+    outline: none;
     padding: 0;
     place-items: center;
     position: absolute;
     right: 0.75rem;
-    top: 0.75rem;
-    width: 2.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2rem;
     z-index: 1;
+    --mat-icon-button-state-layer-color: transparent;
+    --mat-icon-button-ripple-color: transparent;
 
-    &:hover,
-    &:focus-visible {
-      background-color: var(--color-bg-hover);
+    &:hover {
+      background: transparent;
+      color: var(--color-text-strong);
+    }
+
+    &:focus,
+    &:active {
+      background: transparent;
+      box-shadow: none;
+    }
+
+    &:focus-visible mat-icon {
+      color: var(--color-text-strong);
+      text-decoration-line: underline;
+      text-decoration-thickness: 0.0625rem;
+      text-underline-offset: 0.2rem;
     }
 
     mat-icon {
       font-size: 1.25rem;
       height: 1.25rem;
       width: 1.25rem;
+    }
+
+    .mat-mdc-button-persistent-ripple::before {
+      background: transparent;
     }
   }
 

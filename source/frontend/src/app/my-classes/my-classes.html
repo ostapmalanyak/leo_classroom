@@ -16,7 +16,23 @@
     <a class="class-card" [routerLink]="['/courses', course.id, 'assignments']">
       <img class="class-card__avatar" [src]="course.avatarUrl" [alt]="course.title + ' icon'">
       <span class="class-card__body">
-        <span class="class-card__title">{{ course.title }}</span>
+        <span class="class-card__heading">
+          <span class="class-card__title">{{ course.title }}</span>
+          @if (canManageCourses()) {
+            <button class="class-card__menu-button" mat-icon-button disableRipple type="button"
+                    aria-label="Course options" [matMenuTriggerFor]="courseMenu"
+                    (click)="stopCardNavigation($event)">
+              <mat-icon>more_horiz</mat-icon>
+            </button>
+            <mat-menu #courseMenu="matMenu" panelClass="course-menu-panel" (click)="$event.stopPropagation()">
+              <button mat-menu-item type="button" class="delete-item"
+                      (click)="openDeleteDialog($event, course)">
+                <mat-icon>delete</mat-icon>
+                <span>Delete course</span>
+              </button>
+            </mat-menu>
+          }
+        </span>
         <span class="class-card__meta">
           @if (course.open !== null && course.open !== undefined && course.open > 0) {
             {{ course.open }} open
@@ -25,19 +41,6 @@
           }
         </span>
       </span>
-      @if (canManageCourses()) {
-        <button class="class-card__menu-button" mat-icon-button type="button" aria-label="Course options"
-                [matMenuTriggerFor]="courseMenu" (click)="stopCardNavigation($event)">
-          <mat-icon>more_vert</mat-icon>
-        </button>
-        <mat-menu #courseMenu="matMenu" panelClass="course-options-menu" (click)="$event.stopPropagation()">
-          <button mat-menu-item type="button" class="course-options-menu__delete"
-                  (click)="openDeleteDialog($event, course)">
-            <mat-icon>delete</mat-icon>
-            <span>Delete course</span>
-          </button>
-        </mat-menu>
-      }
     </a>
   }
 </div>
