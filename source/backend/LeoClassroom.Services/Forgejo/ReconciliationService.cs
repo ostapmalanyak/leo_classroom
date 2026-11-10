@@ -31,7 +31,8 @@ internal sealed class ReconciliationService(
         var input = new ReconciliationInput(
             org,
             AssignmentTeacherStudentIds(assignment),
-            [.. assignment.Acceptances.Select(a => new AcceptanceInput(a.Student.StudentId, a.RepoOwner, a.RepoName))],
+            [.. assignment.Acceptances.Where(a => a.Status == SubmissionStatus.Ready)
+                                      .Select(a => new AcceptanceInput(a.Student.StudentId, a.RepoOwner, a.RepoName))],
             assignment.Deadline,
             assignment.DeadlineKind,
             assignment.HardDeadlineRevokesRead);

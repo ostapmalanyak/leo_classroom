@@ -303,6 +303,13 @@ internal sealed class RepoProvisioningService(
             return new ProvisioningError("invalid fork source repository URL");
         }
 
+        OneOf<Success, ForgejoError> sourceAccess =
+            await EnsureForkSourceReadAccessAsync(sourceOwner, sourceRepo, repoOwner);
+        if (sourceAccess.Failure is { } sourceAccessFailed)
+        {
+            return new ProvisioningError($"could not grant access to fork source: {sourceAccessFailed.Reason}");
+        }
+
         OneOf<Success<ForgejoRepo>, ForgejoError> fork =
             await forgejo.ForkRepoAsync(sourceOwner, sourceRepo, repoOwner, repoName);
 
@@ -324,6 +331,22 @@ internal sealed class RepoProvisioningService(
                         existingError => ValueTask.FromResult<OneOf<ForgejoRepo, ProvisioningError>>(
                             existingError));
             });
+    }
+
+    private async ValueTask<OneOf<Success, ForgejoError>> EnsureForkSourceReadAccessAsync(
+        string sourceOwner, string sourceRepo, string student)
+    {
+        OneOf<CollaboratorPermission, NotFound, ForgejoError> actual =
+            await forgejo.GetCollaboratorPermissionAsync(sourceOwner, sourceRepo, student);
+
+        return await actual.Match<ValueTask<OneOf<Success, ForgejoError>>>(
+            permission => permission >= CollaboratorPermission.Read
+                ? ValueTask.FromResult<OneOf<Success, ForgejoError>>(new Success())
+                : forgejo.SetCollaboratorAsync(
+                    sourceOwner, sourceRepo, student, CollaboratorPermission.Read),
+            notFound => forgejo.SetCollaboratorAsync(
+                sourceOwner, sourceRepo, student, CollaboratorPermission.Read),
+            error => ValueTask.FromResult<OneOf<Success, ForgejoError>>(error));
     }
 
     private async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> ApplyForkReadmeOverrideAsync(

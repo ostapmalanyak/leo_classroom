@@ -181,6 +181,10 @@ public sealed class RepoProvisioningServiceTests
         forgejo.ForkRepoAsync("teacher", "starter", repoOwner, repoName)
                .Returns(new ValueTask<OneOf<Success<ForgejoRepo>, ForgejoError>>(
                    new ForgejoError((int) HttpStatusCode.Conflict, "already forked")));
+        forgejo.GetCollaboratorPermissionAsync("teacher", "starter", repoOwner)
+               .Returns(new ValueTask<OneOf<CollaboratorPermission, NotFound, ForgejoError>>(new NotFound()));
+        forgejo.SetCollaboratorAsync("teacher", "starter", repoOwner, CollaboratorPermission.Read)
+               .Returns(new ValueTask<OneOf<Success, ForgejoError>>(new Success()));
         forgejo.SetCollaboratorAsync(repoOwner, repoName, BotName, CollaboratorPermission.Write)
                .Returns(new ValueTask<OneOf<Success, ForgejoError>>(new Success()));
         forgejo.MigrateRepoAsync(
@@ -233,6 +237,8 @@ public sealed class RepoProvisioningServiceTests
                     existingFork.CloneUrl, Arg.Any<string>(), Arg.Any<CancellationToken>());
                 break;
             case StarterSourceKind.ForkOwnRepo:
+                await forgejo.Received(1).SetCollaboratorAsync(
+                    "teacher", "starter", repoOwner, CollaboratorPermission.Read);
                 await forgejo.Received(1).ForkRepoAsync("teacher", "starter", repoOwner, repoName);
                 await forgejo.Received(1).SetCollaboratorAsync(
                     repoOwner, repoName, BotName, CollaboratorPermission.Write);
