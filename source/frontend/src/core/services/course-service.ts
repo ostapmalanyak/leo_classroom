@@ -96,6 +96,7 @@ export class CourseService extends BackendServiceBase {
 const courseOverviewZod = z.object({
   id: z.int().positive(),
   title: z.string().min(1),
+  iconSeed: z.string().nullable().optional(),
   rosterId: z.int().positive(),
   rosterName: z.string(),
   memberCount: z.int().nonnegative(),
@@ -107,6 +108,7 @@ export type CourseOverview = z.infer<typeof courseOverviewZod>;
 const courseZod = z.object({
   id: z.int().positive(),
   title: z.string().min(1),
+  iconSeed: z.string().nullable().optional(),
   rosterId: z.int().positive(),
   ownerId: z.int().positive(),
   isReadOnly: z.boolean(),

@@ -253,6 +253,10 @@ namespace LeoClassroom.Persistence.Migrations
                     b.Property<string>("ForgejoOrg")
                         .HasColumnType("text");
 
+                    b.Property<string>("IconSeed")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<bool>("IsReadOnly")
                         .HasColumnType("boolean");
 

@@ -4,6 +4,7 @@ public class Course
 {
     public long Id { get; set; }
     public required string Title { get; set; }
+    public string? IconSeed { get; set; }
     public long RosterId { get; set; }
     public Roster Roster { get; set; } = null!;
     public long OwnerId { get; set; }

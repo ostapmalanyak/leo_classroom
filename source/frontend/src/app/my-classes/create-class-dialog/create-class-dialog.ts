@@ -5,9 +5,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import {
-  catchError, debounceTime, distinctUntilChanged, map, merge, of, startWith, Subject, Subscription, switchMap, tap,
-  timer
+  catchError, distinctUntilChanged, map, merge, of, startWith, Subject, Subscription, switchMap, tap, timer
 } from 'rxjs';
 import { ZodError } from 'zod';
 import { ClassRoster, ClassService } from '../../../core/services/class-service';
@@ -18,7 +18,9 @@ export interface CreateClassDialogData {
 
 @Component({
   selector: 'app-create-class-dialog',
-  imports: [MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, ReactiveFormsModule],
+  imports: [
+    MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule, ReactiveFormsModule
+  ],
   templateUrl: './create-class-dialog.html',
   styleUrl: './create-class-dialog.scss'
 })
@@ -27,9 +29,12 @@ export class CreateClassDialog implements OnDestroy {
   private readonly dialogRef = inject(MatDialogRef<CreateClassDialog, boolean>);
   protected readonly data = inject<CreateClassDialogData>(MAT_DIALOG_DATA);
   private readonly retrySearch = new Subject<void>();
+  private readonly openRosterSearch = new Subject<string>();
+  private readonly avatarSeedRequests = new Subject<string>();
   private readonly subscriptions = new Subscription();
   private avatarObjectUrl: string | null = null;
   @ViewChild('rosterSearch') private rosterSearch?: ElementRef<HTMLDivElement>;
+  @ViewChild('rosterSearchInput') private rosterSearchInput?: ElementRef<HTMLInputElement>;
 
   protected readonly name = new FormControl('', { nonNullable: true });
   protected readonly search = new FormControl('', { nonNullable: true });
@@ -40,40 +45,38 @@ export class CreateClassDialog implements OnDestroy {
   protected readonly nameError = signal('');
   protected readonly submitting = signal(false);
   protected readonly avatarUrl = signal<string | null>(null);
-  protected readonly avatarLoading = signal(false);
+  protected readonly avatarLoading = signal(true);
+  protected readonly iconSeed = signal(crypto.randomUUID());
   protected readonly activeIndex = signal(-1);
   protected readonly resultsOpen = signal(false);
 
   public constructor() {
     const searchRequests = merge(
       this.search.valueChanges.pipe(
-        startWith(this.search.value),
         tap(query => {
-          this.resultsOpen.set(query.trim().length > 0);
-          if (query.trim().length === 0) {
-            this.rosters.set([]);
-            this.searchState.set('ready');
-          } else {
-            this.rosters.set([]);
-            this.searchState.set('loading');
-          }
+          this.resultsOpen.set(true);
+          this.rosters.set([]);
+          this.searchState.set('loading');
         }),
-        debounceTime(300),
-        distinctUntilChanged()
+        distinctUntilChanged(),
+        map(query => ({ query, debounce: true }))
       ),
-      this.retrySearch.pipe(map(() => this.search.value))
+      this.openRosterSearch.pipe(map(query => ({ query, debounce: false }))),
+      this.retrySearch.pipe(map(() => ({ query: this.search.value, debounce: false })))
     );
     this.subscriptions.add(searchRequests.pipe(
-      switchMap(query => {
+      switchMap(({ query, debounce }) => {
         this.searchState.set('loading');
         this.searchError.set('');
         this.activeIndex.set(-1);
 
-        if (query.trim().length === 0) {
+        if (this.selectedRoster() !== null) {
           return of({ results: [], error: null as string | null });
         }
 
-        return this.classService.searchRosters(query.trim()).pipe(
+        const delay = debounce ? timer(300) : of(0);
+
+        return delay.pipe(switchMap(() => this.classService.searchRosters(query.trim()).pipe(
           map(results => ({ results, error: null as string | null })),
           catchError(error => {
             if (error instanceof HttpErrorResponse || error instanceof ZodError) {
@@ -84,7 +87,7 @@ export class CreateClassDialog implements OnDestroy {
             }
             throw error;
           })
-        );
+        )));
       })
     ).subscribe(result => {
       if (result.error !== null) {
@@ -100,17 +103,9 @@ export class CreateClassDialog implements OnDestroy {
       this.activeIndex.set(-1);
     }));
 
-    this.subscriptions.add(this.name.valueChanges.pipe(
-      startWith(this.name.value),
-      distinctUntilChanged(),
-      tap(() => {
-        this.nameError.set('');
-        this.avatarUrl.set(null);
-        this.releaseAvatarUrl();
-        this.avatarLoading.set(true);
-      }),
-      switchMap(name => timer(300).pipe(
-        switchMap(() => this.classService.getAvatar(name.trim() || 'New class')),
+    this.subscriptions.add(this.avatarSeedRequests.pipe(
+      startWith(this.iconSeed()),
+      switchMap((seed: string) => this.classService.getAvatar(seed).pipe(
         catchError(error => {
           if (error instanceof HttpErrorResponse) {
             console.error('Could not load the course avatar.', error);
@@ -122,11 +117,18 @@ export class CreateClassDialog implements OnDestroy {
       ))
     ).subscribe(result => {
       this.avatarLoading.set(false);
+      this.releaseAvatarUrl();
       if (result !== null) {
         this.avatarObjectUrl = URL.createObjectURL(result);
         this.avatarUrl.set(this.avatarObjectUrl);
+      } else {
+        this.avatarUrl.set(null);
       }
     }));
+
+    this.subscriptions.add(this.name.valueChanges.pipe(
+      distinctUntilChanged()
+    ).subscribe(() => this.nameError.set('')));
   }
 
   protected previewName(): string {
@@ -147,13 +149,26 @@ export class CreateClassDialog implements OnDestroy {
     this.retrySearch.next();
   }
 
+  protected refreshAvatar(): void {
+    const seed = crypto.randomUUID();
+    this.iconSeed.set(seed);
+    this.avatarUrl.set(null);
+    this.releaseAvatarUrl();
+    this.avatarLoading.set(true);
+    this.avatarSeedRequests.next(seed);
+  }
+
   protected selectRoster(roster: ClassRoster): void {
     this.selectedRoster.set(roster);
+    this.search.setValue('');
     this.resultsOpen.set(false);
   }
 
   protected removeSelectedRoster(): void {
     this.selectedRoster.set(null);
+    this.search.setValue('');
+    this.resultsOpen.set(false);
+    setTimeout(() => this.focusRosterSearch());
   }
 
   protected handleSearchKeydown(event: KeyboardEvent): void {
@@ -183,7 +198,18 @@ export class CreateClassDialog implements OnDestroy {
   }
 
   protected openRosterResults(): void {
-    this.resultsOpen.set(this.search.value.trim().length > 0);
+    if (this.selectedRoster() !== null || this.resultsOpen()) {
+      return;
+    }
+
+    this.resultsOpen.set(true);
+    this.openRosterSearch.next(this.search.value);
+  }
+
+  protected focusRosterSearch(): void {
+    if (this.selectedRoster() === null) {
+      this.rosterSearchInput?.nativeElement.focus();
+    }
   }
 
   protected activeOptionId(): string | null {
@@ -221,7 +247,7 @@ export class CreateClassDialog implements OnDestroy {
 
     this.submitting.set(true);
     try {
-      const result = await this.classService.createClass(this.name.value.trim(), selected.id);
+      const result = await this.classService.createClass(this.name.value.trim(), selected.id, this.iconSeed());
       if (result.kind === 'error') {
         this.nameError.set(result.message);
 

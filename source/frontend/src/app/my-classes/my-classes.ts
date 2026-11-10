@@ -1,6 +1,9 @@
 import { Component, inject, OnInit, signal, WritableSignal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatProgressBar } from '@angular/material/progress-bar';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { Instant } from '@js-joda/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, of } from 'rxjs';
@@ -10,21 +13,21 @@ import { Assignment, AssignmentService } from '../../core/services/assignment-se
 import { SessionService } from '../../core/auth/session-service';
 import { CourseTeacherService } from '../../core/services/course-teacher-service';
 import { CourseOverview, CourseService } from '../../core/services/course-service';
+import { ClassService } from '../../core/services/class-service';
 import { SnackbarService } from '../../core/services/snackbar-service';
-import { classAvatarColor, classInitials } from '../../core/util/class-avatar';
 import { CreateClassDialog } from './create-class-dialog/create-class-dialog';
+import { DeleteCourseDialog } from './delete-course-dialog/delete-course-dialog';
 
 interface ClassTile {
   id: number;
   title: string;
-  initials: string;
-  color: string;
+  avatarUrl: string;
   open: number;
 }
 
 @Component({
   selector: 'app-my-classes',
-  imports: [RouterLink, MatProgressBar],
+  imports: [RouterLink, MatProgressBar, MatButtonModule, MatIconModule, MatMenuModule],
   templateUrl: './my-classes.html',
   styleUrl: './my-classes.scss'
 })
@@ -32,6 +35,7 @@ export class MyClasses implements OnInit {
   private readonly assignmentService = inject(AssignmentService);
   private readonly courseTeacherService = inject(CourseTeacherService);
   private readonly courseService = inject(CourseService);
+  private readonly classService = inject(ClassService);
   private readonly snackbar = inject(SnackbarService);
   private readonly session = inject(SessionService);
   private readonly dialog = inject(MatDialog);
@@ -46,7 +50,7 @@ export class MyClasses implements OnInit {
 
   protected openCreateDialog(): void {
     const dialogRef = this.dialog.open(CreateClassDialog, {
-      width: 'min(70rem, 92vw)',
+      width: 'min(56rem, 92vw)',
       maxWidth: '92vw',
       maxHeight: '92vh',
       ariaLabelledBy: 'create-class-title',
@@ -56,6 +60,34 @@ export class MyClasses implements OnInit {
     dialogRef.afterClosed().subscribe(created => {
       if (created) {
         this.snackbar.show('Class created');
+        void this.loadClasses();
+      }
+    });
+  }
+
+  protected canManageCourses(): boolean {
+    return this.session.isTeacher();
+  }
+
+  protected stopCardNavigation(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  protected openDeleteDialog(event: Event, course: ClassTile): void {
+    this.stopCardNavigation(event);
+    const dialogRef = this.dialog.open(DeleteCourseDialog, {
+      width: '28rem',
+      maxWidth: '92%',
+      ariaLabelledBy: 'delete-course-title',
+      ariaModal: true,
+      autoFocus: true,
+      data: { id: course.id, title: course.title }
+    });
+
+    dialogRef.afterClosed().subscribe(deleted => {
+      if (deleted === true) {
+        this.snackbar.show('Course deleted');
         void this.loadClasses();
       }
     });
@@ -132,8 +164,7 @@ export class MyClasses implements OnInit {
     return {
       id: course.id,
       title: course.title,
-      initials: classInitials(course.title),
-      color: classAvatarColor(course.title),
+      avatarUrl: this.classService.avatarUrl(course.iconSeed ?? `legacy-${course.id}`),
       open: assignments.filter(assignment => assignment.deadline === null || !assignment.deadline.isBefore(now)).length
     };
   }

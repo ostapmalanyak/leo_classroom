@@ -16,6 +16,20 @@
   height: 0;
 }
 
+.course-options-menu {
+  .course-options-menu__delete {
+    &:hover,
+    &:focus-visible {
+      background-color: color-mix(in srgb, var(--color-danger-bg) 35%, transparent);
+      color: var(--color-danger-text);
+
+      mat-icon {
+        color: var(--color-danger-text);
+      }
+    }
+  }
+}
+
 .card__header {
   border-bottom: var(--border-width) solid var(--color-border);
   background-color: var(--color-bg-input);

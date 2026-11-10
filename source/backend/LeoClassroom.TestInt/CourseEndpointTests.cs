@@ -16,10 +16,12 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
     private const string StudentIf = "IF000050";
 
     private long _rosterId;
+    private long _secondRosterId;
 
     protected override async ValueTask ImportSeedDataAsync(DatabaseContext context)
     {
         var roster = new Roster { Name = "5AHIF" };
+        var secondRoster = new Roster { Name = "6AHIF" };
         var owner = new User
         {
             StudentId = OwnerIf,
@@ -27,10 +29,11 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
             LastName = "Owner",
             Role = Role.Teacher
         };
-        context.Rosters.Add(roster);
+        context.Rosters.AddRange(roster, secondRoster);
         context.Users.Add(owner);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         _rosterId = roster.Id;
+        _secondRosterId = secondRoster.Id;
     }
 
     private CourseCreateRequest ValidCreateRequest(string title = "Algorithms") => new(title, _rosterId);
@@ -74,6 +77,8 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
 
         created.Title.Should().Be("Algorithms");
         created.RosterId.Should().Be(_rosterId);
+        created.IconSeed.Should().NotBeNull();
+        created.IconSeed!.Should().MatchRegex("^[A-Za-z0-9-]{8,64}$");
     }
 
     [Fact]
@@ -82,13 +87,14 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
         AuthenticateAsTeacher(OwnerIf);
 
         var response = await ApiClient.PostAsJsonAsync("api/courses",
-            new { name = "Chemistry", rosterIds = new[] { _rosterId.ToString() } },
+            new { name = "Chemistry", rosterIds = new[] { _rosterId.ToString() }, iconSeed = "chemistry-seed-01" },
             JsonOptions, TestCancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var created = await response.Content.ReadFromJsonAsync<CourseDto>(JsonOptions, TestCancellationToken);
         created!.Title.Should().Be("Chemistry");
         created.RosterId.Should().Be(_rosterId);
+        created.IconSeed.Should().Be("chemistry-seed-01");
     }
 
     [Fact]
@@ -108,15 +114,63 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
     }
 
     [Fact]
-    public async Task GetCourseAvatar_ReturnsSvgWithNameInitials()
+    public async Task GetCourseAvatar_IsAnonymousCachedAndDeterministicForSeed()
     {
-        AuthenticateAsTeacher(OwnerIf);
+        Anonymous();
 
-        var response = await ApiClient.GetAsync("api/courses/avatar?name=Chemistry", TestCancellationToken);
+        const string seed = "seed-chemistry-01";
+        var response = await ApiClient.GetAsync($"api/courses/avatar?seed={seed}", TestCancellationToken);
+        var sameSeedResponse = await ApiClient.GetAsync($"api/courses/avatar?seed={seed}", TestCancellationToken);
+        var otherSeedResponse = await ApiClient.GetAsync("api/courses/avatar?seed=seed-physics-01", TestCancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         response.Content.Headers.ContentType?.MediaType.Should().Be("image/svg+xml");
-        (await response.Content.ReadAsStringAsync(TestCancellationToken)).Should().Contain(">CH</text>");
+        response.Headers.CacheControl?.Public.Should().BeTrue();
+        response.Headers.CacheControl?.MaxAge.Should().Be(TimeSpan.FromDays(365));
+        string svg = await response.Content.ReadAsStringAsync(TestCancellationToken);
+        string sameSeedSvg = await sameSeedResponse.Content.ReadAsStringAsync(TestCancellationToken);
+        string otherSeedSvg = await otherSeedResponse.Content.ReadAsStringAsync(TestCancellationToken);
+        svg.Should().Be(sameSeedSvg);
+        svg.Should().NotBe(otherSeedSvg);
+        svg.Should().Contain("<rect x=");
+        svg.Should().NotContain("<text");
+    }
+
+    [Fact]
+    public async Task GetCourseAvatar_SameCourseNameWithDifferentSeedsReturnsDifferentImages()
+    {
+        AuthenticateAsTeacher(OwnerIf);
+        var firstResponse = await ApiClient.PostAsJsonAsync("api/courses",
+            new { name = "Same class", rosterIds = new[] { _rosterId.ToString() }, iconSeed = "course-seed-a-01" },
+            JsonOptions, TestCancellationToken);
+        var secondResponse = await ApiClient.PostAsJsonAsync("api/courses",
+            new { name = "Same class", rosterIds = new[] { _secondRosterId.ToString() }, iconSeed = "course-seed-b-02" },
+            JsonOptions, TestCancellationToken);
+
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        secondResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var firstCourse = await firstResponse.Content.ReadFromJsonAsync<CourseDto>(JsonOptions, TestCancellationToken);
+        var secondCourse = await secondResponse.Content.ReadFromJsonAsync<CourseDto>(JsonOptions, TestCancellationToken);
+        firstCourse!.Title.Should().Be(secondCourse!.Title);
+
+        Anonymous();
+        var firstIcon = await ApiClient.GetStringAsync($"api/courses/avatar?seed={firstCourse.IconSeed}",
+                                                       TestCancellationToken);
+        var secondIcon = await ApiClient.GetStringAsync($"api/courses/avatar?seed={secondCourse.IconSeed}",
+                                                        TestCancellationToken);
+        firstIcon.Should().NotBe(secondIcon);
+    }
+
+    [Fact]
+    public async Task GetCourseAvatar_RejectsInvalidSeeds()
+    {
+        Anonymous();
+
+        var shortSeedResponse = await ApiClient.GetAsync("api/courses/avatar?seed=short", TestCancellationToken);
+        var invalidSeedResponse = await ApiClient.GetAsync("api/courses/avatar?seed=invalid_seed", TestCancellationToken);
+
+        shortSeedResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        invalidSeedResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
@@ -252,5 +306,39 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
         var response = await ApiClient.DeleteAsync($"api/courses/{created.Id}", TestCancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task DeleteCourse_Admin_Returns204()
+    {
+        var created = await CreateCourseAsOwnerAsync();
+
+        AuthenticateAsAdmin(AdminIf);
+        var response = await ApiClient.DeleteAsync($"api/courses/{created.Id}", TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task DeleteCourse_UnknownId_Returns404()
+    {
+        AuthenticateAsTeacher(OwnerIf);
+
+        var response = await ApiClient.DeleteAsync("api/courses/9999", TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DeleteCourse_RemovesCourseFromList()
+    {
+        var created = await CreateCourseAsOwnerAsync();
+
+        var response = await ApiClient.DeleteAsync($"api/courses/{created.Id}", TestCancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var courses = await ApiClient.GetFromJsonAsync<CourseOverview[]>("api/courses", JsonOptions,
+                                                                         TestCancellationToken);
+        courses.Should().NotContain(course => course.Id == created.Id);
     }
 }

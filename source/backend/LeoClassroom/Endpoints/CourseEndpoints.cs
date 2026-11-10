@@ -1,4 +1,5 @@
-using System.Security;
+using System.Security.Cryptography;
+using System.Text;
 using FluentValidation;
 using LeoClassroom.Auth;
 using LeoClassroom.Persistence.Model;
@@ -37,7 +38,8 @@ public static class CourseEndpoints
                              .WithTags("Courses")
                              .RequireAuthorization(AuthPolicies.RequireTeacher);
 
-            courses.MapGet("/avatar", GetAvatarAsync);
+            courses.MapGet("/avatar", GetAvatarAsync)
+                   .AllowAnonymous();
             courses.MapGet("/", GetCoursesAsync);
             courses.MapGet("/{id:long:min(1)}", GetCourseByIdAsync)
                    .WithName(nameof(GetCourseByIdAsync));
@@ -51,28 +53,71 @@ public static class CourseEndpoints
         [FromServices] ICourseService service) =>
         TypedResults.Ok(await service.GetCourseOverviewsAsync());
 
-    private static ContentHttpResult GetAvatarAsync([FromQuery] string? name)
+    private static IResult GetAvatarAsync([FromQuery] string? seed, HttpContext context)
     {
-        string displayName = string.IsNullOrWhiteSpace(name) ? "New class" : name.Trim();
-        displayName = displayName[..Math.Min(displayName.Length, 50)];
-        string initials = new string(displayName.Take(2).ToArray()).ToUpperInvariant();
-        uint hash = 2166136261;
-        foreach (char character in displayName)
+        if (seed is not { Length: >= 8 and <= 64 }
+            || !seed.All(character => char.IsAsciiLetterOrDigit(character) || character == '-'))
         {
-            hash = unchecked((hash ^ character) * 16777619);
+            return TypedResults.BadRequest("Icon seeds must be 8 to 64 characters using letters, digits, or hyphens.");
         }
-        int hue = (int)(hash % 360);
-        string safeInitials = SecurityElement.Escape(initials) ?? string.Empty;
-        string svg = $"""
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-              <rect width="100%" height="100%" rx="14%" fill="hsl({hue} 45% 38%)"/>
-              <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle"
-                    fill="white" font-family="sans-serif" font-size="35%" font-weight="700">{safeInitials}</text>
-            </svg>
-            """;
 
-        return TypedResults.Content(svg, "image/svg+xml; charset=utf-8");
+        context.Response.Headers.CacheControl = "public, max-age=31536000";
+        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(seed));
+        int primaryHue = ((hash[0] << 8) | hash[1]) % 360;
+        int accentHue = (primaryHue + 55 + hash[2] % 111) % 360;
+        int secondaryHue = (primaryHue + 180 + hash[3] % 61) % 360;
+        var svg = new StringBuilder("""
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320">
+            """);
+        svg.AppendLine($"""<rect width="320" height="320" fill="hsl({primaryHue} 42% 14%)"/>""");
+
+        switch (hash[4] % 3)
+        {
+            case 0:
+                svg.AppendLine($"""<circle cx="160" cy="160" r="152" fill="hsl({secondaryHue} 65% 48%)" opacity=".22"/>""");
+                break;
+            case 1:
+                svg.AppendLine($"""<path d="M160 8 312 160 160 312 8 160Z" fill="hsl({secondaryHue} 65% 48%)" opacity=".22"/>""");
+                break;
+            default:
+                svg.AppendLine($"""<path d="M0 64h320v24H0zm0 112h320v24H0zm0 112h320v24H0Z" fill="hsl({secondaryHue} 65% 48%)" opacity=".2"/>""");
+                break;
+        }
+
+        const int cellSize = 44;
+        const int cellGap = 12;
+        const int gridOffset = 26;
+        for (int row = 0; row < 5; row++)
+        {
+            for (int column = 0; column < 3; column++)
+            {
+                int bitIndex = row * 3 + column;
+                bool filled = (hash[5 + bitIndex / 8] & (1 << (bitIndex % 8))) != 0;
+                if (!filled)
+                {
+                    continue;
+                }
+
+                int y = gridOffset + row * (cellSize + cellGap);
+                string color = (hash[8 + bitIndex] & 1) == 0
+                    ? $"hsl({accentHue} 82% 68%)"
+                    : $"hsl({secondaryHue} 76% 74%)";
+                foreach (int mirroredColumn in column == 2 ? new[] { column } : new[] { column, 4 - column })
+                {
+                    int x = gridOffset + mirroredColumn * (cellSize + cellGap);
+                    svg.AppendLine($"""<rect x="{x}" y="{y}" width="{cellSize}" height="{cellSize}" rx="8" fill="{color}"/>""");
+                }
+            }
+        }
+
+        svg.AppendLine("</svg>");
+
+        return TypedResults.Content(svg.ToString(), "image/svg+xml; charset=utf-8");
     }
+
+    private static bool IsValidIconSeed(string? seed) =>
+        seed is { Length: >= 8 and <= 64 }
+        && seed.All(character => char.IsAsciiLetterOrDigit(character) || character == '-');
 
     private static async ValueTask<Results<Ok<CourseDto>, NotFound>> GetCourseByIdAsync(
         [FromRoute] long id, [FromServices] ICourseService service)
@@ -92,7 +137,7 @@ public static class CourseEndpoints
         }
 
         await transaction.BeginTransactionAsync();
-        var result = await service.AddCourseAsync(request.EffectiveTitle, request.EffectiveRosterId);
+        var result = await service.AddCourseAsync(request.EffectiveTitle, request.EffectiveRosterId, request.IconSeed);
 
         // the branches are local functions rather than lambdas, so that Match stays readable
         return await result.Match(OnCreatedAsync, OnNotFoundAsync, OnConflictAsync);
@@ -158,7 +203,8 @@ public static class CourseEndpoints
 }
 
 public sealed record CourseCreateRequest(
-    string? Title = null, long? RosterId = null, string? Name = null, string[]? RosterIds = null)
+    string? Title = null, long? RosterId = null, string? Name = null, string[]? RosterIds = null,
+    string? IconSeed = null)
 {
     public sealed class Validator : AbstractValidator<CourseCreateRequest>
     {
@@ -184,7 +230,15 @@ public sealed record CourseCreateRequest(
                 .NotNull()
                 .GreaterThan(0)
                 .When(c => c.Name is null && c.RosterIds is null);
+            RuleFor(c => c.IconSeed)
+                .Must(IsValidIconSeed)
+                .When(c => c.IconSeed is not null)
+                .WithMessage("Icon seeds must be 8 to 64 characters using letters, digits, or hyphens.");
         }
+
+        private static bool IsValidIconSeed(string? seed) =>
+            seed is { Length: >= 8 and <= 64 }
+            && seed.All(character => char.IsAsciiLetterOrDigit(character) || character == '-');
     }
 
     public string EffectiveTitle => Name?.Trim() ?? Title!.Trim();
@@ -214,9 +268,10 @@ public sealed record CourseDto(
     long OwnerId,
     bool IsReadOnly,
     bool StudentsRetainAccess,
-    Instant CreatedAt)
+    Instant CreatedAt,
+    string? IconSeed)
 {
     public static CourseDto FromCourse(Course course) =>
         new(course.Id, course.Title, course.RosterId, course.OwnerId, course.IsReadOnly, course.StudentsRetainAccess,
-            course.CreatedAt);
+            course.CreatedAt, course.IconSeed);
 }

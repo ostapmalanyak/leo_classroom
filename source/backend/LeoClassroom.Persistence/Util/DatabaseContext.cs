@@ -73,6 +73,7 @@ public sealed class DatabaseContext(DbContextOptions<DatabaseContext> options) :
         EntityTypeBuilder<Course> course = modelBuilder.Entity<Course>();
         course.HasKey(c => c.Id);
         course.Property(c => c.Id).ValueGeneratedOnAdd();
+        course.Property(c => c.IconSeed).HasMaxLength(64);
         course.HasOne(c => c.Roster)
               .WithMany()
               .HasForeignKey(c => c.RosterId)

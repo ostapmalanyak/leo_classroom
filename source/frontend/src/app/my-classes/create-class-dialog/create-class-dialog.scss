@@ -7,6 +7,17 @@
   background-color: var(--color-bg-surface);
   border-radius: var(--class-card-radius);
   overflow: visible;
+  position: relative;
+
+  &::before {
+    background-color: rgba(148, 163, 184, 0.35);
+    content: "";
+    left: calc(45% + 0.225rem);
+    position: absolute;
+    top: 2rem;
+    bottom: 2rem;
+    width: 0.0625rem;
+  }
 }
 
 .dialog-header {
@@ -49,27 +60,50 @@ mat-dialog-content {
 .dialog-columns {
   display: grid;
   gap: 1.5rem;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
 }
 
 .preview {
   align-items: center;
-  border-right: var(--border-width) solid var(--color-border);
+  border-right: var(--border-width) solid transparent;
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 1.5rem;
 
   &__image {
-    align-items: center;
-    background-color: var(--color-bg-hover);
     border-radius: var(--class-avatar-radius);
-    display: flex;
     height: 12rem;
-    justify-content: center;
     overflow: hidden;
     position: relative;
     width: 12rem;
+
+    .preview__placeholder {
+      background-color: var(--color-bg-hover);
+      inset: 0;
+      position: absolute;
+    }
+
+    .preview__shuffle {
+      background-color: color-mix(in srgb, var(--color-bg-body) 75%, transparent);
+      bottom: 0.5rem;
+      color: var(--color-text);
+      height: 2rem;
+      position: absolute;
+      right: 0.5rem;
+      width: 2rem;
+      z-index: 1;
+
+      &:hover {
+        background-color: color-mix(in srgb, var(--color-bg-body) 90%, transparent);
+      }
+
+      mat-icon {
+        font-size: 1.25rem;
+        height: 1.25rem;
+        width: 1.25rem;
+      }
+    }
 
     img {
       height: 100%;
@@ -80,9 +114,17 @@ mat-dialog-content {
   }
 
   &__spinner {
-    bottom: 0.5rem;
+    display: grid;
+    inset: 0;
+    place-items: center;
     position: absolute;
-    right: 0.5rem;
+
+    mat-progress-spinner {
+      box-sizing: border-box;
+      height: 2.5rem;
+      transform-origin: center;
+      width: 2.5rem;
+    }
   }
 
   h3 {
@@ -144,23 +186,79 @@ mat-dialog-content {
     outline-offset: 0.0625rem;
   }
 
-  > input {
+  &__input {
+    align-items: center;
+    display: flex;
+    padding: 0.375rem 0.625rem;
+  }
+
+  &__selected {
+    align-items: center;
+    color: var(--color-text);
+    display: flex;
+    justify-content: space-between;
+    min-height: 2.25rem;
+    padding: 0.375rem 0.625rem;
+
+    > span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    button {
+      align-items: center;
+      background: transparent;
+      border: 0;
+      border-radius: var(--radius-button);
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: grid;
+      flex: 0 0 1.5rem;
+      height: 1.5rem;
+      justify-content: center;
+      padding: 0;
+      place-items: center;
+      width: 1.5rem;
+
+      &:hover {
+        background-color: var(--color-bg-hover);
+        color: var(--color-text);
+      }
+
+      &:focus-visible {
+        outline: 0.125rem solid var(--color-accent);
+        outline-offset: 0.0625rem;
+      }
+    }
+
+    mat-icon {
+      font-size: 1rem;
+      height: 1rem;
+      width: 1rem;
+    }
+  }
+
+  &__input,
+  &__selected {
+    box-sizing: border-box;
+    min-height: 2.75rem;
+  }
+
+  input {
     background: transparent;
     border: 0;
-    border-radius: var(--class-card-radius);
     color: var(--color-text);
     font: inherit;
-    min-width: 0;
-    padding: 0.75rem;
-    width: 100%;
+    flex: 1;
+    min-width: 6rem;
+    outline: 0;
+    padding: 0;
 
     &:focus-visible {
       outline: 0;
     }
-  }
-
-  &:has(.results) > input {
-    border-radius: var(--class-card-radius) var(--class-card-radius) 0 0;
   }
 }
 
@@ -224,43 +322,6 @@ mat-dialog-content {
   }
 }
 
-.selection {
-  align-items: center;
-  display: flex;
-  min-height: 2.5rem;
-
-  &__hint {
-    color: var(--color-text-muted);
-    font-size: 0.875rem;
-  }
-}
-
-.chip {
-  align-items: center;
-  background-color: var(--color-bg-hover);
-  border-radius: var(--radius-pill);
-  display: inline-flex;
-  gap: 0.5rem;
-  padding: 0.25rem 0.5rem 0.25rem 0.75rem;
-
-  button {
-    align-items: center;
-    background: transparent;
-    border: 0;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    display: inline-flex;
-    justify-content: center;
-    padding: 0.125rem;
-  }
-
-  mat-icon {
-    font-size: 1rem;
-    height: 1rem;
-    width: 1rem;
-  }
-}
-
 .actions {
   display: flex;
   justify-content: flex-end;
@@ -303,6 +364,10 @@ mat-dialog-content {
     border-bottom: var(--border-width) solid var(--color-border);
     border-right: 0;
     padding: 0.75rem;
+  }
+
+  .dialog-shell::before {
+    display: none;
   }
 
   .preview__image {

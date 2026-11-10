@@ -12,7 +12,8 @@ namespace LeoClassroom.Services;
 
 public interface ICourseService
 {
-    public ValueTask<OneOf<Success<Course>, NotFound, AlreadyExists>> AddCourseAsync(string title, long rosterId);
+    public ValueTask<OneOf<Success<Course>, NotFound, AlreadyExists>>
+        AddCourseAsync(string title, long rosterId, string? iconSeed = null);
     public ValueTask<OneOf<Course, NotFound>> GetCourseByIdAsync(long id);
     public ValueTask<IReadOnlyCollection<CourseOverview>> GetCourseOverviewsAsync();
 
@@ -29,7 +30,7 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
                                     IClock clock) : ICourseService
 {
     public async ValueTask<OneOf<Success<Course>, NotFound, ICourseService.AlreadyExists>>
-        AddCourseAsync(string title, long rosterId)
+        AddCourseAsync(string title, long rosterId, string? iconSeed = null)
     {
         if (!await uow.RosterRepository.ExistsAsync(rosterId))
         {
@@ -56,6 +57,7 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
         var course = new Course
         {
             Title = title,
+            IconSeed = iconSeed ?? Guid.NewGuid().ToString("N"),
             RosterId = rosterId,
             OwnerId = ownerId.Value,
             IsReadOnly = false,
@@ -123,15 +125,18 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
 
     public async ValueTask<OneOf<Success, NotFound, Forbidden>> DeleteCourseAsync(long id)
     {
-        string? ownerStudentId = await uow.CourseRepository.GetOwnerStudentIdAsync(id);
-        if (ownerStudentId is null)
+        Course? course = await uow.CourseRepository.GetWithTeachersAsync(id);
+        if (course is null)
         {
             logger.LogWarning("Course {CourseId} to delete was not found", id);
 
             return new NotFound();
         }
 
-        if (!IsOwnerOrAdmin(ownerStudentId))
+        bool isTeacher = string.Equals(course.Owner.StudentId, currentUser.StudentId, StringComparison.Ordinal)
+                         || course.CoTeachers.Any(teacher =>
+                             string.Equals(teacher.StudentId, currentUser.StudentId, StringComparison.Ordinal));
+        if (!currentUser.Roles.Contains(Role.Admin) && !isTeacher)
         {
             logger.LogWarning("User {StudentId} forbidden to delete course {CourseId}", currentUser.StudentId, id);
 

@@ -13,13 +13,16 @@ const classRosterSchema = z.object({
 const createdClassSchema = z.object({
   id: z.number().int().positive(),
   title: z.string().min(1),
-  rosterId: z.number().int().positive()
+  rosterId: z.number().int().positive(),
+  iconSeed: z.string().nullable().optional()
 });
 
 export type ClassRoster = z.infer<typeof classRosterSchema>;
 export type CreatedClass = z.infer<typeof createdClassSchema>;
 export type CreateClassResult = { readonly kind: 'created'; readonly value: CreatedClass }
   | { readonly kind: 'error'; readonly message: string };
+export type DeleteCourseResult = { readonly kind: 'deleted' }
+  | { readonly kind: 'error'; readonly status: number; readonly message: string };
 
 @Injectable({
   providedIn: 'root'
@@ -35,17 +38,19 @@ export class ClassService {
     );
   }
 
-  public getAvatar(name: string): Observable<Blob> {
-    const params = new HttpParams().set('name', name);
-
-    return this.http.get(`${backendApiBaseUrl()}/courses/avatar`, { params, responseType: 'blob' });
+  public getAvatar(seed: string): Observable<Blob> {
+    return this.http.get(this.avatarUrl(seed), { responseType: 'blob' });
   }
 
-  public async createClass(name: string, rosterId: string): Promise<CreateClassResult> {
+  public avatarUrl(seed: string): string {
+    return `${backendApiBaseUrl()}/courses/avatar?seed=${encodeURIComponent(seed)}`;
+  }
+
+  public async createClass(name: string, rosterId: string, iconSeed: string): Promise<CreateClassResult> {
     try {
       const response = await firstValueFrom(this.http.post<unknown>(
         `${backendApiBaseUrl()}/courses`,
-        { name: name.trim(), rosterIds: [rosterId] }
+        { name: name.trim(), rosterIds: [rosterId], iconSeed }
       ));
 
       return { kind: 'created', value: createdClassSchema.parse(response) };
@@ -58,6 +63,28 @@ export class ClassService {
 
         return { kind: 'error', message: 'The server returned an invalid response. Please try again.' };
       }
+      throw error;
+    }
+  }
+
+  public async deleteCourse(id: number): Promise<DeleteCourseResult> {
+    try {
+      await firstValueFrom(this.http.delete(`${backendApiBaseUrl()}/courses/${id}`));
+
+      return { kind: 'deleted' };
+    } catch (error) {
+      if (error instanceof HttpErrorResponse) {
+        const status = error.status;
+        const body = error.error as { detail?: string; title?: string } | null;
+        const message = body?.detail ?? body?.title ?? (status === 403
+          ? 'You are not allowed to delete this course.'
+          : status === 404
+            ? 'This course no longer exists.'
+            : 'Could not delete the course. Please try again.');
+
+        return { kind: 'error', status, message };
+      }
+
       throw error;
     }
   }

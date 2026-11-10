@@ -137,6 +137,30 @@ public sealed class RosterEndpointTests(WebApiTestFixture fixture) : WebApiTestB
     }
 
     [Fact]
+    public async Task GetRosters_WithSearchQuery_ReturnsMoreThanTwentyMatches()
+    {
+        AuthenticateAsTeacher(OwnerIf);
+        var matches = Enumerable.Range(1, 21)
+                                .Select(index => new Roster
+                                {
+                                    Name = $"Searchable {index:00}",
+                                    Kind = RosterKind.Auto,
+                                    ClassKey = $"Searchable {index:00}"
+                                })
+                                .ToArray();
+        await ModifyDatabaseContentAsync(async context =>
+        {
+            context.Rosters.AddRange(matches);
+            await context.SaveChangesAsync(TestCancellationToken);
+        });
+
+        var results = await ApiClient.GetFromJsonAsync<RosterOverview[]>(
+            "api/rosters?query=searchable", JsonOptions, TestCancellationToken);
+
+        results.Should().HaveCount(21);
+    }
+
+    [Fact]
     public async Task AddMember_ToAutoRoster_Returns403()
     {
         AuthenticateAsTeacher(OwnerIf);

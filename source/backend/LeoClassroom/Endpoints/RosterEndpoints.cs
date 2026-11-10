@@ -60,7 +60,6 @@ public static class RosterEndpoints
         IReadOnlyCollection<RosterOverview> matches =
             rosters.Where(roster => roster.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
                    .OrderBy(roster => roster.Name, StringComparer.OrdinalIgnoreCase)
-                   .Take(20)
                    .ToArray();
 
         return TypedResults.Ok(matches);

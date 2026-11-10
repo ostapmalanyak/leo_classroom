@@ -10,12 +10,21 @@
     <div class="dialog-columns">
       <section class="preview" aria-label="Class preview">
         <div class="preview__image">
+          @if (avatarUrl() === null) {
+            <div class="preview__placeholder" aria-hidden="true"></div>
+          }
           @if (avatarUrl(); as url) {
             <img [src]="url" [alt]="previewName() + ' class image'">
           }
           @if (avatarLoading()) {
-            <mat-progress-spinner class="preview__spinner" mode="indeterminate" diameter="36"></mat-progress-spinner>
+            <div class="preview__spinner">
+              <mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner>
+            </div>
           }
+          <button class="preview__shuffle" mat-icon-button type="button" aria-label="New icon"
+                  matTooltip="New icon" (click)="refreshAvatar()">
+            <mat-icon>refresh</mat-icon>
+          </button>
         </div>
         <h3>{{ previewName() }}</h3>
       </section>
@@ -31,14 +40,26 @@
 
         <div class="field">
           <span>Search Class...</span>
-          <div #rosterSearch class="roster-search" (click)="$event.stopPropagation()"
+          <div #rosterSearch class="roster-search" (click)="focusRosterSearch(); openRosterResults()"
                (keydown)="handleSearchKeydown($event)">
-            <input [formControl]="search" autocomplete="off" aria-label="Search rosters"
-                   role="combobox" aria-autocomplete="list" aria-controls="roster-results"
-                   [attr.aria-expanded]="resultsOpen()"
-                   [attr.aria-activedescendant]="activeOptionId()"
-                   (focus)="openRosterResults()">
-            @if (resultsOpen()) {
+            @if (selectedRoster(); as roster) {
+              <div class="roster-search__selected">
+                <span>{{ roster.name }}</span>
+                <button type="button" aria-label="Clear selected roster"
+                        (click)="removeSelectedRoster(); $event.stopPropagation()">
+                  <mat-icon aria-hidden="true">close</mat-icon>
+                </button>
+              </div>
+            } @else {
+              <div class="roster-search__input">
+                <input #rosterSearchInput [formControl]="search" autocomplete="off" aria-label="Search rosters"
+                       role="combobox" aria-autocomplete="list" aria-controls="roster-results"
+                       [attr.aria-expanded]="resultsOpen()"
+                       [attr.aria-activedescendant]="activeOptionId()"
+                       (focus)="openRosterResults()">
+              </div>
+            }
+            @if (selectedRoster() === null && resultsOpen()) {
               <div id="roster-results" class="results" role="listbox" aria-label="Roster results">
                 @if (searchState() === 'loading') {
                   <div class="status">
@@ -58,7 +79,7 @@
                             [id]="'roster-option-' + roster.id"
                             [class.result--active]="index === activeIndex()"
                             [attr.aria-selected]="selectedRoster()?.id === roster.id"
-                            (click)="selectRoster(roster)"
+                            (click)="selectRoster(roster); $event.stopPropagation()"
                             (mouseenter)="activeIndex.set(index)">
                       <span>
                         @let highlighted = highlight(roster.name);
@@ -74,19 +95,6 @@
               </div>
             }
           </div>
-        </div>
-
-        <div class="selection" aria-label="Selected roster">
-          @if (selectedRoster(); as roster) {
-            <span class="chip">
-              {{ roster.name }}
-              <button type="button" [attr.aria-label]="'Remove ' + roster.name" (click)="removeSelectedRoster()">
-                <mat-icon>close</mat-icon>
-              </button>
-            </span>
-          } @else {
-            <span class="selection__hint">Select one roster</span>
-          }
         </div>
 
         <div class="actions">

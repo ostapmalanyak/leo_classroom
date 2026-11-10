@@ -14,7 +14,7 @@
   </button>
   @for (course of classes(); track course.id) {
     <a class="class-card" [routerLink]="['/courses', course.id, 'assignments']">
-      <span class="class-card__avatar" [style.background]="course.color">{{ course.initials }}</span>
+      <img class="class-card__avatar" [src]="course.avatarUrl" [alt]="course.title + ' icon'">
       <span class="class-card__body">
         <span class="class-card__title">{{ course.title }}</span>
         <span class="class-card__meta">
@@ -25,6 +25,19 @@
           }
         </span>
       </span>
+      @if (canManageCourses()) {
+        <button class="class-card__menu-button" mat-icon-button type="button" aria-label="Course options"
+                [matMenuTriggerFor]="courseMenu" (click)="stopCardNavigation($event)">
+          <mat-icon>more_vert</mat-icon>
+        </button>
+        <mat-menu #courseMenu="matMenu" panelClass="course-options-menu" (click)="$event.stopPropagation()">
+          <button mat-menu-item type="button" class="course-options-menu__delete"
+                  (click)="openDeleteDialog($event, course)">
+            <mat-icon>delete</mat-icon>
+            <span>Delete course</span>
+          </button>
+        </mat-menu>
+      }
     </a>
   }
 </div>

@@ -49,7 +49,7 @@ internal sealed class CourseRepository(DbSet<Course> courses) : ICourseRepositor
     {
         List<CourseOverview> overviews = await courses.AsNoTracking()
                                                       .OrderBy(c => c.Title)
-                                                      .Select(c => new CourseOverview(c.Id, c.Title, c.RosterId,
+                                                      .Select(c => new CourseOverview(c.Id, c.Title, c.IconSeed, c.RosterId,
                                                                   c.Roster.Name, c.Roster.Members.Count, c.IsReadOnly,
                                                                   c.StudentsRetainAccess))
                                                       .ToListAsync();
