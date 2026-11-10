@@ -373,11 +373,15 @@ internal sealed class ForgejoClient(
     }
 
     public async ValueTask<OneOf<Success<ForgejoRepo>, ForgejoError>> ForkRepoAsync(
-        string sourceOwner, string sourceRepo, string targetOrg, string newName)
+        string sourceOwner, string sourceRepo, string targetOwner, string newName)
     {
-        var body = new ForkRepoBody(targetOrg, newName);
-        HttpResponseMessage response = await http.PostAsJsonAsync(
-            $"api/v1/repos/{Escape(sourceOwner)}/{Escape(sourceRepo)}/forks", body);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post, $"api/v1/repos/{Escape(sourceOwner)}/{Escape(sourceRepo)}/forks")
+        {
+            Content = JsonContent.Create(new ForkRepoBody(null, newName))
+        };
+        request.Headers.Add("Sudo", targetOwner);
+        HttpResponseMessage response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode)
         {
             return await ErrorAsync(response, "fork repo");

@@ -17,11 +17,12 @@ namespace LeoClassroom.Test;
 public sealed class ForgejoClientTests
 {
     private readonly List<HttpRequestMessage> _requests = [];
+    private readonly List<string?> _requestBodies = [];
     private readonly Queue<HttpResponseMessage> _responses = new();
 
     private ForgejoClient Build(ILogger<ForgejoClient>? logger = null)
     {
-        var handler = new StubHandler(_requests, _responses);
+        var handler = new StubHandler(_requests, _requestBodies, _responses);
         var http = new HttpClient(handler) { BaseAddress = new Uri("http://forgejo.test/") };
 
         return new ForgejoClient(
@@ -256,6 +257,20 @@ public sealed class ForgejoClientTests
     }
 
     [Fact]
+    public async Task ForkRepoAsync_SudosAsStudentAndLeavesOrganizationUnset()
+    {
+        Respond(HttpStatusCode.Created,
+                """{"id":1,"name":"exercise","full_name":"IF000050/exercise","clone_url":"http://forgejo.test/IF000050/exercise.git","html_url":"http://forgejo.test/IF000050/exercise","default_branch":"main"}""");
+
+        var result = await Build().ForkRepoAsync("teacher", "starter", "IF000050", "exercise");
+
+        result.ShouldBe<Success<ForgejoRepo>>().Value.FullName.Should().Be("IF000050/exercise");
+        _requests.Single().Headers.GetValues("Sudo").Should().ContainSingle().Which.Should().Be("IF000050");
+        _requestBodies.Single().Should().Contain("\"name\":\"exercise\"")
+            .And.NotContain("organization");
+    }
+
+    [Fact]
     public async Task MigrateRepoAsync_Error_RedactsCredentialsFromFailureAndLog()
     {
         const string adminToken = "admin-token";
@@ -289,17 +304,23 @@ public sealed class ForgejoClientTests
         identity.Login.Should().Be("leo-classroom-bot");
     }
 
-    private sealed class StubHandler(List<HttpRequestMessage> requests, Queue<HttpResponseMessage> responses)
+    private sealed class StubHandler(
+        List<HttpRequestMessage> requests,
+        List<string?> requestBodies,
+        Queue<HttpResponseMessage> responses)
         : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
-                                                               CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+                                                                     CancellationToken cancellationToken)
         {
             requests.Add(request);
+            requestBodies.Add(request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync(cancellationToken));
 
-            return Task.FromResult(responses.Count > 0
-                                       ? responses.Dequeue()
-                                       : new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            return responses.Count > 0
+                ? responses.Dequeue()
+                : new HttpResponseMessage(HttpStatusCode.InternalServerError);
         }
     }
 }

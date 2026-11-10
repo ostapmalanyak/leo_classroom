@@ -97,10 +97,21 @@ internal sealed class RepoProvisioningService(
             return new NotFound();
         }
 
+        if (assignment.StarterSourceKind == StarterSourceKind.ForkOwnRepo)
+        {
+            User? student = await uow.UserRepository.GetByIdAsync(acceptance.StudentId);
+            if (student is null)
+            {
+                return await FailAsync(acceptance, "student not found");
+            }
+
+            acceptance.RepoOwner = student.StudentId;
+        }
+
         OneOf<Success<string>, NotFound, ForgejoError> orgResult = await ProvisionCourseOrgAsync(assignment.CourseId);
 
         return await orgResult.Match<ValueTask<OneOf<Success, NotFound, ProvisioningError>>>(
-            org => ProvisionRepositoryAsync(acceptance, assignment, org.Value),
+            org => ProvisionRepositoryAsync(acceptance, assignment),
             async notFound => await FailAsync(acceptance, "course not found"),
             async error => await FailAsync(acceptance, $"could not provision course org: {error.Reason}"));
     }
@@ -109,42 +120,43 @@ internal sealed class RepoProvisioningService(
     ///     Uses the student's repository when it is already there, and otherwise creates and seeds it
     /// </summary>
     private async ValueTask<OneOf<Success, NotFound, ProvisioningError>> ProvisionRepositoryAsync(
-        Acceptance acceptance, Assignment assignment, string org)
+        Acceptance acceptance, Assignment assignment)
     {
-        OneOf<ForgejoRepo, NotFound, ForgejoError> existing = await forgejo.GetRepoAsync(org, acceptance.RepoName);
+        OneOf<ForgejoRepo, NotFound, ForgejoError> existing =
+            await forgejo.GetRepoAsync(acceptance.RepoOwner, acceptance.RepoName);
 
         return await existing.Match<ValueTask<OneOf<Success, NotFound, ProvisioningError>>>(
-            repo => StoreReadyAsync(acceptance, org, repo.CloneUrl),
-            notFound => SeedRepositoryAsync(acceptance, assignment, org),
+            repo => StoreReadyAsync(acceptance, repo.CloneUrl),
+            notFound => SeedRepositoryAsync(acceptance, assignment, acceptance.RepoOwner),
             async error => await FailAsync(acceptance, error.Reason));
     }
 
     private async ValueTask<OneOf<Success, NotFound, ProvisioningError>> SeedRepositoryAsync(
-        Acceptance acceptance, Assignment assignment, string org)
+        Acceptance acceptance, Assignment assignment, string repoOwner)
     {
-        OneOf<ForgejoRepo, ProvisioningError> seeded = await CreateAndSeedAsync(assignment, org, acceptance.RepoName);
+        OneOf<ForgejoRepo, ProvisioningError> seeded =
+            await CreateAndSeedAsync(assignment, repoOwner, acceptance.RepoName);
 
         return await seeded.Match<ValueTask<OneOf<Success, NotFound, ProvisioningError>>>(
             async repo =>
             {
                 string baseline = repo.DefaultBranch ?? ForgejoNaming.DefaultBranchName;
                 OneOf<Success, ForgejoError> branch = await forgejo.CreateBranchAsync(
-                    org, acceptance.RepoName, ForgejoNaming.FeedbackBranchName, baseline);
+                    repoOwner, acceptance.RepoName, ForgejoNaming.FeedbackBranchName, baseline);
                 if (branch.Failure is { } branchFailed)
                 {
                     logger.LogError("Could not pin feedback branch for acceptance {AcceptanceId} (HTTP {Status}): {Reason}",
                                     acceptance.Id, branchFailed.StatusCode, branchFailed.Reason);
                 }
 
-                return await StoreReadyAsync(acceptance, org, repo.CloneUrl);
+                return await StoreReadyAsync(acceptance, repo.CloneUrl);
             },
             async error => await FailAsync(acceptance, error.Reason));
     }
 
     private async ValueTask<OneOf<Success, NotFound, ProvisioningError>> StoreReadyAsync(
-        Acceptance acceptance, string org, string cloneUrl)
+        Acceptance acceptance, string cloneUrl)
     {
-        acceptance.RepoOwner = org;
         acceptance.RepoUrl = cloneUrl;
         acceptance.Status = SubmissionStatus.Ready;
         acceptance.FailureReason = null;
@@ -192,27 +204,27 @@ internal sealed class RepoProvisioningService(
     }
 
     private async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> CreateAndSeedAsync(
-        Assignment assignment, string org, string repoName)
+        Assignment assignment, string repoOwner, string repoName)
     {
         switch (assignment.StarterSourceKind)
         {
             case StarterSourceKind.DescriptionOnly:
-                return await SeedDescriptionOnlyAsync(assignment, org, repoName);
+                return await SeedDescriptionOnlyAsync(assignment, repoOwner, repoName);
             case StarterSourceKind.Archive:
-                return await SeedFromArchiveAsync(assignment, org, repoName);
+                return await SeedFromArchiveAsync(assignment, repoOwner, repoName);
             case StarterSourceKind.ForkOwnRepo:
-                return await SeedByForkAsync(assignment, org, repoName);
+                return await SeedByForkAsync(assignment, repoOwner, repoName);
             case StarterSourceKind.CopyRepo:
-                return await SeedByMigrateAsync(assignment, org, repoName);
+                return await SeedByMigrateAsync(assignment, repoOwner, repoName);
             default:
                 return new ProvisioningError("unknown starter source");
         }
     }
 
     private async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> SeedDescriptionOnlyAsync(
-        Assignment assignment, string org, string repoName)
+        Assignment assignment, string repoOwner, string repoName)
     {
-        OneOf<ForgejoRepo, ProvisioningError> created = await CreateEmptyRepoAsync(org, repoName);
+        OneOf<ForgejoRepo, ProvisioningError> created = await CreateEmptyRepoAsync(repoOwner, repoName);
 
         return await created.Match<ValueTask<OneOf<ForgejoRepo, ProvisioningError>>>(
             async repo =>
@@ -221,9 +233,14 @@ internal sealed class RepoProvisioningService(
                     ? $"# {assignment.Title}"
                     : assignment.ReadmeMarkdown;
                 OneOf<Success, ForgejoError> file = await forgejo.CreateFileAsync(
-                    org, repoName, "README.md", readme, "Initial commit");
+                    repoOwner, repoName, "README.md", readme, "Initial commit");
                 if (file.Failure is { } fileFailed)
                 {
+                    if (fileFailed.StatusCode == (int) HttpStatusCode.Conflict)
+                    {
+                        return await OverwriteReadmeAsync(repo, readme);
+                    }
+
                     return new ProvisioningError(fileFailed.Reason);
                 }
 
@@ -233,7 +250,7 @@ internal sealed class RepoProvisioningService(
     }
 
     private async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> SeedFromArchiveAsync(
-        Assignment assignment, string org, string repoName)
+        Assignment assignment, string repoOwner, string repoName)
     {
         if (string.IsNullOrEmpty(assignment.ArchivePath) || !File.Exists(assignment.ArchivePath))
         {
@@ -241,7 +258,7 @@ internal sealed class RepoProvisioningService(
         }
 
         string archivePath = assignment.ArchivePath;
-        OneOf<ForgejoRepo, ProvisioningError> created = await CreateEmptyRepoAsync(org, repoName);
+        OneOf<ForgejoRepo, ProvisioningError> created = await CreateEmptyRepoAsync(repoOwner, repoName);
 
         return await created.Match<ValueTask<OneOf<ForgejoRepo, ProvisioningError>>>(
             repo => ExtractIntoRepositoryAsync(assignment, archivePath, repo),
@@ -279,7 +296,7 @@ internal sealed class RepoProvisioningService(
     }
 
     private async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> SeedByForkAsync(
-        Assignment assignment, string org, string repoName)
+        Assignment assignment, string repoOwner, string repoName)
     {
         if (!TryParseOwnerRepo(assignment.StarterRepoUrl, out string sourceOwner, out string sourceRepo))
         {
@@ -287,10 +304,10 @@ internal sealed class RepoProvisioningService(
         }
 
         OneOf<Success<ForgejoRepo>, ForgejoError> fork =
-            await forgejo.ForkRepoAsync(sourceOwner, sourceRepo, org, repoName);
+            await forgejo.ForkRepoAsync(sourceOwner, sourceRepo, repoOwner, repoName);
 
         return await fork.Match<ValueTask<OneOf<ForgejoRepo, ProvisioningError>>>(
-            forked => ApplyReadmeOverrideAsync(assignment, forked.Value),
+            forked => ApplyForkReadmeOverrideAsync(assignment, repoOwner, forked.Value),
             async error =>
             {
                 if (error.StatusCode != (int) HttpStatusCode.Conflict)
@@ -298,16 +315,33 @@ internal sealed class RepoProvisioningService(
                     return new ProvisioningError(error.Reason);
                 }
 
-                OneOf<ForgejoRepo, NotFound, ForgejoError> existing =
-                    await forgejo.GetRepoAsync(org, repoName);
+                OneOf<ForgejoRepo, ProvisioningError> existing =
+                    await GetExistingRepoAsync(repoOwner, repoName, error.Reason);
 
-                return await existing.Match(
-                    repo => ApplyReadmeOverrideAsync(assignment, repo),
-                    _ => ValueTask.FromResult<OneOf<ForgejoRepo, ProvisioningError>>(
-                        new ProvisioningError(error.Reason)),
-                    lookupError => ValueTask.FromResult<OneOf<ForgejoRepo, ProvisioningError>>(
-                        new ProvisioningError(lookupError.Reason)));
+                return await existing
+                    .Match<ValueTask<OneOf<ForgejoRepo, ProvisioningError>>>(
+                        repo => ApplyForkReadmeOverrideAsync(assignment, repoOwner, repo),
+                        existingError => ValueTask.FromResult<OneOf<ForgejoRepo, ProvisioningError>>(
+                            existingError));
             });
+    }
+
+    private async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> ApplyForkReadmeOverrideAsync(
+        Assignment assignment, string repoOwner, ForgejoRepo repo)
+    {
+        if (string.IsNullOrWhiteSpace(assignment.ReadmeMarkdown))
+        {
+            return repo;
+        }
+
+        OneOf<Success, ForgejoError> botAccess = await forgejo.SetCollaboratorAsync(
+            repoOwner, repo.Name, settings.Value.BotName, CollaboratorPermission.Write);
+        if (botAccess.Failure is { } accessFailed)
+        {
+            return new ProvisioningError(accessFailed.Reason);
+        }
+
+        return await ApplyReadmeOverrideAsync(assignment, repo);
     }
 
     internal async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> SeedByMigrateAsync(
@@ -346,10 +380,24 @@ internal sealed class RepoProvisioningService(
             await forgejo.MigrateRepoAsync(sourceUrl, org, repoName, isPrivate: true,
                                            authUsername: authUsername, authPassword: authPassword);
 
-        return await migrated.Match(
+        return await migrated.Match<ValueTask<OneOf<ForgejoRepo, ProvisioningError>>>(
             copied => ApplyReadmeOverrideAsync(assignment, copied.Value),
-            error => ValueTask.FromResult<OneOf<ForgejoRepo, ProvisioningError>>(
-                new ProvisioningError(error.Reason)));
+            async error =>
+            {
+                if (error.StatusCode != (int) HttpStatusCode.Conflict)
+                {
+                    return new ProvisioningError(error.Reason);
+                }
+
+                OneOf<ForgejoRepo, ProvisioningError> existing =
+                    await GetExistingRepoAsync(org, repoName, error.Reason);
+
+                return await existing
+                    .Match<ValueTask<OneOf<ForgejoRepo, ProvisioningError>>>(
+                        repo => ApplyReadmeOverrideAsync(assignment, repo),
+                        existingError => ValueTask.FromResult<OneOf<ForgejoRepo, ProvisioningError>>(
+                            existingError));
+            });
     }
 
     private string InternalCloneUrl(Uri cloneUri)
@@ -368,10 +416,12 @@ internal sealed class RepoProvisioningService(
         OneOf<Success<ForgejoRepo>, AlreadyExists, ForgejoError> created =
             await forgejo.CreateOrgRepoAsync(org, repoName, autoInit: false, isPrivate: true);
 
-        return created.Match<OneOf<ForgejoRepo, ProvisioningError>>(
-            success => success.Value,
-            _ => new ProvisioningError($"repository {org}/{repoName} already exists"),
-            error => new ProvisioningError(error.Reason));
+        return await created.Match<ValueTask<OneOf<ForgejoRepo, ProvisioningError>>>(
+            success => ValueTask.FromResult<OneOf<ForgejoRepo, ProvisioningError>>(success.Value),
+            async _ => await GetExistingRepoAsync(
+                org, repoName, $"repository {org}/{repoName} already exists"),
+            error => ValueTask.FromResult<OneOf<ForgejoRepo, ProvisioningError>>(
+                new ProvisioningError(error.Reason)));
     }
 
     private async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> ApplyReadmeOverrideAsync(
@@ -382,14 +432,31 @@ internal sealed class RepoProvisioningService(
             return repo;
         }
 
+        return await OverwriteReadmeAsync(repo, assignment.ReadmeMarkdown);
+    }
+
+    private async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> OverwriteReadmeAsync(
+        ForgejoRepo repo, string content)
+    {
         OneOf<Success, GitError> overwrite = await git.OverwriteFileAsync(
-            repo.CloneUrl, "README.md", assignment.ReadmeMarkdown, "Override README");
+            repo.CloneUrl, "README.md", content, "Override README");
         if (overwrite.Failure is { } overwriteFailed)
         {
             return new ProvisioningError(overwriteFailed.Reason);
         }
 
         return repo;
+    }
+
+    private async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> GetExistingRepoAsync(
+        string org, string repoName, string notFoundReason)
+    {
+        OneOf<ForgejoRepo, NotFound, ForgejoError> existing = await forgejo.GetRepoAsync(org, repoName);
+
+        return existing.Match<OneOf<ForgejoRepo, ProvisioningError>>(
+            repo => repo,
+            _ => new ProvisioningError(notFoundReason),
+            error => new ProvisioningError(error.Reason));
     }
 
     private async ValueTask<OneOf<Success, ForgejoError>> EnsureMemberAsync(long teamId, string username)

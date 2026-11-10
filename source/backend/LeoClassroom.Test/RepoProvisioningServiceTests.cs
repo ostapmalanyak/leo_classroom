@@ -99,8 +99,13 @@ public sealed class RepoProvisioningServiceTests
         await uow.Received(1).SaveChangesAsync();
     }
 
-    [Fact]
-    public async Task ProvisionAcceptanceAsync_ForkConflict_UsesExistingForkAndCompletesProvisioning()
+    [Theory]
+    [InlineData(StarterSourceKind.DescriptionOnly)]
+    [InlineData(StarterSourceKind.Archive)]
+    [InlineData(StarterSourceKind.ForkOwnRepo)]
+    [InlineData(StarterSourceKind.CopyRepo)]
+    public async Task ProvisionAcceptanceAsync_ProvisioningConflict_UsesExistingRepoAndCompletes(
+        StarterSourceKind sourceKind)
     {
         const long acceptanceId = 12;
         const long assignmentId = 34;
@@ -111,6 +116,8 @@ public sealed class RepoProvisioningServiceTests
         var acceptances = Substitute.For<IAcceptanceRepository>();
         var assignments = Substitute.For<IAssignmentRepository>();
         var courses = Substitute.For<ICourseRepository>();
+        var users = Substitute.For<IUserRepository>();
+        string repoOwner = sourceKind == StarterSourceKind.ForkOwnRepo ? "student" : org;
         var acceptance = new Acceptance
         {
             Id = acceptanceId,
@@ -121,13 +128,18 @@ public sealed class RepoProvisioningServiceTests
             AcceptedAt = SystemClock.Instance.GetCurrentInstant(),
             Status = SubmissionStatus.Provisioning
         };
+        string archivePath = Path.GetTempFileName();
         Assignment assignment = new()
         {
-            Title = "Fork exercise",
-            Slug = "fork-exercise",
+            Title = "Provisioning exercise",
+            Slug = "provisioning-exercise",
             CourseId = courseId,
-            StarterSourceKind = StarterSourceKind.ForkOwnRepo,
-            StarterRepoUrl = "https://git.example.test/teacher/starter"
+            StarterSourceKind = sourceKind,
+            StarterRepoUrl = "https://git.example.test/teacher/starter",
+            ArchivePath = archivePath,
+            ReadmeMarkdown = sourceKind is StarterSourceKind.DescriptionOnly or StarterSourceKind.ForkOwnRepo
+                ? "# Provisioning exercise"
+                : null
         };
         Course course = new()
         {
@@ -137,52 +149,115 @@ public sealed class RepoProvisioningServiceTests
             ForgejoOrg = org
         };
         ForgejoRepo existingFork = CreateRepo(
-            $"{org}/{repoName}", "http://forgejo:3000/course-org/student-assignment.git");
+            $"{repoOwner}/{repoName}", $"http://forgejo:3000/{repoOwner}/{repoName}.git");
         var forgejo = Substitute.For<IForgejoClient>();
         var reconciliation = Substitute.For<IReconciliationService>();
         uow.AcceptanceRepository.Returns(acceptances);
         uow.AssignmentRepository.Returns(assignments);
         uow.CourseRepository.Returns(courses);
+        uow.UserRepository.Returns(users);
         acceptances.GetTrackedByIdAsync(acceptanceId)
                    .Returns(new ValueTask<Acceptance?>(acceptance));
         assignments.GetByIdAsync(assignmentId).Returns(new ValueTask<Assignment?>(assignment));
         courses.GetTrackedByIdAsync(courseId).Returns(new ValueTask<Course?>(course));
+        users.GetByIdAsync(78).Returns(new ValueTask<User?>(
+            new User { StudentId = "student", FirstName = "Stu", LastName = "Dent" }));
         forgejo.EnsureOrgAsync(org).Returns(new ValueTask<OneOf<Success, ForgejoError>>(new Success()));
         forgejo.EnsureTeamAsync(org, ForgejoNaming.TeachersTeamName, CollaboratorPermission.Admin)
                .Returns(new ValueTask<OneOf<Success<long>, ForgejoError>>(new Success<long>(42)));
         forgejo.IsTeamMemberAsync(42, "teacher").Returns(new ValueTask<OneOf<bool, ForgejoError>>(true));
-        forgejo.GetRepoAsync(org, repoName)
+        forgejo.GetRepoAsync(repoOwner, repoName)
                .Returns(
                    new ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>>(new NotFound()),
                    new ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>>(existingFork));
-        forgejo.ForkRepoAsync("teacher", "starter", org, repoName)
+        forgejo.GetRepoAsync("teacher", "starter")
+               .Returns(new ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>>(new NotFound()));
+        forgejo.CreateOrgRepoAsync(org, repoName, false, true)
+               .Returns(new ValueTask<OneOf<Success<ForgejoRepo>, AlreadyExists, ForgejoError>>(
+                   new AlreadyExists()));
+        forgejo.CreateFileAsync(org, repoName, "README.md", "# Provisioning exercise", "Initial commit")
+               .Returns(new ValueTask<OneOf<Success, ForgejoError>>(
+                   new ForgejoError((int) HttpStatusCode.Conflict, "README already exists")));
+        forgejo.ForkRepoAsync("teacher", "starter", repoOwner, repoName)
                .Returns(new ValueTask<OneOf<Success<ForgejoRepo>, ForgejoError>>(
                    new ForgejoError((int) HttpStatusCode.Conflict, "already forked")));
-        forgejo.CreateBranchAsync(org, repoName, ForgejoNaming.FeedbackBranchName, "main")
+        forgejo.SetCollaboratorAsync(repoOwner, repoName, BotName, CollaboratorPermission.Write)
                .Returns(new ValueTask<OneOf<Success, ForgejoError>>(new Success()));
+        forgejo.MigrateRepoAsync(
+                   "https://git.example.test/teacher/starter", org, repoName, true, null, null)
+               .Returns(new ValueTask<OneOf<Success<ForgejoRepo>, ForgejoError>>(
+                   new ForgejoError((int) HttpStatusCode.Conflict, "already exists")));
+        forgejo.CreateBranchAsync(repoOwner, repoName, ForgejoNaming.FeedbackBranchName, "main")
+               .Returns(new ValueTask<OneOf<Success, ForgejoError>>(new Success()));
+        var git = Substitute.For<IGitService>();
+        git.OverwriteFileAsync(
+               existingFork.CloneUrl, "README.md", "# Provisioning exercise", "Override README",
+               Arg.Any<CancellationToken>())
+           .Returns(new ValueTask<OneOf<Success, GitError>>(new Success()));
+        git.SeedRepositoryFromDirectoryAsync(existingFork.CloneUrl, Arg.Any<string>(), Arg.Any<CancellationToken>())
+           .Returns(new ValueTask<OneOf<Success, GitError>>(new Success()));
+        var archiveExtractor = Substitute.For<IArchiveExtractor>();
+        archiveExtractor.ExtractToDirectory(Arg.Any<Stream>(), Arg.Any<string>())
+                        .Returns(new Success());
         reconciliation.ReconcileAsync(assignmentId)
                       .Returns(new ValueTask<OneOf<Success, NotFound, ForgejoError>>(new Success()));
 
-        RepoProvisioningService service = CreateService(forgejo, uow, reconciliation);
-
-        var result = await service.ProvisionAcceptanceAsync(acceptanceId);
+        RepoProvisioningService service = CreateService(forgejo, uow, reconciliation, git, archiveExtractor);
+        OneOf<Success, NotFound, ProvisioningError> result;
+        try
+        {
+            result = await service.ProvisionAcceptanceAsync(acceptanceId);
+        }
+        finally
+        {
+            File.Delete(archivePath);
+        }
 
         result.ShouldBe<Success>();
         acceptance.Status.Should().Be(SubmissionStatus.Ready);
         acceptance.RepoUrl.Should().Be(existingFork.CloneUrl);
-        await forgejo.Received(2).GetRepoAsync(org, repoName);
+        acceptance.RepoOwner.Should().Be(repoOwner);
+        await forgejo.Received(2).GetRepoAsync(repoOwner, repoName);
         await forgejo.Received(1).CreateBranchAsync(
-            org, repoName, ForgejoNaming.FeedbackBranchName, "main");
+            repoOwner, repoName, ForgejoNaming.FeedbackBranchName, "main");
         await reconciliation.Received(1).ReconcileAsync(assignmentId);
+        switch (sourceKind)
+        {
+            case StarterSourceKind.DescriptionOnly:
+                await git.Received(1).OverwriteFileAsync(
+                    existingFork.CloneUrl, "README.md", "# Provisioning exercise", "Override README",
+                    Arg.Any<CancellationToken>());
+                break;
+            case StarterSourceKind.Archive:
+                await git.Received(1).SeedRepositoryFromDirectoryAsync(
+                    existingFork.CloneUrl, Arg.Any<string>(), Arg.Any<CancellationToken>());
+                break;
+            case StarterSourceKind.ForkOwnRepo:
+                await forgejo.Received(1).ForkRepoAsync("teacher", "starter", repoOwner, repoName);
+                await forgejo.Received(1).SetCollaboratorAsync(
+                    repoOwner, repoName, BotName, CollaboratorPermission.Write);
+                await git.Received(1).OverwriteFileAsync(
+                    existingFork.CloneUrl, "README.md", "# Provisioning exercise", "Override README",
+                    Arg.Any<CancellationToken>());
+                break;
+            case StarterSourceKind.CopyRepo:
+                await forgejo.Received(1).MigrateRepoAsync(
+                    "https://git.example.test/teacher/starter", org, repoName, true, null, null);
+                break;
+        }
     }
 
     private static RepoProvisioningService CreateService(
-        IForgejoClient forgejo, IUnitOfWork? uow = null, IReconciliationService? reconciliation = null) =>
+        IForgejoClient forgejo,
+        IUnitOfWork? uow = null,
+        IReconciliationService? reconciliation = null,
+        IGitService? git = null,
+        IArchiveExtractor? archiveExtractor = null) =>
         new(
             uow ?? Substitute.For<IUnitOfWork>(),
             forgejo,
-            Substitute.For<IGitService>(),
-            Substitute.For<IArchiveExtractor>(),
+            git ?? Substitute.For<IGitService>(),
+            archiveExtractor ?? Substitute.For<IArchiveExtractor>(),
             reconciliation ?? Substitute.For<IReconciliationService>(),
             Options.Create(new ForgejoSettings
             {

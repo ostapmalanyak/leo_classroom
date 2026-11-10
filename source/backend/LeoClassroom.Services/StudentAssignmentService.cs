@@ -93,11 +93,14 @@ internal sealed class StudentAssignmentService(
         }
 
         string org = assignment.Course.ForgejoOrg ?? ForgejoNaming.OrgName(assignment.Course.Title, assignment.Course.Id);
+        string repoOwner = assignment.StarterSourceKind == StarterSourceKind.ForkOwnRepo
+            ? currentUser.StudentId
+            : org;
         var acceptance = new Acceptance
         {
             AssignmentId = assignmentId,
             StudentId = studentId.Value,
-            RepoOwner = org,
+            RepoOwner = repoOwner,
             RepoName = ForgejoNaming.RepoName(assignment.Course.Title, assignment.Slug, currentUser.StudentId),
             AcceptedAt = clock.GetCurrentInstant(),
             Status = SubmissionStatus.Provisioning,
