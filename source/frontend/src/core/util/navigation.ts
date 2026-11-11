@@ -26,8 +26,13 @@ export const navEntries: readonly NavEntry[] = [
 
 export function visibleNavEntries(entries: readonly NavEntry[], roles: readonly Role[]): NavEntry[] {
   const isAdmin = roles.includes(Role.Admin);
+  const isTeacher = roles.includes(Role.Teacher);
 
   return entries.filter(entry => {
+    if (entry.route === '/' && isTeacher && !isAdmin) {
+      return false;
+    }
+
     if (entry.teacherOnly) {
       return roles.includes(Role.Teacher) || isAdmin;
     }
@@ -41,7 +46,7 @@ export function defaultRouteForRoles(roles: readonly Role[]): string {
     return '/home/admin';
   }
   if (roles.includes(Role.Teacher)) {
-    return '/home/teacher';
+    return '/my-classes';
   }
 
   return '/home/student';
