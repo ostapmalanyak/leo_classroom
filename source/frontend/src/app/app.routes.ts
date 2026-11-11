@@ -16,12 +16,8 @@ export const routes: Routes = [
     data: { role: Role.Student },
     loadComponent: () => import('./dashboards/student-dashboard/student-dashboard').then(m => m.StudentDashboard)
   },
-  {
-    path: 'home/teacher',
-    canActivate: [authGuard],
-    data: { role: Role.Teacher },
-    loadComponent: () => import('./dashboards/teacher-dashboard/teacher-dashboard').then(m => m.TeacherDashboard)
-  },
+  { path: 'home/teacher', pathMatch: 'full', redirectTo: '/my-classes' },
+  { path: 'home/teachers', pathMatch: 'full', redirectTo: '/my-classes' },
   {
     path: 'home/admin',
     canActivate: [authGuard],
