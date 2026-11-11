@@ -1,9 +1,12 @@
 import { Component, computed, inject, input, OnInit, signal, WritableSignal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { MatButton } from '@angular/material/button';
+import { FormsModule } from '@angular/forms';
+import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatCard, MatCardContent } from '@angular/material/card';
+import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
+import { MatInput } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBar } from '@angular/material/progress-bar';
@@ -11,10 +14,18 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { Instant } from '@js-joda/core';
 import { CourseDetail } from '../../course-detail/course-detail';
 import { AssignmentService, SubmissionStatus } from '../../../core/services/assignment-service';
-import { CourseParticipant, CourseService } from '../../../core/services/course-service';
+import {
+  CourseParticipant, CourseService, CourseTeacherParticipant
+} from '../../../core/services/course-service';
+import { CourseTeacherService } from '../../../core/services/course-teacher-service';
 import { MeService } from '../../../core/services/me-service';
 import { SessionService } from '../../../core/auth/session-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
+import { UserRole, UserService, UserSummary } from '../../../core/services/user-service';
+import { Role } from '../../../core/auth/roles';
+
+const SEARCH_DEBOUNCE_MS = 300;
+const MIN_SEARCH_LENGTH = 2;
 
 interface CourseAssignment {
   id: number;
@@ -26,11 +37,17 @@ interface CourseAssignment {
 
 type AssignmentSort = 'date-ascending' | 'date-descending' | 'title';
 
+interface AssignmentGroup {
+  key: string;
+  date: Date | null;
+  assignments: CourseAssignment[];
+}
+
 @Component({
   selector: 'app-course-assignments',
   imports: [
-    DatePipe, RouterLink, MatButton, MatCard, MatCardContent, MatIcon, MatListModule, MatMenuModule, MatProgressBar,
-    MatTabsModule, CourseDetail
+    DatePipe, RouterLink, FormsModule, MatButton, MatIconButton, MatCard, MatCardContent, MatFormField, MatLabel,
+    MatIcon, MatInput, MatListModule, MatMenuModule, MatProgressBar, MatTabsModule, CourseDetail
   ],
   templateUrl: './course-assignments.html',
   styleUrls: ['./course-assignments.scss', '../../my-classes/my-classes.scss']
@@ -38,6 +55,8 @@ type AssignmentSort = 'date-ascending' | 'date-descending' | 'title';
 export class CourseAssignments implements OnInit {
   private readonly assignmentService = inject(AssignmentService);
   private readonly courseService = inject(CourseService);
+  private readonly courseTeacherService = inject(CourseTeacherService);
+  private readonly userService = inject(UserService);
   private readonly me = inject(MeService);
   protected readonly session = inject(SessionService);
   private readonly snackbar = inject(SnackbarService);
@@ -48,18 +67,13 @@ export class CourseAssignments implements OnInit {
   protected readonly title: WritableSignal<string> = signal('Class');
   protected readonly assignments: WritableSignal<CourseAssignment[]> = signal([]);
   protected readonly participants: WritableSignal<CourseParticipant[]> = signal([]);
+  protected readonly teachers: WritableSignal<CourseTeacherParticipant[]> = signal([]);
   protected readonly loading: WritableSignal<boolean> = signal(false);
   protected readonly selectedTab = signal(0);
   protected readonly sortMode = signal<AssignmentSort>('date-ascending');
-  protected readonly sortLabel = computed(() => ({
-    'date-ascending': 'Date ascending',
-    'date-descending': 'Date descending',
-    title: 'Title'
-  })[this.sortMode()]);
-  protected readonly sortedAssignments = computed(() => {
+  protected readonly assignmentGroups = computed<AssignmentGroup[]>(() => {
     const mode = this.sortMode();
-
-    return [...this.assignments()].sort((left, right) => {
+    const compare = (left: CourseAssignment, right: CourseAssignment): number => {
       if (mode === 'title') {
         return left.title.localeCompare(right.title);
       }
@@ -76,8 +90,47 @@ export class CourseAssignments implements OnInit {
       const byDate = left.deadline.compareTo(right.deadline);
 
       return mode === 'date-descending' ? -byDate : byDate;
-    });
+    };
+    const datedGroups = new Map<string, { date: Date; assignments: CourseAssignment[] }>();
+    const undated: CourseAssignment[] = [];
+
+    for (const assignment of this.assignments()) {
+      if (assignment.deadline === null) {
+        undated.push(assignment);
+        continue;
+      }
+
+      const date = this.formatDeadline(assignment.deadline);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const group = datedGroups.get(key) ?? { date, assignments: [] };
+      group.assignments.push(assignment);
+      datedGroups.set(key, group);
+    }
+
+    const groups: AssignmentGroup[] = [...datedGroups.entries()]
+      .sort(([left], [right]) => mode === 'date-descending'
+        ? right.localeCompare(left)
+        : left.localeCompare(right))
+      .map(([key, group]) => ({ key, date: group.date, assignments: group.assignments.sort(compare) }));
+    if (undated.length > 0) {
+      groups.push({ key: 'no-date', date: null, assignments: undated.sort(compare) });
+    }
+
+    return groups;
   });
+  protected readonly students = computed(() => this.participants().filter(participant => participant.role === Role.Student));
+
+  protected readonly showStudentSearch = signal(false);
+  protected readonly studentSearchTerm = signal('');
+  protected readonly studentSearchResults = signal<CourseParticipant[]>([]);
+  protected readonly studentSearching = signal(false);
+  protected readonly showTeacherSearch = signal(false);
+  protected readonly teacherSearchTerm = signal('');
+  protected readonly teacherSearchResults = signal<UserSummary[]>([]);
+  protected readonly teacherSearching = signal(false);
+
+  private studentSearchTimer: ReturnType<typeof setTimeout> | null = null;
+  private teacherSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected get classesRoute(): string {
     return this.session.isTeacher() ? '/my-classes' : '/my-assignments';
@@ -85,6 +138,13 @@ export class CourseAssignments implements OnInit {
 
   protected formatDeadline(deadline: Instant): Date {
     return new Date(deadline.toEpochMilli());
+  }
+
+  protected isExpired(date: Date): boolean {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return date.getTime() < today.getTime();
   }
 
   public async ngOnInit(): Promise<void> {
@@ -101,6 +161,7 @@ export class CourseAssignments implements OnInit {
 
       this.title.set(course.title);
       this.participants.set(course.participants);
+      this.teachers.set(course.teachers);
 
       if (this.session.isTeacher()) {
         const assignments = await this.assignmentService.listForCourse(Number(this.courseId()));
@@ -152,6 +213,109 @@ export class CourseAssignments implements OnInit {
 
     this.participants.update(participants => participants.filter(member => member.id !== participant.id));
     this.snackbar.show('Participant removed from this course');
+  }
+
+  protected toggleStudentSearch(): void {
+    this.showStudentSearch.update(show => !show);
+    this.studentSearchTerm.set('');
+    this.studentSearchResults.set([]);
+  }
+
+  protected handleStudentSearchChange(term: string): void {
+    this.studentSearchTerm.set(term);
+    if (this.studentSearchTimer !== null) {
+      clearTimeout(this.studentSearchTimer);
+    }
+    if (term.trim().length < MIN_SEARCH_LENGTH) {
+      this.studentSearchResults.set([]);
+      return;
+    }
+    this.studentSearchTimer = setTimeout(() => void this.runStudentSearch(term.trim()), SEARCH_DEBOUNCE_MS);
+  }
+
+  protected async addStudent(user: CourseParticipant): Promise<void> {
+    const added = await this.courseService.addParticipant(Number(this.courseId()), user.id);
+    if (!added) {
+      this.snackbar.show('Could not add student to this course');
+      return;
+    }
+
+    this.participants.update(participants => participants.some(participant => participant.id === user.id)
+      ? participants
+      : [...participants, { id: user.id, firstName: user.firstName, lastName: user.lastName,
+        class: user.class, role: Role.Student }]);
+    this.toggleStudentSearch();
+    this.snackbar.show(`Added ${user.firstName} ${user.lastName}`);
+  }
+
+  protected toggleTeacherSearch(): void {
+    this.showTeacherSearch.update(show => !show);
+    this.teacherSearchTerm.set('');
+    this.teacherSearchResults.set([]);
+  }
+
+  protected handleTeacherSearchChange(term: string): void {
+    this.teacherSearchTerm.set(term);
+    if (this.teacherSearchTimer !== null) {
+      clearTimeout(this.teacherSearchTimer);
+    }
+    if (term.trim().length < MIN_SEARCH_LENGTH) {
+      this.teacherSearchResults.set([]);
+      return;
+    }
+    this.teacherSearchTimer = setTimeout(() => void this.runTeacherSearch(term.trim()), SEARCH_DEBOUNCE_MS);
+  }
+
+  protected async addTeacher(user: UserSummary): Promise<void> {
+    const result = await this.courseTeacherService.addTeacher(Number(this.courseId()), user.id);
+    if (result !== 'ok') {
+      this.snackbar.show(result === 'forbidden'
+        ? 'Only the course owner or an admin can add co-teachers'
+        : 'Could not add co-teacher');
+      return;
+    }
+
+    this.teachers.update(teachers => teachers.some(teacher => teacher.id === user.id)
+      ? teachers
+      : [...teachers, { id: user.id, firstName: user.firstName, lastName: user.lastName, isOwner: false }]);
+    this.toggleTeacherSearch();
+  }
+
+  protected async removeTeacher(teacher: CourseTeacherParticipant): Promise<void> {
+    const result = await this.courseTeacherService.removeTeacher(Number(this.courseId()), teacher.id);
+    if (result !== 'ok') {
+      this.snackbar.show(result === 'forbidden'
+        ? 'Only the course owner or an admin can remove co-teachers'
+        : 'Could not remove co-teacher');
+      return;
+    }
+
+    this.teachers.update(teachers => teachers.filter(member => member.id !== teacher.id));
+  }
+
+  private async runStudentSearch(term: string): Promise<void> {
+    this.studentSearching.set(true);
+    const results = await this.courseService.searchAvailableStudents(Number(this.courseId()), term);
+    this.studentSearching.set(false);
+    if (results === null) {
+      this.snackbar.show('Could not search students');
+      return;
+    }
+
+    this.studentSearchResults.set(results);
+  }
+
+  private async runTeacherSearch(term: string): Promise<void> {
+    this.teacherSearching.set(true);
+    const results = await this.userService.search(term, UserRole.Teacher);
+    this.teacherSearching.set(false);
+    if (results === null) {
+      this.snackbar.show('Could not search teachers');
+      return;
+    }
+
+    const existingIds = new Set(this.teachers().map(teacher => teacher.id));
+    this.teacherSearchResults.set(results.filter(user => !existingIds.has(user.id)));
   }
 
 }

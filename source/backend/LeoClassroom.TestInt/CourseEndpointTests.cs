@@ -19,6 +19,7 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
     private long _rosterId;
     private long _secondRosterId;
     private long _studentId;
+    private long _otherStudentId;
 
     protected override async ValueTask ImportSeedDataAsync(DatabaseContext context)
     {
@@ -39,13 +40,23 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
             Role = Role.Student,
             Class = "5AHIF"
         };
+        var otherStudent = new User
+        {
+            StudentId = "IF000051",
+            FirstName = "Other",
+            LastName = "Student",
+            Role = Role.Student,
+            State = UserState.Active,
+            Class = "5AHIF"
+        };
         roster.Members.Add(student);
         context.Rosters.AddRange(roster, secondRoster);
-        context.Users.AddRange(owner, student);
+        context.Users.AddRange(owner, student, otherStudent);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         _rosterId = roster.Id;
         _secondRosterId = secondRoster.Id;
         _studentId = student.Id;
+        _otherStudentId = otherStudent.Id;
     }
 
     private CourseCreateRequest ValidCreateRequest(string title = "Algorithms") => new(title, _rosterId);
@@ -272,8 +283,89 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
         participants.Title.Should().Be("Algorithms");
         participants.Participants.Should().ContainSingle()
                    .Which.Should().Be(new CourseParticipantDto(_studentId, "Roster", "Student", "5AHIF", Role.Student));
+        participants.Teachers.Should().ContainSingle()
+                   .Which.Should().Match<CourseTeacherParticipantDto>(teacher =>
+                       teacher.FirstName == "Course" && teacher.LastName == "Owner" && teacher.IsOwner);
         string body = await response.Content.ReadAsStringAsync(TestCancellationToken);
         body.Should().NotContain("\"studentId\"");
+    }
+
+    [Fact]
+    public async Task PostCourseParticipant_AddsActiveStudentOnlyToCourse()
+    {
+        CourseDto course = await CreateCourseAsOwnerAsync();
+        await ModifyDatabaseContentAsync(async context =>
+        {
+            Roster roster = await context.Rosters.Include(item => item.Members)
+                                      .SingleAsync(item => item.Id == _rosterId, TestCancellationToken);
+            User student = await context.Users.SingleAsync(user => user.Id == _otherStudentId,
+                                                           TestCancellationToken);
+            roster.Members.Add(student);
+            await context.SaveChangesAsync(TestCancellationToken);
+        });
+
+        var searchResponse = await ApiClient.GetAsync(
+            $"api/courses/{course.Id}/available-students?q=OTHER", TestCancellationToken);
+        searchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        CourseParticipantDto[] candidates =
+            (await searchResponse.Content.ReadFromJsonAsync<CourseParticipantDto[]>(JsonOptions,
+                TestCancellationToken))!;
+        candidates.Should().ContainSingle()
+                  .Which.Should().Match<CourseParticipantDto>(student =>
+                      student.Id == _otherStudentId && student.FirstName == "Other");
+        (await searchResponse.Content.ReadAsStringAsync(TestCancellationToken)).Should().NotContain("\"studentId\"");
+
+        var response = await ApiClient.PostAsJsonAsync(
+            $"api/courses/{course.Id}/participants", new CourseParticipantRequest(_otherStudentId),
+            JsonOptions, TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var participantsResponse = await ApiClient.GetAsync(
+            $"api/courses/{course.Id}/participants", TestCancellationToken);
+        CourseParticipantsDto participants =
+            (await participantsResponse.Content.ReadFromJsonAsync<CourseParticipantsDto>(
+                JsonOptions, TestCancellationToken))!;
+        participants.Participants.Should().Contain(participant => participant.Id == _otherStudentId);
+
+        bool remainsOnSchoolRoster = false;
+        await ModifyDatabaseContentAsync(async context =>
+            remainsOnSchoolRoster = await context.Rosters
+                .Where(roster => roster.Id == _rosterId)
+                .SelectMany(roster => roster.Members)
+                .AnyAsync(member => member.Id == _otherStudentId, TestCancellationToken));
+        remainsOnSchoolRoster.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task PostCourseParticipant_StudentIsForbidden()
+    {
+        CourseDto course = await CreateCourseAsOwnerAsync();
+        AuthenticateAsStudent(StudentIf);
+
+        var response = await ApiClient.PostAsJsonAsync(
+            $"api/courses/{course.Id}/participants", new CourseParticipantRequest(_otherStudentId),
+            JsonOptions, TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task PostCourseParticipant_StudentOutsideSelectedRoster_IsUnavailable()
+    {
+        CourseDto course = await CreateCourseAsOwnerAsync();
+
+        var searchResponse = await ApiClient.GetAsync(
+            $"api/courses/{course.Id}/available-students?q=Other", TestCancellationToken);
+        searchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        CourseParticipantDto[] candidates =
+            (await searchResponse.Content.ReadFromJsonAsync<CourseParticipantDto[]>(JsonOptions,
+                TestCancellationToken))!;
+        candidates.Should().BeEmpty();
+
+        var addResponse = await ApiClient.PostAsJsonAsync(
+            $"api/courses/{course.Id}/participants", new CourseParticipantRequest(_otherStudentId),
+            JsonOptions, TestCancellationToken);
+        addResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]

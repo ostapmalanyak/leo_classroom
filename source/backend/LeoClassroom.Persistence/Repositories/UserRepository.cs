@@ -14,6 +14,9 @@ public interface IUserRepository
     public ValueTask<IReadOnlyCollection<User>> GetAllTrackedAsync();
     public ValueTask<User?> GetTrackedByIdAsync(long id);
     public ValueTask<IReadOnlyCollection<UserSummary>> SearchActiveAsync(string term, Role? role, int take);
+    public ValueTask<IReadOnlyCollection<UserSummary>> SearchActiveRosterMembersAsync(
+        long rosterId, string term, Role role, int take);
+    public ValueTask<bool> IsActiveRosterMemberAsync(long rosterId, long userId, Role role);
     public ValueTask<IReadOnlyCollection<ProvisionedUser>> GetAllProvisionedAsync();
     public ValueTask<IReadOnlyCollection<User>> GetPurgeCandidatesAsync(Instant lastSeenBefore);
     public ValueTask<bool> DeleteByIdAsync(long id);
@@ -112,12 +115,13 @@ internal sealed class UserRepository(DbSet<User> users) : IUserRepository
         }
         if (!string.IsNullOrWhiteSpace(term))
         {
-            query = query.Where(u => u.StudentId.Contains(term)
-                                     || u.FirstName.Contains(term)
-                                     || u.LastName.Contains(term));
+            string normalizedTerm = term.ToLower();
+            query = query.Where(u => u.StudentId.ToLower().Contains(normalizedTerm)
+                                     || u.FirstName.ToLower().Contains(normalizedTerm)
+                                     || u.LastName.ToLower().Contains(normalizedTerm));
         }
 
-        List<UserSummary> results = await query.OrderBy(u => u.LastName).ThenBy(u => u.FirstName)
+        List<UserSummary> results = await query.OrderBy(u => u.LastName.ToLower()).ThenBy(u => u.FirstName.ToLower())
                                                .Take(take)
                                                .Select(u => new UserSummary(u.Id, u.StudentId, u.FirstName,
                                                            u.LastName, u.Class, u.Role))
@@ -125,4 +129,32 @@ internal sealed class UserRepository(DbSet<User> users) : IUserRepository
 
         return results.AsReadOnly();
     }
+
+    public async ValueTask<IReadOnlyCollection<UserSummary>> SearchActiveRosterMembersAsync(
+        long rosterId, string term, Role role, int take)
+    {
+        IQueryable<User> query = users.AsNoTracking()
+                                      .Where(u => u.State == UserState.Active && u.Role == role
+                                                  && u.Rosters.Any(roster => roster.Id == rosterId));
+        if (!string.IsNullOrWhiteSpace(term))
+        {
+            string normalizedTerm = term.ToLower();
+            query = query.Where(u => u.StudentId.ToLower().Contains(normalizedTerm)
+                                     || u.FirstName.ToLower().Contains(normalizedTerm)
+                                     || u.LastName.ToLower().Contains(normalizedTerm));
+        }
+
+        List<UserSummary> results = await query.OrderBy(u => u.LastName.ToLower()).ThenBy(u => u.FirstName.ToLower())
+                                               .Take(take)
+                                               .Select(u => new UserSummary(u.Id, u.StudentId, u.FirstName,
+                                                           u.LastName, u.Class, u.Role))
+                                               .ToListAsync();
+
+        return results.AsReadOnly();
+    }
+
+    public async ValueTask<bool> IsActiveRosterMemberAsync(long rosterId, long userId, Role role) =>
+        await users.AsNoTracking()
+                   .AnyAsync(u => u.Id == userId && u.State == UserState.Active && u.Role == role
+                                  && u.Rosters.Any(roster => roster.Id == rosterId));
 }

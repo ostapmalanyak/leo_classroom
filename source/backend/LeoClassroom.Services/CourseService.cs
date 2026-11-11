@@ -16,6 +16,9 @@ public interface ICourseService
         AddCourseAsync(string title, long rosterId, string? iconSeed = null);
     public ValueTask<OneOf<Course, NotFound>> GetCourseByIdAsync(long id);
     public ValueTask<OneOf<CourseParticipants, NotFound, Forbidden>> GetParticipantsAsync(long id);
+    public ValueTask<OneOf<IReadOnlyCollection<CourseParticipant>, NotFound, Forbidden>>
+        SearchAvailableStudentsAsync(long id, string term);
+    public ValueTask<OneOf<Success, NotFound, Forbidden>> AddParticipantAsync(long id, long userId);
     public ValueTask<OneOf<Success, NotFound, Forbidden>> RemoveParticipantAsync(long id, long userId);
     public ValueTask<IReadOnlyCollection<CourseOverview>> GetCourseOverviewsAsync();
 
@@ -29,12 +32,17 @@ public interface ICourseService
 
 public sealed record CourseParticipant(long Id, string FirstName, string LastName, string? Class, Role Role);
 
-public sealed record CourseParticipants(string Title, IReadOnlyCollection<CourseParticipant> Participants);
+public sealed record CourseTeacherParticipant(long Id, string FirstName, string LastName, bool IsOwner);
+
+public sealed record CourseParticipants(string Title, IReadOnlyCollection<CourseParticipant> Participants,
+                                        IReadOnlyCollection<CourseTeacherParticipant> Teachers);
 
 internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, IDeletionCascade deletion,
                                     IAuditLog audit, ILogger<CourseService> logger,
                                     IClock clock) : ICourseService
 {
+    private const int MaxStudentSearchResults = 20;
+
     public async ValueTask<OneOf<Success<Course>, NotFound, ICourseService.AlreadyExists>>
         AddCourseAsync(string title, long rosterId, string? iconSeed = null)
     {
@@ -117,8 +125,73 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
             .Select(member => new CourseParticipant(member.Id, member.FirstName, member.LastName, member.Class,
                                                     member.Role))
             .ToArray();
+        CourseTeacherParticipant[] teachers =
+        [
+            new(course.Owner.Id, course.Owner.FirstName, course.Owner.LastName, true),
+            .. course.CoTeachers.OrderBy(teacher => teacher.LastName).ThenBy(teacher => teacher.FirstName)
+                       .Select(teacher => new CourseTeacherParticipant(teacher.Id, teacher.FirstName,
+                                                                      teacher.LastName, false))
+        ];
 
-        return new CourseParticipants(course.Title, participants);
+        return new CourseParticipants(course.Title, participants, teachers);
+    }
+
+    public async ValueTask<OneOf<IReadOnlyCollection<CourseParticipant>, NotFound, Forbidden>>
+        SearchAvailableStudentsAsync(long id, string term)
+    {
+        Course? course = await uow.CourseRepository.GetTrackedWithTeachersAndMembersAsync(id);
+        if (course is null)
+        {
+            return new NotFound();
+        }
+
+        if (!IsCourseTeacher(course))
+        {
+            return new Forbidden();
+        }
+
+        IReadOnlyCollection<UserSummary> matches = await uow.UserRepository.SearchActiveRosterMembersAsync(
+            course.RosterId, term, Role.Student, MaxStudentSearchResults);
+        HashSet<long> currentMemberIds = course.Members.Select(member => member.Id).ToHashSet();
+
+        return matches.Where(user => !currentMemberIds.Contains(user.Id))
+                      .Select(user => new CourseParticipant(user.Id, user.FirstName, user.LastName, user.Class,
+                                                            user.Role))
+                      .ToArray();
+    }
+
+    public async ValueTask<OneOf<Success, NotFound, Forbidden>> AddParticipantAsync(long id, long userId)
+    {
+        Course? course = await uow.CourseRepository.GetTrackedWithTeachersAndMembersAsync(id);
+        if (course is null)
+        {
+            return new NotFound();
+        }
+
+        if (!IsCourseTeacher(course))
+        {
+            logger.LogWarning("User {StudentId} forbidden to add participant to course {CourseId}",
+                              currentUser.StudentId, id);
+
+            return new Forbidden();
+        }
+
+        User? student = await uow.UserRepository.GetTrackedByIdAsync(userId);
+        if (student is null || !await uow.UserRepository.IsActiveRosterMemberAsync(course.RosterId, userId,
+                                                                                   Role.Student))
+        {
+            return new NotFound();
+        }
+
+        if (course.Members.All(member => member.Id != userId))
+        {
+            course.Members.Add(student);
+            await uow.SaveChangesAsync();
+            logger.LogInformation("User {StudentId} added participant {ParticipantId} to course {CourseId}",
+                                  currentUser.StudentId, userId, id);
+        }
+
+        return new Success();
     }
 
     public async ValueTask<OneOf<Success, NotFound, Forbidden>> RemoveParticipantAsync(long id, long userId)
@@ -129,12 +202,7 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
             return new NotFound();
         }
 
-        bool isCourseTeacher = currentUser.Roles.Contains(Role.Admin)
-                               || string.Equals(course.Owner.StudentId, currentUser.StudentId,
-                                                StringComparison.Ordinal)
-                               || course.CoTeachers.Any(teacher =>
-                                   string.Equals(teacher.StudentId, currentUser.StudentId, StringComparison.Ordinal));
-        if (!isCourseTeacher)
+        if (!IsCourseTeacher(course))
         {
             logger.LogWarning("User {StudentId} forbidden to remove participant from course {CourseId}",
                               currentUser.StudentId, id);
@@ -224,4 +292,10 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
     private bool IsOwnerOrAdmin(string ownerStudentId) =>
         currentUser.Roles.Contains(Role.Admin)
         || string.Equals(ownerStudentId, currentUser.StudentId, StringComparison.Ordinal);
+
+    private bool IsCourseTeacher(Course course) =>
+        currentUser.Roles.Contains(Role.Admin)
+        || string.Equals(course.Owner.StudentId, currentUser.StudentId, StringComparison.Ordinal)
+        || course.CoTeachers.Any(teacher =>
+            string.Equals(teacher.StudentId, currentUser.StudentId, StringComparison.Ordinal));
 }

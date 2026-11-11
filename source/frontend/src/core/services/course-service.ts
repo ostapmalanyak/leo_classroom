@@ -46,9 +46,34 @@ export class CourseService extends BackendServiceBase {
     }
   }
 
+  public async searchAvailableStudents(courseId: number, term: string): Promise<CourseParticipant[] | null> {
+    try {
+      const params = this.createHttpParams(['q', term]);
+      const response = await firstValueFrom(
+        this.http.get<unknown>(this.buildUrl(`${courseId}/available-students`), { params }));
+
+      return courseParticipantZod.array().parse(response);
+    } catch (error) {
+      return this.mapReadError(error);
+    }
+  }
+
   public async removeParticipant(courseId: number, userId: number): Promise<boolean> {
     try {
       await firstValueFrom(this.http.delete(this.buildUrl(`${courseId}/participants/${userId}`)));
+
+      return true;
+    } catch (error) {
+      if (error instanceof HttpErrorResponse) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  public async addParticipant(courseId: number, userId: number): Promise<boolean> {
+    try {
+      await firstValueFrom(this.http.post(this.buildUrl(`${courseId}/participants`), { userId }));
 
       return true;
     } catch (error) {
@@ -150,8 +175,17 @@ const courseParticipantZod = z.object({
 });
 export type CourseParticipant = z.infer<typeof courseParticipantZod>;
 
+const courseTeacherParticipantZod = z.object({
+  id: z.int().positive(),
+  firstName: z.string(),
+  lastName: z.string(),
+  isOwner: z.boolean()
+});
+export type CourseTeacherParticipant = z.infer<typeof courseTeacherParticipantZod>;
+
 const courseParticipantsZod = z.object({
   title: z.string().min(1),
-  participants: courseParticipantZod.array()
+  participants: courseParticipantZod.array(),
+  teachers: courseTeacherParticipantZod.array()
 });
 export type CourseParticipants = z.infer<typeof courseParticipantsZod>;

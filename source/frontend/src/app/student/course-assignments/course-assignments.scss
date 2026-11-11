@@ -1,12 +1,6 @@
 .course-header {
   align-items: flex-start;
   display: flex;
-  gap: var(--space-4);
-
-  > a {
-    flex: none;
-    margin-block-start: 0.5rem;
-  }
 
   .course-content {
     flex: 1 1 0%;
@@ -22,7 +16,34 @@
 }
 
 .course-tabs {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--space-4);
   position: relative;
+}
+
+.back-to-classes {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-1);
+  height: 3rem;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--color-text);
+  }
+
+  mat-icon {
+    height: 1.25rem;
+    width: 1.25rem;
+  }
+}
+
+.course-tab-group {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .sort-control {
@@ -33,6 +54,7 @@
 
   button {
     border-radius: var(--class-card-radius);
+    cursor: pointer;
     height: 2.5rem;
     padding: 0;
     width: 2.5rem;
@@ -66,9 +88,100 @@
 .assignments {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1.25rem;
   margin: 0;
   width: 100%;
+}
+
+.assignment-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.section-heading {
+  align-items: center;
+  border-bottom: var(--border-width) solid var(--color-border);
+  display: flex;
+  font-size: 1rem;
+  font-weight: 600;
+  justify-content: space-between;
+  margin: 0;
+  padding-block-end: 0.375rem;
+}
+
+.date-status {
+  color: var(--color-success-text);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.date-status--expired {
+  color: var(--color-danger-text);
+}
+
+.participant-section + .participant-section {
+  margin-block-start: 1.5rem;
+}
+
+.add-row {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  min-height: 3.5rem;
+}
+
+.search-field {
+  width: 100%;
+}
+
+.search-results {
+  background-color: var(--color-bg-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  margin-block-end: var(--space-4);
+}
+
+.square-action {
+  align-items: center;
+  aspect-ratio: 1;
+  border: var(--border-width) solid;
+  border-radius: 0.5rem;
+  display: inline-flex;
+  justify-content: center;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  min-width: 2.5rem;
+  padding: 0;
+  width: 2.5rem;
+
+  mat-icon {
+    height: 1.25rem;
+    width: 1.25rem;
+  }
+}
+
+.square-action--remove {
+  background-color: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-text);
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--color-danger-bg) 70%, #ff0000);
+    border-color: color-mix(in srgb, var(--color-danger-border) 60%, #ff0000);
+  }
+}
+
+.square-action--add {
+  background-color: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-success-text);
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--color-success-bg) 70%, #00ff66);
+    border-color: color-mix(in srgb, var(--color-success-border) 60%, #00ff66);
+  }
 }
 
 .assignment-card {
@@ -92,17 +205,6 @@
   display: block;
 }
 
-.assignment-deadline {
-  color: var(--color-text-muted);
-  display: block;
-  font-size: 0.875rem;
-  min-width: 0;
-}
-
-.remove-participant {
-  color: var(--color-danger-text);
-}
-
 .assignment-details {
   align-items: center;
   display: flex;
@@ -118,8 +220,6 @@
 
 @media (max-width: 48rem) {
   .course-header {
-    flex-direction: column;
-    gap: var(--space-2);
     width: 100%;
 
     .course-content {

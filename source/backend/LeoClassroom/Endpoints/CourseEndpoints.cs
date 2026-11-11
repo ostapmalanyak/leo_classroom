@@ -51,6 +51,8 @@ public static class CourseEndpoints
                                         .WithTags("Courses")
                                         .RequireAuthorization();
             courseParticipants.MapGet("/{id:long:min(1)}/participants", GetParticipantsAsync);
+            courseParticipants.MapGet("/{id:long:min(1)}/available-students", SearchAvailableStudentsAsync);
+            courseParticipants.MapPost("/{id:long:min(1)}/participants", AddParticipantAsync);
             courseParticipants.MapDelete("/{id:long:min(1)}/participants/{userId:long:min(1)}",
                                          RemoveParticipantAsync);
         }
@@ -143,6 +145,42 @@ public static class CourseEndpoints
             participants => TypedResults.Ok(CourseParticipantsDto.FromParticipants(participants)),
             _ => TypedResults.NotFound(),
             _ => ApiResults.Forbidden());
+    }
+
+    private static async ValueTask<Results<Ok<IReadOnlyCollection<CourseParticipantDto>>, NotFound, ProblemHttpResult>>
+        SearchAvailableStudentsAsync([FromRoute] long id, [FromQuery] string? q,
+                                     [FromServices] ICourseService service)
+    {
+        var result = await service.SearchAvailableStudentsAsync(id, q?.Trim() ?? string.Empty);
+
+        return result.Match<Results<Ok<IReadOnlyCollection<CourseParticipantDto>>, NotFound, ProblemHttpResult>>(
+            students => TypedResults.Ok<IReadOnlyCollection<CourseParticipantDto>>(
+                students.Select(student => new CourseParticipantDto(student.Id, student.FirstName, student.LastName,
+                                                                     student.Class, student.Role)).ToArray()),
+            _ => TypedResults.NotFound(),
+            _ => ApiResults.Forbidden());
+    }
+
+    private static async ValueTask<Results<NoContent, NotFound, ValidationProblem, ProblemHttpResult>> AddParticipantAsync(
+        [FromRoute] long id, [FromBody] CourseParticipantRequest request, [FromServices] ICourseService service,
+        [FromServices] ITransactionProvider transaction)
+    {
+        if (new CourseParticipantRequest.Validator().Check(request) is { } validationProblem)
+        {
+            return validationProblem;
+        }
+
+        await transaction.BeginTransactionAsync();
+        var result = await service.AddParticipantAsync(id, request.UserId);
+
+        if (result.IsT0)
+        {
+            await transaction.CommitAsync();
+
+            return TypedResults.NoContent();
+        }
+
+        return result.IsT1 ? TypedResults.NotFound() : ApiResults.Forbidden();
     }
 
     private static async ValueTask<Results<NoContent, NotFound, ProblemHttpResult>> RemoveParticipantAsync(
@@ -306,6 +344,7 @@ public sealed record CourseDto(
 }
 
 public sealed record CourseParticipantDto(long Id, string FirstName, string LastName, string? Class, Role Role);
+public sealed record CourseTeacherParticipantDto(long Id, string FirstName, string LastName, bool IsOwner);
 
 public sealed record CourseParticipantsDto(string Title, IReadOnlyCollection<CourseParticipantDto> Participants)
 {
@@ -314,5 +353,21 @@ public sealed record CourseParticipantsDto(string Title, IReadOnlyCollection<Cou
             .Select(participant =>
                 new CourseParticipantDto(participant.Id, participant.FirstName, participant.LastName, participant.Class,
                                          participant.Role))
-            .ToArray());
+            .ToArray())
+        {
+            Teachers = participants.Teachers
+                .Select(teacher => new CourseTeacherParticipantDto(teacher.Id, teacher.FirstName, teacher.LastName,
+                                                                    teacher.IsOwner))
+                .ToArray()
+        };
+
+    public IReadOnlyCollection<CourseTeacherParticipantDto> Teachers { get; init; } = [];
+}
+
+public sealed record CourseParticipantRequest(long UserId)
+{
+    public sealed class Validator : AbstractValidator<CourseParticipantRequest>
+    {
+        public Validator() => RuleFor(request => request.UserId).GreaterThan(0);
+    }
 }
