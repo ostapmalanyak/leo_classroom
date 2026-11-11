@@ -10,6 +10,7 @@ public class Course
     public long OwnerId { get; set; }
     public User Owner { get; set; } = null!;
     public ICollection<User> CoTeachers { get; set; } = [];
+    public ICollection<User> Members { get; set; } = [];
     public bool IsReadOnly { get; set; }
     public bool StudentsRetainAccess { get; set; }
     public string? ForgejoOrg { get; set; }

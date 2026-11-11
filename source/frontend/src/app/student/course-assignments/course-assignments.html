@@ -1,65 +1,100 @@
 <div class="course-header">
   <a mat-button [routerLink]="classesRoute"><mat-icon>arrow_back</mat-icon> All classes</a>
-  <mat-tab-group aria-label="Course sections">
-    <mat-tab label="Course">
-      <h1>{{ title() }}</h1>
-
-      @if (loading()) {
-        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-      }
-
-      @if (session.isTeacher()) {
-        <div class="class-grid create-assignment-grid">
-          <a class="class-card class-card--add" [routerLink]="['/courses', courseId(), 'assignments', 'new']">
-            <span class="class-card__add-icon" aria-hidden="true">+</span>
-            <span>Create Assignment</span>
-          </a>
+  <div class="course-content">
+    <h1>{{ title() }}'s {{ selectedTab() === 0 ? 'Assignments' : selectedTab() === 1 ? 'Participants' : 'Settings' }}</h1>
+    <div class="course-tabs">
+      @if (selectedTab() === 0) {
+        <div class="sort-control">
+          <button mat-icon-button type="button" aria-label="Sort assignments" [matMenuTriggerFor]="sortMenu">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2v6m0 0 3-3m-3 3L9 5M4 12h16M7 16h10m-7 4h4" />
+            </svg>
+          </button>
+          <mat-menu #sortMenu="matMenu">
+            <button mat-menu-item type="button" (click)="sortMode.set('date-ascending')">Date ascending</button>
+            <button mat-menu-item type="button" (click)="sortMode.set('date-descending')">Date descending</button>
+            <button mat-menu-item type="button" (click)="sortMode.set('title')">Title</button>
+          </mat-menu>
         </div>
       }
 
-      @if (!loading() && assignments().length === 0) {
-        <p class="empty">No assignments yet.</p>
-      }
-
-      <div class="assignments">
-        @for (assignment of assignments(); track assignment.id) {
-          <mat-card class="assignment-card">
-            <mat-card-content>
-              <strong>{{ assignment.title }}</strong>
-              <div class="assignment-details">
-                @if (assignment.deadline; as deadline) {
-                  <span>Deadline: {{ formatDeadline(deadline) | date: 'dd.MM.yy HH:mm' }}</span>
-                }
-                @if (session.isTeacher()) {
-                  <a mat-button [routerLink]="['/assignments', assignment.id, 'edit']">Edit</a>
-                  <a mat-button [routerLink]="['/assignments', assignment.id, 'students']">See submissions</a>
-                } @else {
-                  <span>{{ assignment.accepted ? (assignment.status ?? 'Accepted') : 'Not accepted yet' }}</span>
-                  <a mat-button [routerLink]="['/my-assignments', assignment.id]">Open assignment</a>
-                }
-              </div>
-            </mat-card-content>
-          </mat-card>
-        }
-      </div>
-    </mat-tab>
-    <mat-tab label="Participants">
-      <h1>{{ title() }} participants</h1>
-
-      @if (loading()) {
-        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-      } @else if (participants().length === 0) {
-        <p class="empty">No participants yet.</p>
-      } @else {
-        <mat-list>
-          @for (participant of participants(); track $index) {
-            <mat-list-item>
-              <span matListItemTitle>{{ participant.firstName }} {{ participant.lastName }}</span>
-              <span matListItemLine>{{ participant.role }}@if (participant.class) { · {{ participant.class }} }</span>
-            </mat-list-item>
+      <mat-tab-group
+        aria-label="Course sections"
+        [mat-stretch-tabs]="false"
+        (selectedIndexChange)="selectedTab.set($event)">
+        <mat-tab label="Course">
+          @if (loading()) {
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
           }
-        </mat-list>
-      }
-    </mat-tab>
-  </mat-tab-group>
+
+          @if (session.isTeacher()) {
+            <div class="class-grid create-assignment-grid">
+              <a class="class-card class-card--add" [routerLink]="['/courses', courseId(), 'assignments', 'new']">
+                <span class="class-card__add-icon" aria-hidden="true">+</span>
+                <span>Create Assignment</span>
+              </a>
+            </div>
+          }
+
+          @if (!loading() && assignments().length === 0) {
+            <p class="empty">No assignments yet.</p>
+          }
+
+          <div class="assignments">
+            @for (assignment of sortedAssignments(); track assignment.id) {
+              <mat-card class="assignment-card">
+                <mat-card-content>
+                  <div class="assignment-heading">
+                    @if (assignment.deadline; as deadline) {
+                      <span class="assignment-deadline">
+                        Due {{ formatDeadline(deadline) | date: 'dd.MM.yy HH:mm' }}
+                      </span>
+                    }
+                    <strong>{{ assignment.title }}</strong>
+                  </div>
+                  <div class="assignment-details">
+                    @if (session.isTeacher()) {
+                      <a mat-button [routerLink]="['/assignments', assignment.id, 'edit']">Edit</a>
+                      <a mat-button [routerLink]="['/assignments', assignment.id, 'students']">See submissions</a>
+                    } @else {
+                      <span>{{ assignment.accepted ? (assignment.status ?? 'Accepted') : 'Not accepted yet' }}</span>
+                      <a mat-button [routerLink]="['/my-assignments', assignment.id]">Open assignment</a>
+                    }
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            }
+          </div>
+        </mat-tab>
+        <mat-tab label="Participants">
+          @if (loading()) {
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          } @else if (participants().length === 0) {
+            <p class="empty">No participants yet.</p>
+          } @else {
+            <mat-list>
+              @for (participant of participants(); track $index) {
+                <mat-list-item>
+                  <span matListItemTitle>{{ participant.firstName }} {{ participant.lastName }}</span>
+                  <span matListItemLine>{{ participant.role }}@if (participant.class) { · {{ participant.class }} }</span>
+                  @if (session.isTeacher()) {
+                    <button mat-icon-button matListItemMeta type="button" class="remove-participant"
+                            [attr.aria-label]="'Remove ' + participant.firstName + ' ' + participant.lastName"
+                            (click)="removeParticipant(participant)">
+                      <mat-icon>remove</mat-icon>
+                    </button>
+                  }
+                </mat-list-item>
+              }
+            </mat-list>
+          }
+        </mat-tab>
+        @if (session.isTeacher()) {
+          <mat-tab label="Settings">
+            <app-course-detail [id]="courseId()" />
+          </mat-tab>
+        }
+      </mat-tab-group>
+    </div>
+  </div>
 </div>

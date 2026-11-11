@@ -51,6 +51,8 @@ public static class CourseEndpoints
                                         .WithTags("Courses")
                                         .RequireAuthorization();
             courseParticipants.MapGet("/{id:long:min(1)}/participants", GetParticipantsAsync);
+            courseParticipants.MapDelete("/{id:long:min(1)}/participants/{userId:long:min(1)}",
+                                         RemoveParticipantAsync);
         }
     }
 
@@ -139,6 +141,17 @@ public static class CourseEndpoints
 
         return result.Match<Results<Ok<CourseParticipantsDto>, NotFound, ProblemHttpResult>>(
             participants => TypedResults.Ok(CourseParticipantsDto.FromParticipants(participants)),
+            _ => TypedResults.NotFound(),
+            _ => ApiResults.Forbidden());
+    }
+
+    private static async ValueTask<Results<NoContent, NotFound, ProblemHttpResult>> RemoveParticipantAsync(
+        [FromRoute] long id, [FromRoute] long userId, [FromServices] ICourseService service)
+    {
+        var result = await service.RemoveParticipantAsync(id, userId);
+
+        return result.Match<Results<NoContent, NotFound, ProblemHttpResult>>(
+            _ => TypedResults.NoContent(),
             _ => TypedResults.NotFound(),
             _ => ApiResults.Forbidden());
     }
@@ -292,14 +305,14 @@ public sealed record CourseDto(
             course.CreatedAt, course.IconSeed);
 }
 
-public sealed record CourseParticipantDto(string FirstName, string LastName, string? Class, Role Role);
+public sealed record CourseParticipantDto(long Id, string FirstName, string LastName, string? Class, Role Role);
 
 public sealed record CourseParticipantsDto(string Title, IReadOnlyCollection<CourseParticipantDto> Participants)
 {
     public static CourseParticipantsDto FromParticipants(CourseParticipants participants) =>
         new(participants.Title, participants.Participants
             .Select(participant =>
-                new CourseParticipantDto(participant.FirstName, participant.LastName, participant.Class,
+                new CourseParticipantDto(participant.Id, participant.FirstName, participant.LastName, participant.Class,
                                          participant.Role))
             .ToArray());
 }

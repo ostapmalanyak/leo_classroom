@@ -150,7 +150,7 @@ internal sealed class AssignmentRepository(DbSet<Assignment> assignments) : IAss
     public async ValueTask<IReadOnlyCollection<AssignedAssignment>> GetAssignedToStudentAsync(long studentId)
     {
         List<AssignedAssignment> rows = await assignments.AsNoTracking()
-            .Where(a => a.Course.Roster.Members.Any(m => m.Id == studentId))
+            .Where(a => a.Course.Members.Any(m => m.Id == studentId))
             .OrderBy(a => a.Course.Title).ThenBy(a => a.Title)
             .Select(a => new AssignedAssignment(a.Id, a.CourseId, a.Course.Title, a.Title, a.Deadline, a.DeadlineKind,
                         a.Acceptances.Any(ac => ac.StudentId == studentId),
@@ -164,5 +164,5 @@ internal sealed class AssignmentRepository(DbSet<Assignment> assignments) : IAss
     public async ValueTask<bool> IsStudentAssignedAsync(long assignmentId, long studentId) =>
         await assignments.AsNoTracking()
                          .AnyAsync(a => a.Id == assignmentId
-                                        && a.Course.Roster.Members.Any(m => m.Id == studentId));
+                                        && a.Course.Members.Any(m => m.Id == studentId));
 }

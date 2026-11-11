@@ -85,6 +85,17 @@ public sealed class DatabaseContext(DbContextOptions<DatabaseContext> options) :
         course.HasMany(c => c.CoTeachers)
               .WithMany()
               .UsingEntity(j => j.ToTable("CourseTeacher"));
+        course.HasMany(c => c.Members)
+              .WithMany()
+              .UsingEntity<Dictionary<string, object>>(
+                  "CourseMember",
+                  member => member.HasOne<User>().WithMany().HasForeignKey("UserId"),
+                  course => course.HasOne<Course>().WithMany().HasForeignKey("CourseId"),
+                  join =>
+                  {
+                      join.ToTable("CourseMember");
+                      join.HasKey("CourseId", "UserId");
+                  });
         course.HasIndex(c => new { c.RosterId, c.Title });
     }
 

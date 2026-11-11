@@ -40,7 +40,7 @@ public sealed class NotificationEndpointTests(WebApiTestFixture fixture) : WebAp
         var course = new Course
         {
             Title = "Algorithms", RosterId = roster.Id, OwnerId = owner.Id, StudentsRetainAccess = true,
-            CreatedAt = TestClock.GetCurrentInstant()
+            CreatedAt = TestClock.GetCurrentInstant(), Members = [a, b, c, d]
         };
         context.Courses.Add(course);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);

@@ -46,6 +46,19 @@ export class CourseService extends BackendServiceBase {
     }
   }
 
+  public async removeParticipant(courseId: number, userId: number): Promise<boolean> {
+    try {
+      await firstValueFrom(this.http.delete(this.buildUrl(`${courseId}/participants/${userId}`)));
+
+      return true;
+    } catch (error) {
+      if (error instanceof HttpErrorResponse) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
   public async createCourse(title: string, rosterId: number): Promise<WriteResult<Course>> {
     try {
       const response = await firstValueFrom(
@@ -129,6 +142,7 @@ const courseZod = z.object({
 export type Course = z.infer<typeof courseZod>;
 
 const courseParticipantZod = z.object({
+  id: z.int().positive(),
   firstName: z.string(),
   lastName: z.string(),
   class: z.string().nullable(),

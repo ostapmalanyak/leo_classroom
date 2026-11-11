@@ -5,6 +5,7 @@ using LeoClassroom.Persistence.Model;
 using LeoClassroom.Persistence.Util;
 using LeoClassroom.Shared;
 using LeoClassroom.TestInt.Util;
+using Microsoft.EntityFrameworkCore;
 
 namespace LeoClassroom.TestInt;
 
@@ -17,6 +18,7 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
 
     private long _rosterId;
     private long _secondRosterId;
+    private long _studentId;
 
     protected override async ValueTask ImportSeedDataAsync(DatabaseContext context)
     {
@@ -43,6 +45,7 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         _rosterId = roster.Id;
         _secondRosterId = secondRoster.Id;
+        _studentId = student.Id;
     }
 
     private CourseCreateRequest ValidCreateRequest(string title = "Algorithms") => new(title, _rosterId);
@@ -268,9 +271,47 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
             (await response.Content.ReadFromJsonAsync<CourseParticipantsDto>(JsonOptions, TestCancellationToken))!;
         participants.Title.Should().Be("Algorithms");
         participants.Participants.Should().ContainSingle()
-                   .Which.Should().Be(new CourseParticipantDto("Test", StudentIf, "5AHIF", Role.Student));
+                   .Which.Should().Be(new CourseParticipantDto(_studentId, "Roster", "Student", "5AHIF", Role.Student));
         string body = await response.Content.ReadAsStringAsync(TestCancellationToken);
         body.Should().NotContain("\"studentId\"");
+    }
+
+    [Fact]
+    public async Task DeleteCourseParticipant_RemovesOnlyFromCourseMembership()
+    {
+        CourseDto course = await CreateCourseAsOwnerAsync();
+
+        var response = await ApiClient.DeleteAsync(
+            $"api/courses/{course.Id}/participants/{_studentId}", TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var participantsResponse = await ApiClient.GetAsync(
+            $"api/courses/{course.Id}/participants", TestCancellationToken);
+        CourseParticipantsDto participants =
+            (await participantsResponse.Content.ReadFromJsonAsync<CourseParticipantsDto>(JsonOptions,
+                TestCancellationToken))!;
+        participants.Participants.Should().BeEmpty();
+
+        bool remainsOnSchoolRoster = false;
+        await ModifyDatabaseContentAsync(async context =>
+            remainsOnSchoolRoster = await context.Rosters
+                .Where(roster => roster.Id == _rosterId)
+                .SelectMany(roster => roster.Members)
+                .AnyAsync(member => member.Id == _studentId, TestCancellationToken));
+        remainsOnSchoolRoster.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteCourseParticipant_StudentIsForbidden()
+    {
+        CourseDto course = await CreateCourseAsOwnerAsync();
+        AuthenticateAsStudent(StudentIf);
+
+        var response = await ApiClient.DeleteAsync(
+            $"api/courses/{course.Id}/participants/{_studentId}", TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

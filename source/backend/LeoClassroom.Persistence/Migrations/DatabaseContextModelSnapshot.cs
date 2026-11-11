@@ -38,6 +38,21 @@ namespace LeoClassroom.Persistence.Migrations
                     b.ToTable("AssignmentTeacher", "leo_classroom");
                 });
 
+            modelBuilder.Entity("CourseMember", b =>
+                {
+                    b.Property<long>("CourseId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("CourseId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("CourseMember", "leo_classroom");
+                });
+
             modelBuilder.Entity("CourseUser", b =>
                 {
                     b.Property<long>("CoTeachersId")
@@ -685,6 +700,21 @@ namespace LeoClassroom.Persistence.Migrations
                     b.HasOne("LeoClassroom.Persistence.Model.User", null)
                         .WithMany()
                         .HasForeignKey("CoTeachersId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CourseMember", b =>
+                {
+                    b.HasOne("LeoClassroom.Persistence.Model.Course", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LeoClassroom.Persistence.Model.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
