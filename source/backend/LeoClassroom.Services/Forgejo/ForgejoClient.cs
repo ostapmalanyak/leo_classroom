@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using LeoClassroom.Services.Security;
 using LeoClassroom.Shared;
@@ -240,7 +241,9 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
 
     public async ValueTask<OneOf<ForgejoUser, NotFound, ForgejoError>> GetUserAsync(string username)
     {
-        HttpResponseMessage response = await http.GetAsync($"api/v1/users/{Escape(username)}");
+        HttpResponseMessage response = await SendWithRetryOnUnknownTokenAsync(
+            "get user",
+            () => http.GetAsync($"api/v1/users/{Escape(username)}"));
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
             return new NotFound();
@@ -614,25 +617,57 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
     /// </remarks>
     private async ValueTask<ForgejoError> ErrorAsync(HttpResponseMessage response, string operation)
     {
+        string body = await ReadBodyAsync(response);
         int status = (int) response.StatusCode;
         string reason = response.ReasonPhrase ?? response.StatusCode.ToString();
-
-        string body = string.Empty;
-        try
-        {
-            body = (await response.Content.ReadAsStringAsync()).Trim();
-        }
-        catch (HttpRequestException)
-        {
-            // the status is the useful part; a body we cannot read must not mask it
-        }
-
-        logger.LogWarning("Forgejo {Operation} failed with status {Status} ({Reason}): {Body}",
-                          operation, status, reason, body.Length == 0 ? "<no body>" : body);
 
         string detail = ExtractMessage(body) ?? reason;
 
         return new ForgejoError(status, $"{operation}: {detail}");
+    }
+
+    private async Task<HttpResponseMessage> SendWithRetryOnUnknownTokenAsync(
+        string operation,
+        Func<Task<HttpResponseMessage>> request)
+    {
+        HttpResponseMessage first = await request();
+        if (!await LooksLikeUnknownAccessTokenAsync(first))
+        {
+            return first;
+        }
+
+        logger.LogWarning(
+            "Forgejo reported that the configured access token is stale during {Operation}; retrying once so a rotated secret can be picked up",
+            operation);
+
+        return await request();
+    }
+
+    private static async Task<bool> LooksLikeUnknownAccessTokenAsync(HttpResponseMessage response)
+    {
+        if (response.StatusCode is not (HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden))
+        {
+            return false;
+        }
+
+        string body = await ReadBodyAsync(response);
+        string? detail = ExtractMessage(body);
+
+        return detail is not null
+               && detail.Contains("access token does not exist", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static async Task<string> ReadBodyAsync(HttpResponseMessage response)
+    {
+        if (response.Content is null)
+        {
+            return string.Empty;
+        }
+
+        string body = await response.Content.ReadAsStringAsync();
+        response.Content = new StringContent(body, Encoding.UTF8, "application/json");
+
+        return body;
     }
 
     /// <summary>

@@ -1,23 +1,76 @@
-.section {
+.course-header {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--space-4);
+
+  > a {
+    flex: none;
+    margin-block-start: 0.5rem;
+  }
+
+  mat-tab-group {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.create-assignment-grid {
   margin-block: var(--space-4);
 }
 
-.section mat-card-title {
-  border-bottom: 1px solid var(--color-border);
-  font-size: 1.25rem;
-  font-weight: 600;
-  padding: var(--space-4) var(--space-4) var(--space-3);
+.class-card--add {
+  gap: 1rem;
 }
 
-.section mat-card-content {
-  padding: var(--space-2) var(--space-3) var(--space-3);
+.assignments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+
+.assignment-card {
+  border-radius: var(--class-card-radius);
+  width: 100%;
+}
+
+.assignment-card mat-card-content {
+  align-items: center;
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+}
+
+.assignment-details {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
 }
 
 .empty {
   color: var(--color-text-muted);
-  padding: var(--space-2) var(--space-3);
+  margin-block: var(--space-4);
 }
 
-h1 {
-  margin-block-start: var(--space-4);
+@media (max-width: 48rem) {
+  .course-header {
+    flex-direction: column;
+    gap: var(--space-2);
+    width: 100%;
+
+    mat-tab-group {
+      width: 100%;
+    }
+  }
+
+  .assignment-card mat-card-content {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .assignment-details {
+    justify-content: flex-start;
+  }
 }

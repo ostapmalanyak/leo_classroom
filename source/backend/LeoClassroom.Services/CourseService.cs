@@ -15,6 +15,7 @@ public interface ICourseService
     public ValueTask<OneOf<Success<Course>, NotFound, AlreadyExists>>
         AddCourseAsync(string title, long rosterId, string? iconSeed = null);
     public ValueTask<OneOf<Course, NotFound>> GetCourseByIdAsync(long id);
+    public ValueTask<OneOf<CourseParticipants, NotFound, Forbidden>> GetParticipantsAsync(long id);
     public ValueTask<IReadOnlyCollection<CourseOverview>> GetCourseOverviewsAsync();
 
     public ValueTask<OneOf<Success<Course>, NotFound, AlreadyExists, Forbidden>>
@@ -24,6 +25,10 @@ public interface ICourseService
 
     public readonly record struct AlreadyExists;
 }
+
+public sealed record CourseParticipant(string FirstName, string LastName, string? Class, Role Role);
+
+public sealed record CourseParticipants(string Title, IReadOnlyCollection<CourseParticipant> Participants);
 
 internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, IDeletionCascade deletion,
                                     IAuditLog audit, ILogger<CourseService> logger,
@@ -83,6 +88,37 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
         logger.LogWarning("Course {CourseId} was not found", id);
 
         return new NotFound();
+    }
+
+    public async ValueTask<OneOf<CourseParticipants, NotFound, Forbidden>> GetParticipantsAsync(long id)
+    {
+        Course? course = await uow.CourseRepository.GetWithTeachersAsync(id);
+        if (course is null)
+        {
+            return new NotFound();
+        }
+
+        IReadOnlyCollection<UserSummary>? members = await uow.RosterRepository.GetMembersAsync(course.RosterId);
+        if (members is null)
+        {
+            return new NotFound();
+        }
+
+        bool isCourseTeacher = currentUser.Roles.Contains(Role.Admin)
+                               || string.Equals(course.Owner.StudentId, currentUser.StudentId,
+                                                StringComparison.Ordinal)
+                               || course.CoTeachers.Any(teacher =>
+                                   string.Equals(teacher.StudentId, currentUser.StudentId, StringComparison.Ordinal));
+        if (!isCourseTeacher && !members.Any(member =>
+                string.Equals(member.StudentId, currentUser.StudentId, StringComparison.Ordinal)))
+        {
+            return new Forbidden();
+        }
+
+        CourseParticipant[] participants = members.Select(member =>
+            new CourseParticipant(member.FirstName, member.LastName, member.Class, member.Role)).ToArray();
+
+        return new CourseParticipants(course.Title, participants);
     }
 
     public ValueTask<IReadOnlyCollection<CourseOverview>> GetCourseOverviewsAsync() =>

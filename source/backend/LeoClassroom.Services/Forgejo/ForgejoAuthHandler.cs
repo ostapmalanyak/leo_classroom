@@ -4,12 +4,12 @@ using Microsoft.Extensions.Options;
 
 namespace LeoClassroom.Services.Forgejo;
 
-internal sealed class ForgejoAuthHandler(IOptions<ForgejoSettings> settings) : DelegatingHandler
+internal sealed class ForgejoAuthHandler(IOptionsMonitor<ForgejoSettings> settings) : DelegatingHandler
 {
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
                                                                  CancellationToken cancellationToken)
     {
-        request.Headers.Authorization = new AuthenticationHeaderValue("token", settings.Value.AdminToken);
+        request.Headers.Authorization = new AuthenticationHeaderValue("token", settings.CurrentValue.AdminToken);
 
         return await base.SendAsync(request, cancellationToken);
     }

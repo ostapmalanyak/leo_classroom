@@ -29,8 +29,17 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
             LastName = "Owner",
             Role = Role.Teacher
         };
+        var student = new User
+        {
+            StudentId = StudentIf,
+            FirstName = "Roster",
+            LastName = "Student",
+            Role = Role.Student,
+            Class = "5AHIF"
+        };
+        roster.Members.Add(student);
         context.Rosters.AddRange(roster, secondRoster);
-        context.Users.Add(owner);
+        context.Users.AddRange(owner, student);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         _rosterId = roster.Id;
         _secondRosterId = secondRoster.Id;
@@ -244,6 +253,35 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
         var response = await ApiClient.GetAsync("api/courses/9999", TestCancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetCourseParticipants_StudentMember_ReturnsNamesWithoutStudentNumbers()
+    {
+        CourseDto course = await CreateCourseAsOwnerAsync();
+        AuthenticateAsStudent(StudentIf);
+
+        var response = await ApiClient.GetAsync($"api/courses/{course.Id}/participants", TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        CourseParticipantsDto participants =
+            (await response.Content.ReadFromJsonAsync<CourseParticipantsDto>(JsonOptions, TestCancellationToken))!;
+        participants.Title.Should().Be("Algorithms");
+        participants.Participants.Should().ContainSingle()
+                   .Which.Should().Be(new CourseParticipantDto("Test", StudentIf, "5AHIF", Role.Student));
+        string body = await response.Content.ReadAsStringAsync(TestCancellationToken);
+        body.Should().NotContain("\"studentId\"");
+    }
+
+    [Fact]
+    public async Task GetCourseParticipants_NonMember_Returns403()
+    {
+        CourseDto course = await CreateCourseAsOwnerAsync();
+        AuthenticateAsStudent("IF000051");
+
+        var response = await ApiClient.GetAsync($"api/courses/{course.Id}/participants", TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

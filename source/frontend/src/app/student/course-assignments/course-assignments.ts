@@ -1,66 +1,126 @@
-import { Component, computed, inject, input, OnInit, signal, Signal, WritableSignal } from '@angular/core';
+import { Component, inject, input, OnInit, signal, WritableSignal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatButton } from '@angular/material/button';
-import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
+import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatIcon } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBar } from '@angular/material/progress-bar';
+import { MatTabsModule } from '@angular/material/tabs';
 import { Instant } from '@js-joda/core';
-import { AssignedAssignment, AssignmentService } from '../../../core/services/assignment-service';
+import { AssignmentService, SubmissionStatus } from '../../../core/services/assignment-service';
+import { CourseParticipant, CourseService } from '../../../core/services/course-service';
+import { MeService } from '../../../core/services/me-service';
+import { SessionService } from '../../../core/auth/session-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 
-interface Section {
-  label: string;
-  items: AssignedAssignment[];
+interface CourseAssignment {
+  id: number;
+  title: string;
+  deadline: Instant | null;
+  accepted: boolean | null;
+  status: SubmissionStatus | null;
 }
 
 @Component({
   selector: 'app-course-assignments',
-  imports: [DatePipe, RouterLink, MatButton, MatCard, MatCardContent, MatCardTitle, MatIcon, MatListModule,
-    MatProgressBar],
+  imports: [
+    DatePipe, RouterLink, MatButton, MatCard, MatCardContent, MatIcon, MatListModule, MatProgressBar, MatTabsModule
+  ],
   templateUrl: './course-assignments.html',
-  styleUrl: './course-assignments.scss'
+  styleUrls: ['./course-assignments.scss', '../../my-classes/my-classes.scss']
 })
 export class CourseAssignments implements OnInit {
-  private readonly service = inject(AssignmentService);
+  private readonly assignmentService = inject(AssignmentService);
+  private readonly courseService = inject(CourseService);
+  private readonly me = inject(MeService);
+  protected readonly session = inject(SessionService);
   private readonly snackbar = inject(SnackbarService);
 
   /** Bound from the route parameter (withComponentInputBinding). */
   public readonly courseId = input.required<string>();
 
-  private readonly all: WritableSignal<AssignedAssignment[]> = signal([]);
+  protected readonly title: WritableSignal<string> = signal('Class');
+  protected readonly assignments: WritableSignal<CourseAssignment[]> = signal([]);
+  protected readonly participants: WritableSignal<CourseParticipant[]> = signal([]);
   protected readonly loading: WritableSignal<boolean> = signal(false);
 
-  protected readonly title: Signal<string> = computed(() => this.all()[0]?.courseTitle ?? 'Class');
+  protected get classesRoute(): string {
+    return this.session.isTeacher() ? '/my-classes' : '/my-assignments';
+  }
 
-  protected readonly sections: Signal<Section[]> = computed(() => {
-    const now = Instant.now();
-    const mine = this.all().filter(a => a.courseId === Number(this.courseId()));
-    const byDeadline = (l: AssignedAssignment, r: AssignedAssignment): number =>
-      (l.deadline?.toEpochMilli() ?? Infinity) - (r.deadline?.toEpochMilli() ?? Infinity);
-
-    const isPast = (a: AssignedAssignment): boolean => a.deadline !== null && a.deadline.isBefore(now);
-
-    return [
-      { label: 'Current', items: mine.filter(a => !isPast(a)).sort(byDeadline) },
-      { label: 'Past', items: mine.filter(isPast).sort((l, r) => byDeadline(r, l)) }
-    ];
-  });
-
-  protected toDate(deadline: Instant): Date {
+  protected formatDeadline(deadline: Instant): Date {
     return new Date(deadline.toEpochMilli());
   }
 
   public async ngOnInit(): Promise<void> {
     this.loading.set(true);
-    const result = await this.service.listMine();
-    this.loading.set(false);
-    if (result === null) {
-      this.snackbar.show('Could not load your assignments');
+    try {
+      await this.me.load();
 
-      return;
+      const course = await this.courseService.getParticipants(Number(this.courseId()));
+      if (course === null) {
+        this.snackbar.show('Could not load course participants');
+
+        return;
+      }
+
+      this.title.set(course.title);
+      this.participants.set(course.participants);
+
+      if (this.session.isTeacher()) {
+        const assignments = await this.assignmentService.listForCourse(Number(this.courseId()));
+        if (assignments === null) {
+          this.snackbar.show('Could not load assignments');
+
+          return;
+        }
+        this.assignments.set(this.sortAssignments(assignments.map(assignment => ({
+          id: assignment.id,
+          title: assignment.title,
+          deadline: assignment.deadline,
+          accepted: null,
+          status: null
+        }))));
+
+        return;
+      }
+
+      const mine = await this.assignmentService.listMine();
+      if (mine === null) {
+        this.snackbar.show('Could not load your assignments');
+
+        return;
+      }
+      const courseId = Number(this.courseId());
+      const assignments = [...mine.accepted, ...mine.unaccepted]
+        .filter(assignment => assignment.courseId === courseId)
+        .map(assignment => ({
+          id: assignment.id,
+          title: assignment.title,
+          deadline: assignment.deadline,
+          accepted: assignment.accepted,
+          status: assignment.status
+        }));
+      this.assignments.set(this.sortAssignments(assignments));
+    } finally {
+      this.loading.set(false);
     }
-    this.all.set([...result.accepted, ...result.unaccepted]);
+  }
+
+  private sortAssignments(assignments: CourseAssignment[]): CourseAssignment[] {
+    return assignments.sort((left, right) => {
+      if (left.deadline === null && right.deadline === null) {
+        return left.title.localeCompare(right.title);
+      }
+      if (left.deadline === null) {
+        return 1;
+      }
+      if (right.deadline === null) {
+        return -1;
+      }
+
+      return left.deadline.compareTo(right.deadline);
+    });
   }
 }

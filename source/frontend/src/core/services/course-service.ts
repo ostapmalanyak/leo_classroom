@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { z } from 'zod';
 import { BackendServiceBase } from './backend-service-base';
 import { InstantSchema } from '../util/zod-schemas';
+import { Role } from '../auth/roles';
 
 export type WriteResult<T> = T | 'conflict' | 'not-found' | null;
 
@@ -30,6 +31,16 @@ export class CourseService extends BackendServiceBase {
       const response = await firstValueFrom(this.http.get<unknown>(this.buildUrl(`${id}`)));
 
       return courseZod.parse(response);
+    } catch (error) {
+      return this.mapReadError(error);
+    }
+  }
+
+  public async getParticipants(id: number): Promise<CourseParticipants | null> {
+    try {
+      const response = await firstValueFrom(this.http.get<unknown>(this.buildUrl(`${id}/participants`)));
+
+      return courseParticipantsZod.parse(response);
     } catch (error) {
       return this.mapReadError(error);
     }
@@ -116,3 +127,17 @@ const courseZod = z.object({
   createdAt: InstantSchema
 });
 export type Course = z.infer<typeof courseZod>;
+
+const courseParticipantZod = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
+  class: z.string().nullable(),
+  role: z.enum(Role)
+});
+export type CourseParticipant = z.infer<typeof courseParticipantZod>;
+
+const courseParticipantsZod = z.object({
+  title: z.string().min(1),
+  participants: courseParticipantZod.array()
+});
+export type CourseParticipants = z.infer<typeof courseParticipantsZod>;

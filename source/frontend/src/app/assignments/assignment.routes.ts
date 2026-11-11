@@ -6,7 +6,6 @@ import { AssignmentDownload } from './assignment-download/assignment-download';
 import { StudentAssignments } from '../student/student-assignments/student-assignments';
 import { StudentAssignmentDetail } from '../student/assignment-detail/assignment-detail';
 import { CourseAssignments } from '../student/course-assignments/course-assignments';
-import { AssignmentList } from './assignment-list/assignment-list';
 import { authGuard } from '../../core/auth/auth-guard';
 import { Role } from '../../core/auth/roles';
 import { teacherOnlyGuard } from '../../core/auth/teacher-only-guard';
@@ -15,9 +14,8 @@ import { MyClasses } from '../my-classes/my-classes';
 export const assignmentRoutes: Routes = [
   {
     path: 'courses/:courseId/assignments',
-    component: AssignmentList,
-    canActivate: [authGuard],
-    data: { role: Role.Teacher }
+    pathMatch: 'full',
+    redirectTo: '/my-assignments/course/:courseId'
   },
   {
     path: 'courses/:courseId/assignments/new',
