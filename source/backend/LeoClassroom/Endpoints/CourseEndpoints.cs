@@ -128,7 +128,6 @@ public static class CourseEndpoints
         seed is { Length: >= 8 and <= 64 }
         && seed.All(character => char.IsAsciiLetterOrDigit(character) || character == '-');
 
-    private static async ValueTask<Results<Ok<CourseDto>, NotFound>> GetCourseByIdAsync(
     private static async ValueTask<Results<Ok<CourseDto>, NotFound, ProblemHttpResult>> GetCourseByIdAsync(
         [FromRoute] long id, [FromServices] ICourseService service)
     {

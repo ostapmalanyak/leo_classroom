@@ -86,7 +86,7 @@ internal sealed class CourseRepository(DbSet<Course> courses) : ICourseRepositor
     private static async ValueTask<IReadOnlyCollection<CourseOverview>> ProjectOverviews(IQueryable<Course> query)
     {
         List<CourseOverview> overviews = await query.OrderBy(c => c.Title)
-                                                    .Select(c => new CourseOverview(c.Id, c.Title, c.RosterId,
+                                                    .Select(c => new CourseOverview(c.Id, c.Title, c.IconSeed, c.RosterId,
                                                                 c.Roster.Name, c.Roster.Members.Count, c.IsReadOnly,
                                                                 c.StudentsRetainAccess))
                                                     .ToListAsync();

@@ -81,7 +81,8 @@ public sealed class CourseServiceTests
 
     private void ArrangeValidCreate()
     {
-        _rosterRepo.ExistsAsync(RosterId).Returns(new ValueTask<bool>(true));
+        _rosterRepo.GetTrackedWithMembersAsync(RosterId)
+                   .Returns(new ValueTask<Roster?>(new Roster { Id = RosterId, Name = "5AHIF" }));
         _userRepo.GetIdByStudentIdAsync(OwnerStudentId).Returns(new ValueTask<long?>(OwnerId));
         _courseRepo.ExistsWithTitleInRosterAsync("Algorithms", RosterId).Returns(new ValueTask<bool>(false));
     }
