@@ -13,7 +13,7 @@ public sealed record CourseTeachers(UserSummary Owner, IReadOnlyList<UserSummary
 
 public interface ICourseTeacherService
 {
-    public ValueTask<OneOf<CourseTeachers, NotFound>> ListAsync(long courseId);
+    public ValueTask<OneOf<CourseTeachers, NotFound, Forbidden>> ListAsync(long courseId);
     public ValueTask<OneOf<Success, NotFound, Forbidden>> AddAsync(long courseId, long userId);
     public ValueTask<OneOf<Success, NotFound, Forbidden>> RemoveAsync(long courseId, long userId);
 }
@@ -22,12 +22,16 @@ internal sealed class CourseTeacherService(
     IUnitOfWork uow, ICurrentUser currentUser, IReconciliationService reconciliation, IAuditLog auditLog,
     ILogger<CourseTeacherService> logger) : ICourseTeacherService
 {
-    public async ValueTask<OneOf<CourseTeachers, NotFound>> ListAsync(long courseId)
+    public async ValueTask<OneOf<CourseTeachers, NotFound, Forbidden>> ListAsync(long courseId)
     {
         Course? course = await uow.CourseRepository.GetTrackedWithTeachersAsync(courseId);
         if (course is null)
         {
             return new NotFound();
+        }
+        if (!IsCourseTeacher(course))
+        {
+            return new Forbidden();
         }
 
         return new CourseTeachers(Summary(course.Owner),
@@ -102,6 +106,11 @@ internal sealed class CourseTeacherService(
             error => logger.LogWarning("Teacher change on course {CourseId} reconciled with error: {Reason}",
                                        courseId, error.Reason));
     }
+
+    private bool IsCourseTeacher(Course course) =>
+        currentUser.Roles.Contains(Role.Admin)
+        || string.Equals(course.Owner.StudentId, currentUser.StudentId, StringComparison.Ordinal)
+        || course.CoTeachers.Any(t => string.Equals(t.StudentId, currentUser.StudentId, StringComparison.Ordinal));
 
     private async ValueTask<bool> IsOwnerOrAdminAsync(Course course)
     {

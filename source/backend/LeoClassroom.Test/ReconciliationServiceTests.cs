@@ -69,6 +69,7 @@ public sealed class ReconciliationServiceTests
             {
                 RepoOwner = Org,
                 RepoName = RepoName,
+                Status = SubmissionStatus.Ready,
                 Student = new User { StudentId = StudentIf, FirstName = "S", LastName = "S", Role = Role.Student }
             }
         ]
@@ -128,5 +129,24 @@ public sealed class ReconciliationServiceTests
         OneOf<Success, NotFound, ForgejoError> result = await _sut.ReconcileAsync(99L);
 
         result.ShouldBe<NotFound>();
+    }
+
+    [Fact]
+    public async Task FailedAcceptance_IsExcludedFromRepositoryReconciliation()
+    {
+        Assignment assignment = BuildAssignment();
+        assignment.Acceptances.Single().Status = SubmissionStatus.Failed;
+        _assignmentRepo.GetReconciliationDataAsync(AssignmentId)
+                       .Returns(new ValueTask<Assignment?>(assignment));
+        OneOf<IReadOnlyCollection<string>, ForgejoError> teamMembers =
+            new List<string> { TeacherIf }.AsReadOnly();
+        _forgejo.ListTeamMembersAsync(TeamId)
+                .Returns(new ValueTask<OneOf<IReadOnlyCollection<string>, ForgejoError>>(teamMembers));
+
+        OneOf<Success, NotFound, ForgejoError> result = await _sut.ReconcileAsync(AssignmentId);
+
+        result.ShouldBe<Success>();
+        await _forgejo.DidNotReceive().GetCollaboratorPermissionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
     }
 }

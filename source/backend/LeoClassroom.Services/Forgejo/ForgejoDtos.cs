@@ -18,7 +18,10 @@ internal sealed record TeamSearchResults(
     [property: JsonPropertyName("ok")] bool Ok,
     [property: JsonPropertyName("data")] IReadOnlyList<ForgejoTeam>? Data);
 
-public sealed record ForgejoUser(long Id, string Login);
+public sealed record ForgejoUser(
+    long Id,
+    string Login,
+    [property: JsonPropertyName("full_name")] string? FullName = null);
 
 /// <param name="IsAdmin">Whether Forgejo considers this account a site administrator</param>
 /// <remarks>
@@ -76,7 +79,8 @@ internal sealed record CreateRepoBody(
     [property: JsonPropertyName("auto_init")] bool AutoInit);
 
 internal sealed record ForkRepoBody(
-    [property: JsonPropertyName("organization")] string Organization,
+    [property: JsonPropertyName("organization")]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Organization,
     [property: JsonPropertyName("name")] string Name);
 
 internal sealed record MigrateRepoBody(
@@ -84,7 +88,11 @@ internal sealed record MigrateRepoBody(
     [property: JsonPropertyName("repo_owner")] string RepoOwner,
     [property: JsonPropertyName("repo_name")] string RepoName,
     [property: JsonPropertyName("mirror")] bool Mirror,
-    [property: JsonPropertyName("private")] bool Private);
+    [property: JsonPropertyName("private")] bool Private,
+    [property: JsonPropertyName("auth_username")]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? AuthUsername,
+    [property: JsonPropertyName("auth_password")]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? AuthPassword);
 
 internal sealed record CollaboratorBody(
     [property: JsonPropertyName("permission")] string Permission);
@@ -106,10 +114,14 @@ internal sealed record CreateFileBody(
 internal sealed record CreateUserBody(
     [property: JsonPropertyName("username")] string Username,
     [property: JsonPropertyName("email")] string Email,
+    [property: JsonPropertyName("full_name")] string FullName,
     [property: JsonPropertyName("login_name")] string LoginName,
     [property: JsonPropertyName("source_id")] long SourceId,
     [property: JsonPropertyName("must_change_password")] bool MustChangePassword,
     [property: JsonPropertyName("password")] string? Password);
+
+internal sealed record EditUserFullNameBody(
+    [property: JsonPropertyName("full_name")] string FullName);
 
 internal sealed record SetUserPasswordBody(
     [property: JsonPropertyName("login_name")] string LoginName,

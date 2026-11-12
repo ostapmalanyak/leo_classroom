@@ -82,6 +82,9 @@ namespace LeoClassroom.Persistence.Migrations
                     b.Property<long>("AssignmentId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("FailureReason")
+                        .HasColumnType("text");
+
                     b.Property<long?>("FeedbackPrNumber")
                         .HasColumnType("bigint");
 

@@ -3,7 +3,9 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using LeoClassroom.Services.Security;
+using LeoClassroom.Services.Util;
 using LeoClassroom.Shared;
+using Microsoft.Extensions.Options;
 using OneOf;
 using OneOf.Types;
 
@@ -47,7 +49,8 @@ public interface IForgejoClient
     public ValueTask<OneOf<Success<ForgejoRepo>, ForgejoError>> ForkRepoAsync(
         string sourceOwner, string sourceRepo, string targetOrg, string newName);
     public ValueTask<OneOf<Success<ForgejoRepo>, ForgejoError>> MigrateRepoAsync(
-        string cloneUrl, string targetOrg, string newName, bool isPrivate);
+        string cloneUrl, string targetOrg, string newName, bool isPrivate,
+        string? authUsername = null, string? authPassword = null);
     public ValueTask<OneOf<Success, ForgejoError>> CreateFileAsync(
         string owner, string repo, string path, string content, string message);
 
@@ -66,7 +69,8 @@ public interface IForgejoClient
 
     public ValueTask<OneOf<Success, ForgejoError>> EnsureOrgWebhookAsync(string org, string url, string secret);
 
-    public ValueTask<OneOf<Success, ForgejoError>> EnsureUserAsync(string studentId, string? email, long authSourceId);
+    public ValueTask<OneOf<Success, ForgejoError>> EnsureUserAsync(
+        string studentId, string? email, string fullName, long authSourceId);
 
     /// <summary>
     ///     Replaces the password of a local Forgejo account
@@ -79,7 +83,8 @@ public interface IForgejoClient
     public ValueTask<OneOf<Success, ForgejoError>> SetUserActiveAsync(string studentId, bool active, long authSourceId);
 }
 
-internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logger) : IForgejoClient
+internal sealed class ForgejoClient(
+    HttpClient http, IOptions<ForgejoSettings> settings, ILogger<ForgejoClient> logger) : IForgejoClient
 {
     public async ValueTask<OneOf<ForgejoOrg, NotFound, ForgejoError>> GetOrgAsync(string org)
     {
@@ -371,11 +376,15 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
     }
 
     public async ValueTask<OneOf<Success<ForgejoRepo>, ForgejoError>> ForkRepoAsync(
-        string sourceOwner, string sourceRepo, string targetOrg, string newName)
+        string sourceOwner, string sourceRepo, string targetOwner, string newName)
     {
-        var body = new ForkRepoBody(targetOrg, newName);
-        HttpResponseMessage response = await http.PostAsJsonAsync(
-            $"api/v1/repos/{Escape(sourceOwner)}/{Escape(sourceRepo)}/forks", body);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post, $"api/v1/repos/{Escape(sourceOwner)}/{Escape(sourceRepo)}/forks")
+        {
+            Content = JsonContent.Create(new ForkRepoBody(null, newName))
+        };
+        request.Headers.Add("Sudo", targetOwner);
+        HttpResponseMessage response = await http.SendAsync(request);
         if (!response.IsSuccessStatusCode)
         {
             return await ErrorAsync(response, "fork repo");
@@ -385,13 +394,14 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
     }
 
     public async ValueTask<OneOf<Success<ForgejoRepo>, ForgejoError>> MigrateRepoAsync(
-        string cloneUrl, string targetOrg, string newName, bool isPrivate)
+        string cloneUrl, string targetOrg, string newName, bool isPrivate,
+        string? authUsername = null, string? authPassword = null)
     {
-        var body = new MigrateRepoBody(cloneUrl, targetOrg, newName, false, isPrivate);
+        var body = new MigrateRepoBody(cloneUrl, targetOrg, newName, false, isPrivate, authUsername, authPassword);
         HttpResponseMessage response = await http.PostAsJsonAsync("api/v1/repos/migrate", body);
         if (!response.IsSuccessStatusCode)
         {
-            return await ErrorAsync(response, "migrate repo");
+            return await ErrorAsync(response, "migrate repo", authPassword);
         }
 
         return new Success<ForgejoRepo>((await ReadAsync<ForgejoRepo>(response))!);
@@ -544,15 +554,16 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
         return response.IsSuccessStatusCode ? new Success() : await ErrorAsync(response, "ensure webhook");
     }
 
-    public async ValueTask<OneOf<Success, ForgejoError>> EnsureUserAsync(string studentId, string? email,
-                                                                         long authSourceId)
+    public async ValueTask<OneOf<Success, ForgejoError>> EnsureUserAsync(
+        string studentId, string? email, string fullName, long authSourceId)
     {
         // a local account needs some password to be created at all; it is random and immediately forgotten,
         // because the student's usable one is issued on demand by IGitCredentialService
         string? initialPassword = authSourceId == 0 ? GitCredentialGenerator.Generate() : null;
 
-        var body = new CreateUserBody(studentId, email ?? $"{studentId}@users.noreply.local", studentId, authSourceId,
-                                      MustChangePassword: false, initialPassword);
+        string normalizedFullName = fullName.Trim();
+        var body = new CreateUserBody(studentId, email ?? $"{studentId}@users.noreply.local", normalizedFullName,
+                                      studentId, authSourceId, MustChangePassword: false, initialPassword);
         HttpResponseMessage response = await http.PostAsJsonAsync("api/v1/admin/users", body);
         if (response.IsSuccessStatusCode)
         {
@@ -572,12 +583,23 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
             OneOf<ForgejoUser, NotFound, ForgejoError> existing = await GetUserAsync(studentId);
 
             return await existing.Match<ValueTask<OneOf<Success, ForgejoError>>>(
-                found => ValueTask.FromResult<OneOf<Success, ForgejoError>>(new Success()),
+                found => found.FullName == normalizedFullName
+                    ? ValueTask.FromResult<OneOf<Success, ForgejoError>>(new Success())
+                    : SetUserFullNameAsync(studentId, normalizedFullName),
                 async notFound => await ErrorAsync(response, "ensure user"),
                 error => ValueTask.FromResult<OneOf<Success, ForgejoError>>(error));
         }
 
         return await ErrorAsync(response, "ensure user");
+    }
+
+    private async ValueTask<OneOf<Success, ForgejoError>> SetUserFullNameAsync(string studentId, string fullName)
+    {
+        var body = new EditUserFullNameBody(fullName);
+        HttpResponseMessage response =
+            await http.PatchAsJsonAsync($"api/v1/admin/users/{Escape(studentId)}", body);
+
+        return response.IsSuccessStatusCode ? new Success() : await ErrorAsync(response, "set user full name");
     }
 
     public async ValueTask<OneOf<Success, NotFound, ForgejoError>> SetUserPasswordAsync(
@@ -612,14 +634,15 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
     /// </summary>
     /// <remarks>
     ///     The status alone is rarely enough to act on - "422" could be a duplicate e-mail, a rejected
-    ///     password or a name that is already taken, and Forgejo says which in the body. It is logged in full
-    ///     and a trimmed form travels back to the caller, which is what the 502's problem detail shows.
+    ///     password or a name that is already taken, and Forgejo says which in the body. The message is logged
+    ///     at error level and returned in a trimmed, credential-redacted form.
     /// </remarks>
-    private async ValueTask<ForgejoError> ErrorAsync(HttpResponseMessage response, string operation)
+    private async ValueTask<ForgejoError> ErrorAsync(
+        HttpResponseMessage response, string operation, params string?[] additionalSecrets)
     {
         string body = await ReadBodyAsync(response);
         int status = (int) response.StatusCode;
-        string reason = response.ReasonPhrase ?? response.StatusCode.ToString();
+        string fallback = response.ReasonPhrase ?? response.StatusCode.ToString();
 
         string detail = ExtractMessage(body) ?? reason;
 
@@ -656,6 +679,19 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
         return detail is not null
                && detail.Contains("access token does not exist", StringComparison.OrdinalIgnoreCase);
     }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "Could not read Forgejo {Operation} error response (HTTP {Status})",
+                            operation, status);
+        }
+
+        string detail = ExtractMessage(body, operation, status) ?? fallback;
+        detail = Redact(detail, settings.Value.AdminToken, additionalSecrets);
+        if (detail.Length > MaxDetailLength)
+        {
+            detail = detail[..MaxDetailLength];
+        }
+        logger.LogError("Forgejo {Operation} failed with HTTP {Status}: {Message}", operation, status, detail);
 
     private static async Task<string> ReadBodyAsync(HttpResponseMessage response)
     {
@@ -673,7 +709,7 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
     /// <summary>
     ///     Pulls the <c>message</c> out of Forgejo's error body, capped so a stack trace cannot travel on
     /// </summary>
-    private static string? ExtractMessage(string body)
+    private string? ExtractMessage(string body, string operation, int status)
     {
         if (body.Length == 0)
         {
@@ -686,15 +722,34 @@ internal sealed class ForgejoClient(HttpClient http, ILogger<ForgejoClient> logg
             if (document.RootElement.TryGetProperty("message", out JsonElement message)
                 && message.GetString() is { Length: > 0 } text)
             {
-                return text.Length <= MaxDetailLength ? text : text[..MaxDetailLength];
+                return text;
             }
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            // not JSON; the status and the logged body are enough
+            logger.LogError("Forgejo {Operation} returned an invalid error response (HTTP {Status}; {ExceptionType})",
+                            operation, status, ex.GetType().Name);
         }
 
         return null;
+    }
+
+    private static string Redact(string value, string? configuredSecret, IEnumerable<string?> additionalSecrets)
+    {
+        if (!string.IsNullOrEmpty(configuredSecret))
+        {
+            value = value.Replace(configuredSecret, "[REDACTED]", StringComparison.Ordinal);
+        }
+
+        foreach (string? secret in additionalSecrets)
+        {
+            if (!string.IsNullOrEmpty(secret))
+            {
+                value = value.Replace(secret, "[REDACTED]", StringComparison.Ordinal);
+            }
+        }
+
+        return value;
     }
 
     private const int MaxDetailLength = 200;
