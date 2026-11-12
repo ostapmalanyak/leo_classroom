@@ -144,6 +144,13 @@
   font-size: var(--font-size-sm);
 }
 
+// Material's tab body starts flush against the tab strip. The course page puts real
+// content in it (headings, lists, a settings panel), so give it the same breathing
+// room the rest of the page has.
+.course-tab-group .mat-mdc-tab-body-content {
+  padding-block-start: var(--space-5);
+}
+
 .badge {
   border-radius: var(--radius-pill);
   background-color: var(--color-bg-hover);
@@ -227,6 +234,94 @@ app-empty-state .empty-state[class] {
   &:hover {
     color: var(--color-accent-hover);
     text-decoration: underline;
+  }
+}
+
+// A quiet way back out of a detail page, matching the course page's "All classes".
+.back-link {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  gap: var(--space-1);
+  margin-block-end: var(--space-3);
+  min-height: 2rem;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  // The glyph must be told its size as well as its box: mat-icon defaults to a 24px
+  // font, which would render the arrow larger than the 1.25rem box and push it off
+  // centre.
+  mat-icon {
+    display: block;
+    flex: none;
+    font-size: 1.25rem;
+    height: 1.25rem;
+    line-height: 1;
+    width: 1.25rem;
+  }
+}
+
+// A back link that stands outside the content column, on the level of the page
+// title: the arrow sits in the gutter left of the column, so it can never cover the
+// heading. It is centred on the title row it lives in, because that row can be
+// taller than the button (action buttons are a full control height). The gutter is
+// too narrow for a label, so the destination stays in the accessible name and the
+// label only appears where the link goes back above the title.
+.back-link--aside {
+  align-items: center;
+  background-color: transparent;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-button);
+  box-sizing: border-box;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  height: 2.5rem;
+  justify-content: center;
+  margin: 0;
+  min-height: 2.5rem;
+  padding: 0;
+  position: absolute;
+  right: calc(100% + var(--space-3));
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.5rem;
+  z-index: 1;
+
+  &:hover {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .back-link__label {
+    display: none;
+  }
+}
+
+// Below that width the column reaches the edge of the page and there is no gutter
+// to put the arrow in, so the link goes back above the title and shows its label.
+@media (max-width: 74rem) {
+  .back-link--aside {
+    background-color: transparent;
+    border-color: transparent;
+    // Takes the whole first line of the title row so it sits above the title again.
+    flex-basis: 100%;
+    height: auto;
+    margin-block-end: var(--space-3);
+    min-height: 2rem;
+    position: static;
+    right: auto;
+    top: auto;
+    transform: none;
+    width: auto;
+
+    .back-link__label {
+      display: inline;
+    }
   }
 }
 
@@ -434,7 +529,9 @@ mat-card.mat-mdc-card {
   background-color: var(--color-bg-hover);
 }
 
-button:not(.mat-mdc-button-base, .mat-mdc-menu-item) {
+// Material's own controls use bare <button> elements internally (the slide-toggle
+// switch is one), so they must not receive the generic control box.
+button:not(.mat-mdc-button-base, .mat-mdc-menu-item, .mdc-switch) {
   @include mixins.control-base;
 
   border-radius: var(--radius-button);

@@ -97,6 +97,51 @@
           </div>
         </div>
 
+        <div class="co-teacher">
+          <div class="co-teacher__row">
+            <mat-slide-toggle [checked]="coTeacherEnabled()" (change)="handleCoTeacherToggle($event.checked)">
+              Add a co-teacher
+            </mat-slide-toggle>
+
+            @if (selectedCoTeachers().length > 0) {
+              <div class="selected-teachers">
+                @for (teacher of selectedCoTeachers(); track teacher.id) {
+                  <span class="selected-teacher">
+                    <span>{{ teacher.firstName }} {{ teacher.lastName }}</span>
+                    <button type="button" class="selected-teacher__remove"
+                            [attr.aria-label]="'Remove ' + teacher.firstName + ' ' + teacher.lastName"
+                            (click)="removeCoTeacher(teacher)">
+                      <mat-icon aria-hidden="true">close</mat-icon>
+                    </button>
+                  </span>
+                }
+              </div>
+            }
+          </div>
+
+          @if (coTeacherEnabled()) {
+            <div class="co-teacher__search">
+              <mat-icon aria-hidden="true">search</mat-icon>
+              <input [formControl]="teacherSearch" autocomplete="off" aria-label="Search teachers"
+                     placeholder="Search teachers...">
+              @if (teacherSearching()) {
+                <mat-progress-spinner mode="indeterminate" diameter="18"></mat-progress-spinner>
+              }
+            </div>
+          }
+
+          @if (coTeacherEnabled() && teacherResults().length > 0) {
+            <div class="results teacher-results" role="listbox" aria-label="Teacher results">
+              @for (teacher of teacherResults(); track teacher.id) {
+                <button class="result" type="button" role="option" (click)="addCoTeacher(teacher)">
+                  <span>{{ teacher.firstName }} {{ teacher.lastName }}</span>
+                  <span class="result__count">{{ teacher.studentId }}</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+
         <div class="actions">
           <button class="create-button" type="button" [disabled]="createIsDisabled()" (click)="create()">
             @if (submitting()) {

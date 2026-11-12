@@ -3,34 +3,52 @@
 }
 
 @if (course(); as c) {
-  <mat-card class="course-card">
-    <mat-card-title>Edit course</mat-card-title>
-    <mat-card-content>
+  <div class="settings">
+    <section class="settings-section">
+      <h2 class="section-heading">General</h2>
       <mat-form-field class="full-width">
-        <mat-label>Title</mat-label>
+        <mat-label>Course title</mat-label>
         <input matInput [ngModel]="title()" (ngModelChange)="title.set($event)">
       </mat-form-field>
+    </section>
 
-      <div class="toggles">
-        <mat-slide-toggle [ngModel]="isReadOnly()" (ngModelChange)="isReadOnly.set($event)">
-          Read-only
-        </mat-slide-toggle>
-        <mat-slide-toggle [ngModel]="studentsRetainAccess()" (ngModelChange)="studentsRetainAccess.set($event)">
-          Students retain access
-        </mat-slide-toggle>
+    <section class="settings-section">
+      <h2 class="section-heading">Access</h2>
+
+      <div class="setting-row">
+        <div class="setting-row__text">
+          <span class="setting-row__label">Read-only</span>
+          <span class="setting-row__hint">Lock the course against further changes.</span>
+        </div>
+        <mat-slide-toggle [ngModel]="isReadOnly()" (ngModelChange)="isReadOnly.set($event)"
+                          aria-label="Read-only"></mat-slide-toggle>
       </div>
 
-      <dl class="meta">
-        <dt>Roster id</dt>
+      <div class="setting-row">
+        <div class="setting-row__text">
+          <span class="setting-row__label">Students retain access</span>
+          <span class="setting-row__hint">Students keep access to their work after the course ends.</span>
+        </div>
+        <mat-slide-toggle [ngModel]="studentsRetainAccess()" (ngModelChange)="studentsRetainAccess.set($event)"
+                          aria-label="Students retain access"></mat-slide-toggle>
+      </div>
+    </section>
+
+    <section class="settings-section">
+      <h2 class="section-heading">Details</h2>
+      <dl class="settings-meta">
+        <dt>Roster ID</dt>
         <dd>{{ c.rosterId }}</dd>
-        <dt>Owner id</dt>
+        <dt>Owner ID</dt>
         <dd>{{ c.ownerId }}</dd>
       </dl>
+    </section>
 
-      <div class="actions">
-        <button mat-flat-button color="primary" [disabled]="saving()" (click)="handleSaveClicked()">Save</button>
-        <button mat-stroked-button color="warn" (click)="handleDeleteClicked()">Delete</button>
-      </div>
-    </mat-card-content>
-  </mat-card>
+    <div class="settings-actions">
+      <button mat-stroked-button color="warn" (click)="handleDeleteClicked()">Delete course</button>
+      <button mat-flat-button color="primary" [disabled]="saving()" (click)="handleSaveClicked()">
+        Save changes
+      </button>
+    </div>
+  </div>
 }

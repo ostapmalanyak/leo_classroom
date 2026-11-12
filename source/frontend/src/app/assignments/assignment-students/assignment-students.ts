@@ -1,14 +1,15 @@
 import { Component, computed, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { AssignmentService, FeedbackState, StudentSubmission } from '../../../core/services/assignment-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 
 @Component({
   selector: 'app-assignment-students',
-  imports: [MatTableModule, MatButton, MatProgressBar],
+  imports: [RouterLink, MatTableModule, MatButton, MatIcon, MatProgressBar],
   templateUrl: './assignment-students.html',
   styleUrl: './assignment-students.scss'
 })
@@ -26,9 +27,18 @@ export class AssignmentStudents implements OnInit {
   protected readonly studentUrl = computed(() => `${window.location.origin}/my-assignments/${this.id()}`);
   protected readonly students: WritableSignal<StudentSubmission[]> = signal([]);
   protected readonly loading: WritableSignal<boolean> = signal(false);
+  protected readonly courseId: WritableSignal<number | null> = signal(null);
+
+  // The student list does not carry the assignment, so the parent course is read for
+  // the way back. If it is unavailable the link still leads somewhere safe.
+  protected get backRoute(): (string | number)[] {
+    const courseId = this.courseId();
+
+    return courseId === null ? ['/my-classes'] : ['/my-assignments/course', courseId];
+  }
 
   public async ngOnInit(): Promise<void> {
-    await this.reload();
+    await Promise.all([this.loadCourse(), this.reload()]);
   }
 
   protected async copyLink(): Promise<void> {
@@ -61,6 +71,13 @@ export class AssignmentStudents implements OnInit {
     }
     window.open(result.htmlUrl, '_blank', 'noopener');
     this.snackbar.show('Feedback pull request ready');
+  }
+
+  private async loadCourse(): Promise<void> {
+    const assignment = await this.service.getForEdit(Number(this.id()));
+    if (assignment !== 'forbidden' && assignment !== null) {
+      this.courseId.set(assignment.courseId);
+    }
   }
 
   private async reload(): Promise<void> {

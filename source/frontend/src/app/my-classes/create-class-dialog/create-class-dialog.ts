@@ -5,12 +5,16 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   catchError, distinctUntilChanged, map, merge, of, startWith, Subject, Subscription, switchMap, tap, timer
 } from 'rxjs';
 import { ZodError } from 'zod';
 import { ClassRoster, ClassService } from '../../../core/services/class-service';
+import { CourseTeacherService } from '../../../core/services/course-teacher-service';
+import { SnackbarService } from '../../../core/services/snackbar-service';
+import { UserRole, UserService, UserSummary } from '../../../core/services/user-service';
 
 export interface CreateClassDialogData {
   readonly titleId: string;
@@ -19,13 +23,17 @@ export interface CreateClassDialogData {
 @Component({
   selector: 'app-create-class-dialog',
   imports: [
-    MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule, ReactiveFormsModule
+    MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggle, MatTooltipModule,
+    ReactiveFormsModule
   ],
   templateUrl: './create-class-dialog.html',
   styleUrl: './create-class-dialog.scss'
 })
 export class CreateClassDialog implements OnDestroy {
   private readonly classService = inject(ClassService);
+  private readonly courseTeacherService = inject(CourseTeacherService);
+  private readonly userService = inject(UserService);
+  private readonly snackbar = inject(SnackbarService);
   private readonly dialogRef = inject(MatDialogRef<CreateClassDialog, boolean>);
   protected readonly data = inject<CreateClassDialogData>(MAT_DIALOG_DATA);
   private readonly retrySearch = new Subject<void>();
@@ -38,6 +46,7 @@ export class CreateClassDialog implements OnDestroy {
 
   protected readonly name = new FormControl('', { nonNullable: true });
   protected readonly search = new FormControl('', { nonNullable: true });
+  protected readonly teacherSearch = new FormControl('', { nonNullable: true });
   protected readonly selectedRoster = signal<ClassRoster | null>(null);
   protected readonly rosters = signal<ClassRoster[]>([]);
   protected readonly searchState = signal<'loading' | 'ready' | 'error'>('loading');
@@ -49,6 +58,13 @@ export class CreateClassDialog implements OnDestroy {
   protected readonly iconSeed = signal(crypto.randomUUID());
   protected readonly activeIndex = signal(-1);
   protected readonly resultsOpen = signal(false);
+  protected readonly coTeacherEnabled = signal(false);
+  protected readonly selectedCoTeachers = signal<UserSummary[]>([]);
+  protected readonly teacherResults = signal<UserSummary[]>([]);
+  protected readonly teacherSearching = signal(false);
+
+  private teacherSearchTimer: ReturnType<typeof setTimeout> | null = null;
+  private teacherSearchVersion = 0;
 
   public constructor() {
     const searchRequests = merge(
@@ -129,6 +145,8 @@ export class CreateClassDialog implements OnDestroy {
     this.subscriptions.add(this.name.valueChanges.pipe(
       distinctUntilChanged()
     ).subscribe(() => this.nameError.set('')));
+
+    this.subscriptions.add(this.teacherSearch.valueChanges.subscribe(term => this.scheduleTeacherSearch(term)));
   }
 
   protected previewName(): string {
@@ -169,6 +187,35 @@ export class CreateClassDialog implements OnDestroy {
     this.search.setValue('');
     this.resultsOpen.set(false);
     setTimeout(() => this.focusRosterSearch());
+  }
+
+  // Co-teachers are optional and the toggle starts off; turning it on reveals the
+  // teacher search without changing what is required to create the class.
+  protected handleCoTeacherToggle(enabled: boolean): void {
+    this.coTeacherEnabled.set(enabled);
+    this.teacherSearchVersion++;
+    if (this.teacherSearchTimer !== null) {
+      clearTimeout(this.teacherSearchTimer);
+      this.teacherSearchTimer = null;
+    }
+    this.teacherSearch.setValue('');
+    this.teacherResults.set([]);
+    this.teacherSearching.set(false);
+    if (!enabled) {
+      this.selectedCoTeachers.set([]);
+    }
+  }
+
+  protected addCoTeacher(teacher: UserSummary): void {
+    if (!this.selectedCoTeachers().some(selected => selected.id === teacher.id)) {
+      this.selectedCoTeachers.update(selected => [...selected, teacher]);
+    }
+    this.teacherSearch.setValue('');
+    this.teacherResults.set([]);
+  }
+
+  protected removeCoTeacher(teacher: UserSummary): void {
+    this.selectedCoTeachers.update(selected => selected.filter(candidate => candidate.id !== teacher.id));
   }
 
   protected handleSearchKeydown(event: KeyboardEvent): void {
@@ -254,6 +301,15 @@ export class CreateClassDialog implements OnDestroy {
         return;
       }
 
+      const coTeachers = this.selectedCoTeachers();
+      if (coTeachers.length > 0) {
+        const added = await Promise.all(coTeachers.map(teacher =>
+          this.courseTeacherService.addTeacher(result.value.id, teacher.id)));
+        if (added.some(outcome => outcome !== 'ok')) {
+          this.snackbar.show('Class created, but some co-teachers could not be added');
+        }
+      }
+
       this.dialogRef.close(true);
     } finally {
       this.submitting.set(false);
@@ -261,8 +317,49 @@ export class CreateClassDialog implements OnDestroy {
   }
 
   public ngOnDestroy(): void {
+    if (this.teacherSearchTimer !== null) {
+      clearTimeout(this.teacherSearchTimer);
+    }
     this.subscriptions.unsubscribe();
     this.releaseAvatarUrl();
+  }
+
+  private scheduleTeacherSearch(term: string): void {
+    const version = ++this.teacherSearchVersion;
+    if (this.teacherSearchTimer !== null) {
+      clearTimeout(this.teacherSearchTimer);
+      this.teacherSearchTimer = null;
+    }
+
+    const query = term.trim();
+    if (!this.coTeacherEnabled() || query.length < 2) {
+      this.teacherResults.set([]);
+      this.teacherSearching.set(false);
+
+      return;
+    }
+
+    this.teacherSearching.set(true);
+    this.teacherSearchTimer = setTimeout(() => void this.runTeacherSearch(query, version), 300);
+  }
+
+  private async runTeacherSearch(query: string, version: number): Promise<void> {
+    const results = await this.userService.search(query, UserRole.Teacher);
+    if (version !== this.teacherSearchVersion) {
+      return;
+    }
+
+    this.teacherSearching.set(false);
+    if (results === null) {
+      this.snackbar.show('Could not search teachers');
+
+      return;
+    }
+
+    const selectedIds = new Set(this.selectedCoTeachers().map(teacher => teacher.id));
+    this.teacherResults.set(results.filter(user => user.role === UserRole.Teacher
+      && !selectedIds.has(user.id)
+      && `${user.firstName} ${user.lastName}`.trim().length > 0));
   }
 
   private releaseAvatarUrl(): void {

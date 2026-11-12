@@ -1,13 +1,12 @@
 import { Component, computed, inject, input, OnInit, signal, WritableSignal } from '@angular/core';
-import { DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { MatInput } from '@angular/material/input';
-import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -35,25 +34,32 @@ interface CourseAssignment {
   status: SubmissionStatus | null;
 }
 
-type AssignmentSort = 'date-ascending' | 'date-descending' | 'title';
+type DateSort = 'date-ascending' | 'date-descending';
 
-interface AssignmentGroup {
+interface AssignmentDateGroup {
   key: string;
-  date: Date | null;
+  date: Date;
   assignments: CourseAssignment[];
+}
+
+interface AssignmentSections {
+  open: AssignmentDateGroup[];
+  noDate: CourseAssignment[];
+  expired: AssignmentDateGroup[];
 }
 
 @Component({
   selector: 'app-course-assignments',
   imports: [
-    DatePipe, RouterLink, FormsModule, MatButton, MatIconButton, MatCard, MatCardContent, MatFormField, MatLabel,
-    MatIcon, MatInput, MatListModule, MatMenuModule, MatProgressBar, MatTabsModule, CourseDetail
+    DatePipe, NgTemplateOutlet, RouterLink, FormsModule, MatButton, MatIconButton, MatCard, MatCardContent,
+    MatFormField, MatLabel, MatIcon, MatInput, MatMenuModule, MatProgressBar, MatTabsModule, CourseDetail
   ],
   templateUrl: './course-assignments.html',
   styleUrls: ['./course-assignments.scss', '../../my-classes/my-classes.scss']
 })
 export class CourseAssignments implements OnInit {
   private readonly assignmentService = inject(AssignmentService);
+  private readonly route = inject(ActivatedRoute);
   private readonly courseService = inject(CourseService);
   private readonly courseTeacherService = inject(CourseTeacherService);
   private readonly userService = inject(UserService);
@@ -70,12 +76,17 @@ export class CourseAssignments implements OnInit {
   protected readonly teachers: WritableSignal<CourseTeacherParticipant[]> = signal([]);
   protected readonly loading: WritableSignal<boolean> = signal(false);
   protected readonly selectedTab = signal(0);
-  protected readonly sortMode = signal<AssignmentSort>('date-ascending');
-  protected readonly assignmentGroups = computed<AssignmentGroup[]>(() => {
-    const mode = this.sortMode();
+  protected readonly dateSort = signal<DateSort>('date-ascending');
+  protected readonly sortByTitle = signal(false);
+  protected readonly assignmentSections = computed<AssignmentSections>(() => {
+    const direction = this.dateSort();
+    const titleFirst = this.sortByTitle();
     const compare = (left: CourseAssignment, right: CourseAssignment): number => {
-      if (mode === 'title') {
-        return left.title.localeCompare(right.title);
+      if (titleFirst) {
+        const byTitle = left.title.localeCompare(right.title);
+        if (byTitle !== 0) {
+          return byTitle;
+        }
       }
       if (left.deadline === null && right.deadline === null) {
         return left.title.localeCompare(right.title);
@@ -89,34 +100,38 @@ export class CourseAssignments implements OnInit {
 
       const byDate = left.deadline.compareTo(right.deadline);
 
-      return mode === 'date-descending' ? -byDate : byDate;
+      return direction === 'date-descending' ? -byDate : byDate;
     };
-    const datedGroups = new Map<string, { date: Date; assignments: CourseAssignment[] }>();
-    const undated: CourseAssignment[] = [];
+
+    // Every dated assignment is grouped by its deadline date, open and expired alike, so the
+    // date is read from the subsection heading instead of from each card. Undated work gets
+    // its own flat section.
+    const byDate = new Map<string, AssignmentDateGroup>();
+    const expiredByDate = new Map<string, AssignmentDateGroup>();
+    const noDate: CourseAssignment[] = [];
 
     for (const assignment of this.assignments()) {
       if (assignment.deadline === null) {
-        undated.push(assignment);
+        noDate.push(assignment);
         continue;
       }
 
       const date = this.formatDeadline(assignment.deadline);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      const group = datedGroups.get(key) ?? { date, assignments: [] };
+      const groups = this.isExpired(date) ? expiredByDate : byDate;
+      const key = this.dateKey(date);
+      const group: AssignmentDateGroup = groups.get(key) ?? { key, date, assignments: [] };
       group.assignments.push(assignment);
-      datedGroups.set(key, group);
+      groups.set(key, group);
     }
 
-    const groups: AssignmentGroup[] = [...datedGroups.entries()]
-      .sort(([left], [right]) => mode === 'date-descending'
-        ? right.localeCompare(left)
-        : left.localeCompare(right))
-      .map(([key, group]) => ({ key, date: group.date, assignments: group.assignments.sort(compare) }));
-    if (undated.length > 0) {
-      groups.push({ key: 'no-date', date: null, assignments: undated.sort(compare) });
-    }
+    const toGroups = (groups: Map<string, AssignmentDateGroup>): AssignmentDateGroup[] =>
+      [...groups.values()]
+        .sort((left, right) => direction === 'date-descending'
+          ? right.date.getTime() - left.date.getTime()
+          : left.date.getTime() - right.date.getTime())
+        .map(group => ({ ...group, assignments: group.assignments.sort(compare) }));
 
-    return groups;
+    return { open: toGroups(byDate), noDate: noDate.sort(compare), expired: toGroups(expiredByDate) };
   });
   protected readonly students = computed(() => this.participants().filter(participant => participant.role === Role.Student));
 
@@ -147,7 +162,18 @@ export class CourseAssignments implements OnInit {
     return date.getTime() < today.getTime();
   }
 
+  private dateKey(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
   public async ngOnInit(): Promise<void> {
+    const tab = this.route.snapshot.queryParamMap.get('tab');
+    if (tab === 'settings' && this.session.isTeacher()) {
+      this.selectedTab.set(2);
+    } else if (tab === 'participants') {
+      this.selectedTab.set(1);
+    }
+
     this.loading.set(true);
     try {
       await this.me.load();
@@ -293,6 +319,10 @@ export class CourseAssignments implements OnInit {
     this.teachers.update(teachers => teachers.filter(member => member.id !== teacher.id));
   }
 
+  protected teacherDisplayName(teacher: UserSummary): string {
+    return `${teacher.firstName} ${teacher.lastName}`.trim().replace(/\s+/g, ' ');
+  }
+
   private async runStudentSearch(term: string): Promise<void> {
     this.studentSearching.set(true);
     const results = await this.courseService.searchAvailableStudents(Number(this.courseId()), term);
@@ -315,7 +345,8 @@ export class CourseAssignments implements OnInit {
     }
 
     const existingIds = new Set(this.teachers().map(teacher => teacher.id));
-    this.teacherSearchResults.set(results.filter(user => !existingIds.has(user.id)));
+    this.teacherSearchResults.set(results.filter(user =>
+      !existingIds.has(user.id) && this.teacherDisplayName(user).length > 0));
   }
 
 }

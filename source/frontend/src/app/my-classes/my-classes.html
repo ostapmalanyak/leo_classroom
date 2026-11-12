@@ -4,15 +4,29 @@
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
 }
 
-@if (!loading() && classes().length === 0) {
-  <p class="empty">You have no classes yet.</p>
+<label class="class-search">
+  <mat-icon aria-hidden="true">search</mat-icon>
+  <input type="search" [value]="searchTerm()" (input)="handleSearchInput($event)"
+         placeholder="Search classes..." aria-label="Search classes">
+</label>
+
+@if (!loading() && visibleClasses().length === 0) {
+  <p class="empty">
+    @if (searchTerm().trim() === '') {
+      You have no classes yet.
+    } @else {
+      No classes match your search.
+    }
+  </p>
 }
 
 <div class="class-grid">
-  <button class="class-card class-card--add" type="button" aria-label="Add a class" (click)="openCreateDialog()">
-    <span class="class-card__add-icon" aria-hidden="true">+</span>
-  </button>
-  @for (course of classes(); track course.id) {
+  @if (searchTerm().trim() === '') {
+    <button class="class-card class-card--add" type="button" aria-label="Add a class" (click)="openCreateDialog()">
+      <span class="class-card__add-icon" aria-hidden="true">+</span>
+    </button>
+  }
+  @for (course of visibleClasses(); track course.id) {
     <a class="class-card" [routerLink]="['/courses', course.id, 'assignments']">
       <img class="class-card__avatar" [src]="course.avatarUrl" [alt]="course.title + ' icon'">
       <span class="class-card__body">
@@ -25,7 +39,13 @@
               <mat-icon>more_horiz</mat-icon>
             </button>
             <mat-menu #courseMenu="matMenu" panelClass="course-menu-panel" (click)="$event.stopPropagation()">
-              <button mat-menu-item type="button" class="delete-item"
+              <button mat-menu-item type="button" disableRipple
+                      [routerLink]="['/my-assignments/course', course.id]"
+                      [queryParams]="{ tab: 'settings' }">
+                <mat-icon>settings</mat-icon>
+                <span>Settings</span>
+              </button>
+              <button mat-menu-item type="button" class="delete-item" disableRipple
                       (click)="openDeleteDialog($event, course)">
                 <mat-icon>delete</mat-icon>
                 <span>Delete course</span>

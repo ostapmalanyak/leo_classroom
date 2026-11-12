@@ -1,11 +1,12 @@
+<a class="back-to-classes" [routerLink]="classesRoute">
+  <mat-icon>arrow_back</mat-icon>
+  <span>All classes</span>
+</a>
+
 <div class="course-header">
   <div class="course-content">
     <h1>{{ selectedTab() === 0 ? title() : title() + "'s " + (selectedTab() === 1 ? 'Participants' : 'Settings') }}</h1>
     <div class="course-tabs">
-      <a class="back-to-classes" [routerLink]="classesRoute">
-        <mat-icon>arrow_back</mat-icon>
-        <span>All classes</span>
-      </a>
       @if (selectedTab() === 0) {
         <div class="sort-control">
           <button mat-icon-button type="button" aria-label="Sort assignments" [matMenuTriggerFor]="sortMenu">
@@ -13,10 +14,37 @@
               <path d="M5 4v15m0 0-3-3m3 3 3-3M11 7h10m-10 5h7m-7 5h4" />
             </svg>
           </button>
-          <mat-menu #sortMenu="matMenu">
-            <button mat-menu-item type="button" (click)="sortMode.set('date-ascending')">Date ascending</button>
-            <button mat-menu-item type="button" (click)="sortMode.set('date-descending')">Date descending</button>
-            <button mat-menu-item type="button" (click)="sortMode.set('title')">Title</button>
+          <mat-menu #sortMenu="matMenu" panelClass="sort-menu-panel">
+            <button mat-menu-item type="button" (click)="dateSort.set('date-ascending')">
+              <span class="sort-option">
+                <span>Date ascending</span>
+                <span class="sort-option__check">
+                  @if (dateSort() === 'date-ascending') {
+                    <mat-icon>check</mat-icon>
+                  }
+                </span>
+              </span>
+            </button>
+            <button mat-menu-item type="button" (click)="dateSort.set('date-descending')">
+              <span class="sort-option">
+                <span>Date descending</span>
+                <span class="sort-option__check">
+                  @if (dateSort() === 'date-descending') {
+                    <mat-icon>check</mat-icon>
+                  }
+                </span>
+              </span>
+            </button>
+            <button mat-menu-item type="button" (click)="sortByTitle.set(!sortByTitle())">
+              <span class="sort-option">
+                <span>Title</span>
+                <span class="sort-option__check">
+                  @if (sortByTitle()) {
+                    <mat-icon>check</mat-icon>
+                  }
+                </span>
+              </span>
+            </button>
           </mat-menu>
         </div>
       }
@@ -25,6 +53,7 @@
         class="course-tab-group"
         aria-label="Course sections"
         [mat-stretch-tabs]="false"
+        [selectedIndex]="selectedTab()"
         (selectedIndexChange)="selectedTab.set($event)">
         <mat-tab label="Course">
           @if (loading()) {
@@ -34,7 +63,10 @@
           @if (session.isTeacher()) {
             <div class="class-grid create-assignment-grid">
               <a class="class-card class-card--add" [routerLink]="['/courses', courseId(), 'assignments', 'new']">
-                <span class="class-card__add-icon" aria-hidden="true">+</span>
+                <svg class="class-card__add-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
                 <span>Create Assignment</span>
               </a>
             </div>
@@ -44,36 +76,63 @@
             <p class="empty">No assignments yet.</p>
           }
 
-          <div class="assignments">
-            @for (group of assignmentGroups(); track group.key) {
-              <section class="assignment-group">
-                <h2 class="section-heading">
-                  @if (group.date; as date) {
-                    {{ date | date: 'dd.MM.yyyy' }}
-                    <span class="date-status" [class.date-status--expired]="isExpired(date)">
-                      {{ isExpired(date) ? 'Expired' : 'TO DO' }}
-                    </span>
+          <ng-template #assignmentCard let-assignment>
+            <mat-card class="assignment-card">
+              <mat-card-content>
+                <div class="assignment-heading">
+                  <strong>{{ assignment.title }}</strong>
+                </div>
+                <div class="assignment-details">
+                  @if (session.isTeacher()) {
+                    <a mat-button [routerLink]="['/assignments', assignment.id, 'edit']">Edit</a>
+                    <a mat-button [routerLink]="['/assignments', assignment.id, 'students']">See submissions</a>
                   } @else {
-                    No Date
+                    <span>{{ assignment.accepted ? (assignment.status ?? 'Accepted') : 'Not accepted yet' }}</span>
+                    <a mat-button [routerLink]="['/my-assignments', assignment.id]">Open assignment</a>
                   }
-                </h2>
-                @for (assignment of group.assignments; track assignment.id) {
-                  <mat-card class="assignment-card">
-                    <mat-card-content>
-                      <div class="assignment-heading">
-                        <strong>{{ assignment.title }}</strong>
-                      </div>
-                      <div class="assignment-details">
-                        @if (session.isTeacher()) {
-                          <a mat-button [routerLink]="['/assignments', assignment.id, 'edit']">Edit</a>
-                          <a mat-button [routerLink]="['/assignments', assignment.id, 'students']">See submissions</a>
-                        } @else {
-                          <span>{{ assignment.accepted ? (assignment.status ?? 'Accepted') : 'Not accepted yet' }}</span>
-                          <a mat-button [routerLink]="['/my-assignments', assignment.id]">Open assignment</a>
-                        }
-                      </div>
-                    </mat-card-content>
-                  </mat-card>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </ng-template>
+
+          @let sections = assignmentSections();
+          <div class="assignments">
+            @if (sections.open.length > 0) {
+              <section class="assignment-section">
+                <h2 class="section-heading section-heading--open">Open</h2>
+                @for (group of sections.open; track group.key) {
+                  <section class="assignment-group">
+                    <h3 class="subsection-heading">{{ group.date | date: 'dd.MM.yyyy' }}</h3>
+                    @for (assignment of group.assignments; track assignment.id) {
+                      <ng-container [ngTemplateOutlet]="assignmentCard"
+                                    [ngTemplateOutletContext]="{ $implicit: assignment }" />
+                    }
+                  </section>
+                }
+              </section>
+            }
+
+            @if (sections.noDate.length > 0) {
+              <section class="assignment-section">
+                <h2 class="section-heading">No Date</h2>
+                @for (assignment of sections.noDate; track assignment.id) {
+                  <ng-container [ngTemplateOutlet]="assignmentCard"
+                                [ngTemplateOutletContext]="{ $implicit: assignment }" />
+                }
+              </section>
+            }
+
+            @if (sections.expired.length > 0) {
+              <section class="assignment-section">
+                <h2 class="section-heading section-heading--expired">Expired</h2>
+                @for (group of sections.expired; track group.key) {
+                  <section class="assignment-group">
+                    <h3 class="subsection-heading">{{ group.date | date: 'dd.MM.yyyy' }}</h3>
+                    @for (assignment of group.assignments; track assignment.id) {
+                      <ng-container [ngTemplateOutlet]="assignmentCard"
+                                    [ngTemplateOutletContext]="{ $implicit: assignment }" />
+                    }
+                  </section>
                 }
               </section>
             }
@@ -85,30 +144,22 @@
           } @else {
             <section class="participant-section">
               <h2 class="section-heading">Co-teacher</h2>
-              @if (teachers().length === 0) {
-                <p class="empty">No teachers listed.</p>
-              } @else {
-                <mat-list>
-                  @for (teacher of teachers(); track teacher.id) {
-                    <mat-list-item>
-                      <span matListItemTitle>{{ teacher.firstName }} {{ teacher.lastName }}@if (teacher.isOwner) { (Owner) }</span>
-                      @if (session.isTeacher() && !teacher.isOwner) {
-                        <button mat-icon-button matListItemMeta type="button" class="square-action square-action--remove"
-                                [attr.aria-label]="'Remove ' + teacher.firstName + ' ' + teacher.lastName"
-                                (click)="removeTeacher(teacher)">
-                          <mat-icon>remove</mat-icon>
-                        </button>
-                      }
-                    </mat-list-item>
-                  }
-                </mat-list>
-              }
               @if (session.isTeacher()) {
                 <div class="add-row">
                   <span>Add Co-teacher</span>
-                  <button mat-icon-button type="button" class="square-action square-action--add"
+                  <button type="button" class="icon-btn icon-btn--add"
                           aria-label="Add Co-teacher" (click)="toggleTeacherSearch()">
-                    <mat-icon>{{ showTeacherSearch() ? 'close' : 'add' }}</mat-icon>
+                    @if (showTeacherSearch()) {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                           stroke-linecap="round" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6L6 18" />
+                      </svg>
+                    } @else {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                           stroke-linecap="round" aria-hidden="true">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                    }
                   </button>
                 </div>
                 @if (showTeacherSearch()) {
@@ -121,20 +172,46 @@
                     <mat-progress-bar mode="indeterminate"></mat-progress-bar>
                   }
                   @if (teacherSearchResults().length > 0) {
-                    <mat-list class="search-results">
+                    <div class="search-results">
                       @for (teacher of teacherSearchResults(); track teacher.id) {
-                        <mat-list-item>
-                          <span matListItemTitle>{{ teacher.firstName }} {{ teacher.lastName }}</span>
-                          <button mat-icon-button matListItemMeta type="button" class="square-action square-action--add"
-                                  [attr.aria-label]="'Add ' + teacher.firstName + ' ' + teacher.lastName"
-                                  (click)="addTeacher(teacher)">
-                            <mat-icon>add</mat-icon>
-                          </button>
-                        </mat-list-item>
+                        @if (teacherDisplayName(teacher); as displayName) {
+                          <div class="participant-row">
+                            <span class="participant-name">{{ displayName }}</span>
+                            <button type="button" class="icon-btn icon-btn--add"
+                                    [attr.aria-label]="'Add ' + displayName"
+                                    (click)="addTeacher(teacher)">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                   stroke-linecap="round" aria-hidden="true">
+                                <path d="M12 5v14M5 12h14" />
+                              </svg>
+                            </button>
+                          </div>
+                        }
                       }
-                    </mat-list>
+                    </div>
                   }
                 }
+              }
+              @if (teachers().length === 0) {
+                <p class="empty">No teachers listed.</p>
+              } @else {
+                <div class="participant-list">
+                  @for (teacher of teachers(); track teacher.id) {
+                    <div class="participant-row">
+                      <div class="participant-name">{{ teacher.firstName }} {{ teacher.lastName }}@if (teacher.isOwner) { (Owner) }</div>
+                      @if (session.isTeacher() && !teacher.isOwner) {
+                        <button type="button" class="icon-btn icon-btn--remove"
+                                [attr.aria-label]="'Remove ' + teacher.firstName + ' ' + teacher.lastName"
+                                (click)="removeTeacher(teacher)">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                               stroke-linecap="round" aria-hidden="true">
+                            <path d="M5 12h14" />
+                          </svg>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
               }
             </section>
 
@@ -143,9 +220,19 @@
               @if (session.isTeacher()) {
                 <div class="add-row">
                   <span>Add Student</span>
-                  <button mat-icon-button type="button" class="square-action square-action--add"
+                  <button type="button" class="icon-btn icon-btn--add"
                           aria-label="Add Student" (click)="toggleStudentSearch()">
-                    <mat-icon>{{ showStudentSearch() ? 'close' : 'add' }}</mat-icon>
+                    @if (showStudentSearch()) {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                           stroke-linecap="round" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6L6 18" />
+                      </svg>
+                    } @else {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                           stroke-linecap="round" aria-hidden="true">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                    }
                   </button>
                 </div>
                 @if (showStudentSearch()) {
@@ -158,48 +245,57 @@
                     <mat-progress-bar mode="indeterminate"></mat-progress-bar>
                   }
                   @if (studentSearchResults().length > 0) {
-                    <mat-list class="search-results">
+                    <div class="search-results">
                       @for (student of studentSearchResults(); track student.id) {
-                        <mat-list-item>
-                          <span matListItemTitle>{{ student.firstName }} {{ student.lastName }}</span>
-                          <span matListItemLine>{{ student.class }}</span>
-                          <button mat-icon-button matListItemMeta type="button" class="square-action square-action--add"
+                        <div class="participant-row">
+                          <div class="participant-name">
+                            <span>{{ student.firstName }} {{ student.lastName }}</span>
+                            <span class="participant-subtitle">{{ student.class }}</span>
+                          </div>
+                          <button type="button" class="icon-btn icon-btn--add"
                                   [attr.aria-label]="'Add ' + student.firstName + ' ' + student.lastName"
                                   (click)="addStudent(student)">
-                            <mat-icon>add</mat-icon>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" aria-hidden="true">
+                              <path d="M12 5v14M5 12h14" />
+                            </svg>
                           </button>
-                        </mat-list-item>
+                        </div>
                       }
-                    </mat-list>
+                    </div>
                   }
                 }
               }
               @if (students().length === 0) {
                 <p class="empty">No students yet.</p>
               } @else {
-                <mat-list>
+                <div class="participant-list">
                   @for (student of students(); track student.id) {
-                    <mat-list-item>
-                      <span matListItemTitle>{{ student.firstName }} {{ student.lastName }}</span>
-                      <span matListItemLine>{{ student.class }}</span>
+                    <div class="participant-row">
+                      <div class="participant-name">
+                        <span>{{ student.firstName }} {{ student.lastName }}</span>
+                        <span class="participant-subtitle">{{ student.class }}</span>
+                      </div>
                       @if (session.isTeacher()) {
-                        <button mat-icon-button matListItemMeta type="button"
-                                class="square-action square-action--remove"
+                        <button type="button" class="icon-btn icon-btn--remove"
                                 [attr.aria-label]="'Remove ' + student.firstName + ' ' + student.lastName"
                                 (click)="removeParticipant(student)">
-                          <mat-icon>remove</mat-icon>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                               stroke-linecap="round" aria-hidden="true">
+                            <path d="M5 12h14" />
+                          </svg>
                         </button>
                       }
-                    </mat-list-item>
+                    </div>
                   }
-                </mat-list>
+                </div>
               }
             </section>
           }
         </mat-tab>
         @if (session.isTeacher()) {
           <mat-tab label="Settings">
-            <app-course-detail [id]="courseId()" />
+            <app-course-detail [id]="courseId()" (courseUpdated)="title.set($event.title)" />
           </mat-tab>
         }
       </mat-tab-group>

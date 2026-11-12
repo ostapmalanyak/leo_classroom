@@ -1,7 +1,6 @@
-import { Component, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
+import { Component, inject, input, InputSignal, OnInit, output, signal, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
@@ -14,9 +13,6 @@ import { SnackbarService } from '../../core/services/snackbar-service';
   selector: 'app-course-detail',
   imports: [
     FormsModule,
-    MatCard,
-    MatCardContent,
-    MatCardTitle,
     MatFormField,
     MatLabel,
     MatInput,
@@ -33,6 +29,9 @@ export class CourseDetail implements OnInit {
   private readonly router = inject(Router);
 
   public readonly id: InputSignal<string> = input.required<string>();
+
+  /** Lets the course page update its heading as soon as the title is saved. */
+  public readonly courseUpdated = output<Course>();
 
   protected readonly course: WritableSignal<Course | null> = signal(null);
   protected readonly loading: WritableSignal<boolean> = signal(false);
@@ -77,6 +76,7 @@ export class CourseDetail implements OnInit {
       return;
     }
     this.applyCourse(result);
+    this.courseUpdated.emit(result);
     this.snackbar.show('Course saved');
   }
 

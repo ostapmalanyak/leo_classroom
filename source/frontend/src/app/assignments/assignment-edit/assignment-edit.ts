@@ -1,7 +1,8 @@
 import { Component, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
+import { MatIcon } from '@angular/material/icon';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { MatSelect } from '@angular/material/select';
@@ -18,8 +19,8 @@ import { MarkdownEditor } from '../../shared/markdown-editor/markdown-editor';
 @Component({
   selector: 'app-assignment-edit',
   imports: [
-    FormsModule, MatCard, MatCardContent, MatCardTitle, MatFormField, MatLabel, MatInput, MatSelect, MatOption,
-    MatSlideToggle, MatButton, MatProgressBar, MarkdownEditor
+    FormsModule, RouterLink, MatCard, MatCardContent, MatCardTitle, MatFormField, MatLabel, MatInput, MatSelect,
+    MatOption, MatIcon, MatSlideToggle, MatButton, MatProgressBar, MarkdownEditor
   ],
   templateUrl: './assignment-edit.html',
   styleUrl: './assignment-edit.scss'
@@ -59,6 +60,20 @@ export class AssignmentEdit implements OnInit {
 
   protected isEditMode(): boolean {
     return this.id() !== undefined;
+  }
+
+  // Editing an assignment is reached from its submissions page; a new one is reached
+  // from the course page and has no id yet, only the course it belongs to.
+  protected get backRoute(): (string | number)[] {
+    const id = this.id();
+
+    return id === undefined
+      ? ['/my-assignments/course', Number(this.courseId())]
+      : ['/assignments', Number(id), 'students'];
+  }
+
+  protected get backLabel(): string {
+    return this.isEditMode() ? 'Back to submissions' : 'Back to course';
   }
 
   public async ngOnInit(): Promise<void> {

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, WritableSignal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, WritableSignal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { MatButtonModule } from '@angular/material/button';
@@ -42,10 +42,23 @@ export class MyClasses implements OnInit {
 
   protected readonly loading: WritableSignal<boolean> = signal(false);
   protected readonly classes: WritableSignal<ClassTile[]> = signal([]);
+  protected readonly searchTerm: WritableSignal<string> = signal('');
+  protected readonly visibleClasses = computed<ClassTile[]>(() => {
+    const query = this.searchTerm().trim().toLocaleLowerCase();
+    if (query === '') {
+      return this.classes();
+    }
+
+    return this.classes().filter(course => course.title.toLocaleLowerCase().includes(query));
+  });
   private assignmentsFailureNotified = false;
 
   public async ngOnInit(): Promise<void> {
     await this.loadClasses();
+  }
+
+  protected handleSearchInput(event: Event): void {
+    this.searchTerm.set((event.target as HTMLInputElement).value);
   }
 
   protected openCreateDialog(): void {
