@@ -1,10 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using LeoClassroom.Services;
 using LeoClassroom.Persistence.Model;
 using LeoClassroom.Persistence.Util;
 using LeoClassroom.Shared;
 using LeoClassroom.TestInt.Util;
+using Microsoft.EntityFrameworkCore;
 
 namespace LeoClassroom.TestInt;
 
@@ -96,5 +98,33 @@ public sealed class StudentAssignmentEndpointTests(WebApiTestFixture fixture) : 
         var response = await ApiClient.PostAsync($"api/assignments/{_assignmentId}/accept", null, TestCancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Submission_FailedProvisioning_IncludesFailureReason()
+    {
+        await ModifyDatabaseContentAsync(async context =>
+        {
+            User member = await context.Users.SingleAsync(user => user.StudentId == MemberIf);
+            context.Acceptances.Add(new Acceptance
+            {
+                AssignmentId = _assignmentId,
+                StudentId = member.Id,
+                RepoOwner = "algorithms-1",
+                RepoName = "sorting-IF000050",
+                AcceptedAt = TestClock.GetCurrentInstant(),
+                Status = SubmissionStatus.Failed,
+                FailureReason = "migrate repo: token rejected"
+            });
+            await context.SaveChangesAsync(TestCancellationToken);
+        });
+        AuthenticateAsStudent(MemberIf);
+
+        var response = await ApiClient.GetAsync(
+            $"api/assignments/{_assignmentId}/submission", TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestCancellationToken));
+        body.RootElement.GetProperty("failureReason").GetString().Should().Be("migrate repo: token rejected");
     }
 }

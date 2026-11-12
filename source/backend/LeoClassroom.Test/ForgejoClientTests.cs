@@ -1,8 +1,10 @@
 using System.Net;
 using System.Text;
 using LeoClassroom.Services.Forgejo;
+using LeoClassroom.Services.Util;
 using LeoClassroom.Shared;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using OneOf;
 using OneOf.Types;
@@ -15,14 +17,24 @@ namespace LeoClassroom.Test;
 public sealed class ForgejoClientTests
 {
     private readonly List<HttpRequestMessage> _requests = [];
+    private readonly List<string?> _requestBodies = [];
     private readonly Queue<HttpResponseMessage> _responses = new();
 
-    private ForgejoClient Build()
+    private ForgejoClient Build(ILogger<ForgejoClient>? logger = null)
     {
-        var handler = new StubHandler(_requests, _responses);
+        var handler = new StubHandler(_requests, _requestBodies, _responses);
         var http = new HttpClient(handler) { BaseAddress = new Uri("http://forgejo.test/") };
 
-        return new ForgejoClient(http, Substitute.For<ILogger<ForgejoClient>>());
+        return new ForgejoClient(
+            http,
+            Options.Create(new ForgejoSettings
+            {
+                BaseUrl = "http://forgejo.test",
+                AdminToken = "admin-token",
+                WebhookSecret = "webhook-secret",
+                WebhookTargetUrl = "http://backend/webhook"
+            }),
+            logger ?? Substitute.For<ILogger<ForgejoClient>>());
     }
 
     private void Respond(HttpStatusCode status, string? json = null) =>
@@ -115,26 +127,45 @@ public sealed class ForgejoClientTests
     }
 
     [Fact]
-    public async Task EnsureUserAsync_LocalAccount_SendsAPasswordSoForgejoAcceptsIt()
+    public async Task EnsureUserAsync_LocalAccount_SendsPasswordAndFullName()
     {
         Respond(HttpStatusCode.Created, """{"id":1,"login":"IF000001"}""");
 
-        await Build().EnsureUserAsync("IF000001", "a@b.at", authSourceId: 0);
+        await Build().EnsureUserAsync("IF000001", "a@b.at", "Ada Student", authSourceId: 0);
 
         string body = await _requests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        body.Should().Contain("\"password\"").And.Contain("\"source_id\":0");
+        body.Should().Contain("\"password\"").And.Contain("\"source_id\":0").And
+            .Contain("\"full_name\":\"Ada Student\"");
     }
 
     [Fact]
     public async Task EnsureUserAsync_AlreadyExists_IsSuccessWithoutCreatingAgain()
     {
         Respond(HttpStatusCode.UnprocessableEntity, """{"message":"user already exists [name: IF000001]"}""");
-        Respond(HttpStatusCode.OK, """{"id":1,"login":"IF000001"}""");
+        Respond(HttpStatusCode.OK, """{"id":1,"login":"IF000001","full_name":"Ada Student"}""");
 
-        OneOf<Success, ForgejoError> result = await Build().EnsureUserAsync("IF000001", "a@b.at", authSourceId: 0);
+        OneOf<Success, ForgejoError> result =
+            await Build().EnsureUserAsync("IF000001", "a@b.at", "Ada Student", authSourceId: 0);
 
         result.ShouldBe<Success>();
         _requests[1].RequestUri!.AbsolutePath.Should().Be("/api/v1/users/IF000001");
+    }
+
+    [Fact]
+    public async Task EnsureUserAsync_ExistingAccount_UpdatesItsFullName()
+    {
+        Respond(HttpStatusCode.UnprocessableEntity, """{"message":"user already exists"}""");
+        Respond(HttpStatusCode.OK, """{"id":1,"login":"IF000001","full_name":"IF000001"}""");
+        Respond(HttpStatusCode.OK);
+
+        OneOf<Success, ForgejoError> result =
+            await Build().EnsureUserAsync("IF000001", "a@b.at", "Ada Student", authSourceId: 0);
+
+        result.ShouldBe<Success>();
+        _requests[2].Method.Should().Be(HttpMethod.Patch);
+        _requests[2].RequestUri!.AbsolutePath.Should().Be("/api/v1/admin/users/IF000001");
+        (await _requests[2].Content!.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .Should().Contain("\"full_name\":\"Ada Student\"");
     }
 
     [Fact]
@@ -146,7 +177,8 @@ public sealed class ForgejoClientTests
         Respond(HttpStatusCode.UnprocessableEntity, """{"message":"e-mail already in use [email: a@b.at]"}""");
         Respond(HttpStatusCode.NotFound);
 
-        OneOf<Success, ForgejoError> result = await Build().EnsureUserAsync("IF000001", "a@b.at", authSourceId: 0);
+        OneOf<Success, ForgejoError> result =
+            await Build().EnsureUserAsync("IF000001", "a@b.at", "Ada Student", authSourceId: 0);
 
         ForgejoError error = result.ShouldBe<ForgejoError>();
         error.StatusCode.Should().Be(422);
@@ -199,6 +231,65 @@ public sealed class ForgejoClientTests
     }
 
     [Fact]
+    public async Task MigrateRepoAsync_PrivateSource_SendsSourceCredentials()
+    {
+        Respond(HttpStatusCode.Created,
+                """{"id":1,"name":"copy","full_name":"course/copy","clone_url":"http://forgejo.test/course/copy.git","html_url":"http://forgejo.test/course/copy","default_branch":"main"}""");
+
+        await Build().MigrateRepoAsync("http://forgejo.test/teacher/starter.git", "course", "copy", isPrivate: true,
+                                       authUsername: "leo-classroom-bot", authPassword: "source-token");
+
+        string body = await _requests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Contain("\"auth_username\":\"leo-classroom-bot\"")
+            .And.Contain("\"auth_password\":\"source-token\"");
+    }
+
+    [Fact]
+    public async Task MigrateRepoAsync_PublicSource_OmitsSourceCredentials()
+    {
+        Respond(HttpStatusCode.Created,
+                """{"id":1,"name":"copy","full_name":"course/copy","clone_url":"http://forgejo.test/course/copy.git","html_url":"http://forgejo.test/course/copy","default_branch":"main"}""");
+
+        await Build().MigrateRepoAsync("https://example.test/teacher/starter.git", "course", "copy", isPrivate: true);
+
+        string body = await _requests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().NotContain("auth_username").And.NotContain("auth_password");
+    }
+
+    [Fact]
+    public async Task ForkRepoAsync_SudosAsStudentAndLeavesOrganizationUnset()
+    {
+        Respond(HttpStatusCode.Created,
+                """{"id":1,"name":"exercise","full_name":"IF000050/exercise","clone_url":"http://forgejo.test/IF000050/exercise.git","html_url":"http://forgejo.test/IF000050/exercise","default_branch":"main"}""");
+
+        var result = await Build().ForkRepoAsync("teacher", "starter", "IF000050", "exercise");
+
+        result.ShouldBe<Success<ForgejoRepo>>().Value.FullName.Should().Be("IF000050/exercise");
+        _requests.Single().Headers.GetValues("Sudo").Should().ContainSingle().Which.Should().Be("IF000050");
+        _requestBodies.Single().Should().Contain("\"name\":\"exercise\"")
+            .And.NotContain("organization");
+    }
+
+    [Fact]
+    public async Task MigrateRepoAsync_Error_RedactsCredentialsFromFailureAndLog()
+    {
+        const string adminToken = "admin-token";
+        const string sourcePassword = "source-token";
+        Respond(HttpStatusCode.BadGateway,
+                $$"""{"message":"migration failed using {{adminToken}} and {{sourcePassword}}"}""");
+        ILogger<ForgejoClient> logger = Substitute.For<ILogger<ForgejoClient>>();
+
+        OneOf<Success<ForgejoRepo>, ForgejoError> result = await Build(logger).MigrateRepoAsync(
+            "http://forgejo.test/teacher/starter.git", "course", "copy", isPrivate: true,
+            authUsername: "leo-classroom-bot", authPassword: sourcePassword);
+
+        string failure = result.ShouldBe<ForgejoError>().Reason;
+        failure.Should().NotContain(adminToken).And.NotContain(sourcePassword);
+        string logs = string.Join('\n', logger.ReceivedCalls().Select(call => call.GetArguments()[2]?.ToString()));
+        logs.Should().Contain("502").And.NotContain(adminToken).And.NotContain(sourcePassword);
+    }
+
+    [Fact]
     public async Task GetAuthenticatedUserAsync_ReadsTheSnakeCaseAdminFlag()
     {
         // Forgejo sends is_admin; without an explicit mapping the property stays false and the health check
@@ -213,17 +304,23 @@ public sealed class ForgejoClientTests
         identity.Login.Should().Be("leo-classroom-bot");
     }
 
-    private sealed class StubHandler(List<HttpRequestMessage> requests, Queue<HttpResponseMessage> responses)
+    private sealed class StubHandler(
+        List<HttpRequestMessage> requests,
+        List<string?> requestBodies,
+        Queue<HttpResponseMessage> responses)
         : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
-                                                               CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+                                                                     CancellationToken cancellationToken)
         {
             requests.Add(request);
+            requestBodies.Add(request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync(cancellationToken));
 
-            return Task.FromResult(responses.Count > 0
-                                       ? responses.Dequeue()
-                                       : new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            return responses.Count > 0
+                ? responses.Dequeue()
+                : new HttpResponseMessage(HttpStatusCode.InternalServerError);
         }
     }
 }

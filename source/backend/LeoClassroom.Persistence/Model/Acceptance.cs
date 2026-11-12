@@ -13,6 +13,7 @@ public class Acceptance
     public required string RepoName { get; set; }
     public Instant AcceptedAt { get; set; }
     public SubmissionStatus Status { get; set; }
+    public string? FailureReason { get; set; }
     public string? RepoUrl { get; set; }
     public Instant? LastPushAt { get; set; }
     public Instant? LastCommitAt { get; set; }

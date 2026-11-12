@@ -60,6 +60,8 @@ internal sealed partial class GitService(IOptions<ForgejoSettings> settings, ILo
             return rejected;
         }
 
+        cloneUrl = InternalCloneUrl(cloneUrl);
+
         return await InWorkspaceAsync(async workDir =>
         {
             OneOf<Success, GitError> clone = await CloneAsync(cloneUrl, workDir, cancellationToken);
@@ -82,6 +84,8 @@ internal sealed partial class GitService(IOptions<ForgejoSettings> settings, ILo
         {
             return rejected;
         }
+
+        cloneUrl = InternalCloneUrl(cloneUrl);
 
         // Use the same separators for validation, symlink checks, and the eventual write on every OS.
         relativePath = relativePath.Replace('\\', '/');

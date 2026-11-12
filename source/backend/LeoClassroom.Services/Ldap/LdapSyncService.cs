@@ -217,7 +217,9 @@ internal sealed class LdapSyncService(
     private async ValueTask EnsureForgejoUserAsync(LdapPerson person)
     {
         OneOf<Success, ForgejoError> result =
-            await forgejo.EnsureUserAsync(person.StudentId, person.Email, forgejoSettings.Value.AuthSourceId);
+            await forgejo.EnsureUserAsync(
+                person.StudentId, person.Email, ForgejoNaming.UserDisplayName(person.FirstName, person.LastName),
+                forgejoSettings.Value.AuthSourceId);
         if (result.Failure is { } failed)
         {
             logger.LogWarning("Could not ensure Forgejo account for {StudentId}: {Reason}",

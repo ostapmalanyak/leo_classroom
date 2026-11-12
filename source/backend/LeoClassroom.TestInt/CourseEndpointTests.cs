@@ -260,6 +260,29 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
     }
 
     [Fact]
+    public async Task GetCourses_NonOwnerTeacher_DoesNotReturnCourse()
+    {
+        await CreateCourseAsOwnerAsync();
+        AuthenticateAsTeacher(OtherTeacherIf);
+
+        var overviews = await ApiClient.GetFromJsonAsync<List<CourseOverview>>("api/courses", JsonOptions,
+                                                                               TestCancellationToken);
+
+        overviews.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetCourseById_NonOwnerTeacher_Returns403()
+    {
+        CourseDto created = await CreateCourseAsOwnerAsync();
+        AuthenticateAsTeacher(OtherTeacherIf);
+
+        var response = await ApiClient.GetAsync($"api/courses/{created.Id}", TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public async Task GetCourseById_Missing_Returns404()
     {
         AuthenticateAsTeacher(OwnerIf);
