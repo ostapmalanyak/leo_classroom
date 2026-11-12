@@ -34,7 +34,7 @@ export class AssignmentStudents implements OnInit {
   protected get backRoute(): (string | number)[] {
     const courseId = this.courseId();
 
-    return courseId === null ? ['/my-classes'] : ['/my-assignments/course', courseId];
+    return courseId === null ? ['/my-courses'] : ['/my-assignments/course', courseId];
   }
 
   public async ngOnInit(): Promise<void> {

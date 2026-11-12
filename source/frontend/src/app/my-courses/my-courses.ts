@@ -13,12 +13,12 @@ import { Assignment, AssignmentService } from '../../core/services/assignment-se
 import { SessionService } from '../../core/auth/session-service';
 import { CourseTeacherService } from '../../core/services/course-teacher-service';
 import { CourseOverview, CourseService } from '../../core/services/course-service';
-import { ClassService } from '../../core/services/class-service';
+import { CourseManagementService } from '../../core/services/course-management-service';
 import { SnackbarService } from '../../core/services/snackbar-service';
-import { CreateClassDialog } from './create-class-dialog/create-class-dialog';
+import { CreateCourseDialog } from './create-course-dialog/create-course-dialog';
 import { DeleteCourseDialog } from './delete-course-dialog/delete-course-dialog';
 
-interface ClassTile {
+interface CourseTile {
   id: number;
   title: string;
   avatarUrl: string;
@@ -26,35 +26,35 @@ interface ClassTile {
 }
 
 @Component({
-  selector: 'app-my-classes',
+  selector: 'app-my-courses',
   imports: [RouterLink, MatProgressBar, MatButtonModule, MatIconModule, MatMenuModule],
-  templateUrl: './my-classes.html',
-  styleUrl: './my-classes.scss'
+  templateUrl: './my-courses.html',
+  styleUrl: './my-courses.scss'
 })
-export class MyClasses implements OnInit {
+export class MyCourses implements OnInit {
   private readonly assignmentService = inject(AssignmentService);
   private readonly courseTeacherService = inject(CourseTeacherService);
   private readonly courseService = inject(CourseService);
-  private readonly classService = inject(ClassService);
+  private readonly courseManagementService = inject(CourseManagementService);
   private readonly snackbar = inject(SnackbarService);
   private readonly session = inject(SessionService);
   private readonly dialog = inject(MatDialog);
 
   protected readonly loading: WritableSignal<boolean> = signal(false);
-  protected readonly classes: WritableSignal<ClassTile[]> = signal([]);
+  protected readonly courses: WritableSignal<CourseTile[]> = signal([]);
   protected readonly searchTerm: WritableSignal<string> = signal('');
-  protected readonly visibleClasses = computed<ClassTile[]>(() => {
+  protected readonly visibleCourses = computed<CourseTile[]>(() => {
     const query = this.searchTerm().trim().toLocaleLowerCase();
     if (query === '') {
-      return this.classes();
+      return this.courses();
     }
 
-    return this.classes().filter(course => course.title.toLocaleLowerCase().includes(query));
+    return this.courses().filter(course => course.title.toLocaleLowerCase().includes(query));
   });
   private assignmentsFailureNotified = false;
 
   public async ngOnInit(): Promise<void> {
-    await this.loadClasses();
+    await this.loadCourses();
   }
 
   protected handleSearchInput(event: Event): void {
@@ -62,18 +62,18 @@ export class MyClasses implements OnInit {
   }
 
   protected openCreateDialog(): void {
-    const dialogRef = this.dialog.open(CreateClassDialog, {
+    const dialogRef = this.dialog.open(CreateCourseDialog, {
       width: 'min(56rem, 92vw)',
       maxWidth: '92vw',
       maxHeight: '92vh',
-      ariaLabelledBy: 'create-class-title',
+      ariaLabelledBy: 'create-course-title',
       ariaModal: true,
-      data: { titleId: 'create-class-title' }
+      data: { titleId: 'create-course-title' }
     });
     dialogRef.afterClosed().subscribe(created => {
       if (created) {
-        this.snackbar.show('Class created');
-        void this.loadClasses();
+        this.snackbar.show('Course created');
+        void this.loadCourses();
       }
     });
   }
@@ -87,7 +87,7 @@ export class MyClasses implements OnInit {
     event.stopPropagation();
   }
 
-  protected openDeleteDialog(event: Event, course: ClassTile): void {
+  protected openDeleteDialog(event: Event, course: CourseTile): void {
     this.stopCardNavigation(event);
     const dialogRef = this.dialog.open(DeleteCourseDialog, {
       width: '28rem',
@@ -101,18 +101,18 @@ export class MyClasses implements OnInit {
     dialogRef.afterClosed().subscribe(deleted => {
       if (deleted === true) {
         this.snackbar.show('Course deleted');
-        void this.loadClasses();
+        void this.loadCourses();
       }
     });
   }
 
-  private async loadClasses(): Promise<void> {
+  private async loadCourses(): Promise<void> {
     this.assignmentsFailureNotified = false;
     this.loading.set(true);
     const courses = await this.courseService.getCourses();
     if (courses === null) {
       this.loading.set(false);
-      this.snackbar.show('Could not load your classes');
+      this.snackbar.show('Could not load your courses');
 
       return;
     }
@@ -128,7 +128,7 @@ export class MyClasses implements OnInit {
     const teacherLists = await Promise.all(courses.map(course => this.courseTeacherService.getTeachers(course.id)));
     if (teacherLists.some(teachers => teachers === null)) {
       this.loading.set(false);
-      this.snackbar.show('Could not load class teachers');
+      this.snackbar.show('Could not load course teachers');
 
       return;
     }
@@ -145,7 +145,7 @@ export class MyClasses implements OnInit {
       });
     const now = Instant.now();
     const tiles = myCourses.map(course => this.toTile(course, [], now));
-    this.classes.set(tiles);
+    this.courses.set(tiles);
     this.loading.set(false);
 
     for (const course of myCourses) {
@@ -161,23 +161,23 @@ export class MyClasses implements OnInit {
 
           if (!this.assignmentsFailureNotified) {
             this.assignmentsFailureNotified = true;
-            this.snackbar.show('Could not load class assignments');
+            this.snackbar.show('Could not load course assignments');
           }
 
           return of([]);
         })
       ).subscribe(assignments => {
-        this.classes.update(current => current.map(tile =>
+        this.courses.update(current => current.map(tile =>
           tile.id === course.id ? this.toTile(course, assignments, now) : tile));
       });
     }
   }
 
-  private toTile(course: CourseOverview, assignments: Assignment[], now: Instant): ClassTile {
+  private toTile(course: CourseOverview, assignments: Assignment[], now: Instant): CourseTile {
     return {
       id: course.id,
       title: course.title,
-      avatarUrl: this.classService.avatarUrl(course.iconSeed ?? `legacy-${course.id}`),
+      avatarUrl: this.courseManagementService.avatarUrl(course.iconSeed ?? `legacy-${course.id}`),
       open: assignments.filter(assignment => assignment.deadline === null || !assignment.deadline.isBefore(now)).length
     };
   }

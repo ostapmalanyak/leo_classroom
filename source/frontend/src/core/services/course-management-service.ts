@@ -4,22 +4,22 @@ import { firstValueFrom, map, Observable } from 'rxjs';
 import { z } from 'zod';
 import { backendApiBaseUrl } from '../auth/auth-config';
 
-const classRosterSchema = z.object({
+const rosterSchema = z.object({
   id: z.number().int().positive().transform(id => id.toString()),
   name: z.string().min(1),
   memberCount: z.number().int().nonnegative()
 });
 
-const createdClassSchema = z.object({
+const createdCourseSchema = z.object({
   id: z.number().int().positive(),
   title: z.string().min(1),
   rosterId: z.number().int().positive(),
   iconSeed: z.string().nullable().optional()
 });
 
-export type ClassRoster = z.infer<typeof classRosterSchema>;
-export type CreatedClass = z.infer<typeof createdClassSchema>;
-export type CreateClassResult = { readonly kind: 'created'; readonly value: CreatedClass }
+export type RosterSummary = z.infer<typeof rosterSchema>;
+export type CreatedCourse = z.infer<typeof createdCourseSchema>;
+export type CreateCourseResult = { readonly kind: 'created'; readonly value: CreatedCourse }
   | { readonly kind: 'error'; readonly message: string };
 export type DeleteCourseResult = { readonly kind: 'deleted' }
   | { readonly kind: 'error'; readonly status: number; readonly message: string };
@@ -27,14 +27,14 @@ export type DeleteCourseResult = { readonly kind: 'deleted' }
 @Injectable({
   providedIn: 'root'
 })
-export class ClassService {
+export class CourseManagementService {
   private readonly http = inject(HttpClient);
 
-  public searchRosters(query: string): Observable<ClassRoster[]> {
+  public searchRosters(query: string): Observable<RosterSummary[]> {
     const params = new HttpParams().set('query', query);
 
     return this.http.get<unknown>(`${backendApiBaseUrl()}/rosters`, { params }).pipe(
-      map(response => classRosterSchema.array().parse(response))
+      map(response => rosterSchema.array().parse(response))
     );
   }
 
@@ -46,14 +46,14 @@ export class ClassService {
     return `${backendApiBaseUrl()}/courses/avatar?seed=${encodeURIComponent(seed)}`;
   }
 
-  public async createClass(name: string, rosterId: string, iconSeed: string): Promise<CreateClassResult> {
+  public async createCourse(name: string, rosterId: string, iconSeed: string): Promise<CreateCourseResult> {
     try {
       const response = await firstValueFrom(this.http.post<unknown>(
         `${backendApiBaseUrl()}/courses`,
         { name: name.trim(), rosterIds: [rosterId], iconSeed }
       ));
 
-      return { kind: 'created', value: createdClassSchema.parse(response) };
+      return { kind: 'created', value: createdCourseSchema.parse(response) };
     } catch (error) {
       if (error instanceof HttpErrorResponse) {
         return { kind: 'error', message: this.createErrorMessage(error) };
@@ -91,7 +91,7 @@ export class ClassService {
 
   private createErrorMessage(error: HttpErrorResponse): string {
     if (error.status === 409) {
-      return 'A class with this name already exists for the selected roster.';
+      return 'A course with this name already exists for the selected roster.';
     }
 
     const body = error.error as { errors?: Record<string, string[]>; detail?: string; title?: string } | null;
@@ -107,6 +107,6 @@ export class ClassService {
       return body.title;
     }
 
-    return 'Could not create class. Please try again.';
+    return 'Could not create course. Please try again.';
   }
 }

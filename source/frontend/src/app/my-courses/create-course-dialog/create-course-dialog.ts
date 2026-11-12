@@ -11,31 +11,31 @@ import {
   catchError, distinctUntilChanged, map, merge, of, startWith, Subject, Subscription, switchMap, tap, timer
 } from 'rxjs';
 import { ZodError } from 'zod';
-import { ClassRoster, ClassService } from '../../../core/services/class-service';
+import { CourseManagementService, RosterSummary } from '../../../core/services/course-management-service';
 import { CourseTeacherService } from '../../../core/services/course-teacher-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 import { UserRole, UserService, UserSummary } from '../../../core/services/user-service';
 
-export interface CreateClassDialogData {
+export interface CreateCourseDialogData {
   readonly titleId: string;
 }
 
 @Component({
-  selector: 'app-create-class-dialog',
+  selector: 'app-create-course-dialog',
   imports: [
     MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, MatSlideToggle, MatTooltipModule,
     ReactiveFormsModule
   ],
-  templateUrl: './create-class-dialog.html',
-  styleUrl: './create-class-dialog.scss'
+  templateUrl: './create-course-dialog.html',
+  styleUrl: './create-course-dialog.scss'
 })
-export class CreateClassDialog implements OnDestroy {
-  private readonly classService = inject(ClassService);
+export class CreateCourseDialog implements OnDestroy {
+  private readonly courseManagementService = inject(CourseManagementService);
   private readonly courseTeacherService = inject(CourseTeacherService);
   private readonly userService = inject(UserService);
   private readonly snackbar = inject(SnackbarService);
-  private readonly dialogRef = inject(MatDialogRef<CreateClassDialog, boolean>);
-  protected readonly data = inject<CreateClassDialogData>(MAT_DIALOG_DATA);
+  private readonly dialogRef = inject(MatDialogRef<CreateCourseDialog, boolean>);
+  protected readonly data = inject<CreateCourseDialogData>(MAT_DIALOG_DATA);
   private readonly retrySearch = new Subject<void>();
   private readonly openRosterSearch = new Subject<string>();
   private readonly avatarSeedRequests = new Subject<string>();
@@ -47,8 +47,8 @@ export class CreateClassDialog implements OnDestroy {
   protected readonly name = new FormControl('', { nonNullable: true });
   protected readonly search = new FormControl('', { nonNullable: true });
   protected readonly teacherSearch = new FormControl('', { nonNullable: true });
-  protected readonly selectedRoster = signal<ClassRoster | null>(null);
-  protected readonly rosters = signal<ClassRoster[]>([]);
+  protected readonly selectedRoster = signal<RosterSummary | null>(null);
+  protected readonly rosters = signal<RosterSummary[]>([]);
   protected readonly searchState = signal<'loading' | 'ready' | 'error'>('loading');
   protected readonly searchError = signal('');
   protected readonly nameError = signal('');
@@ -92,11 +92,11 @@ export class CreateClassDialog implements OnDestroy {
 
         const delay = debounce ? timer(300) : of(0);
 
-        return delay.pipe(switchMap(() => this.classService.searchRosters(query.trim()).pipe(
+        return delay.pipe(switchMap(() => this.courseManagementService.searchRosters(query.trim()).pipe(
           map(results => ({ results, error: null as string | null })),
           catchError(error => {
             if (error instanceof HttpErrorResponse || error instanceof ZodError) {
-              console.error('Could not search class rosters.', error);
+              console.error('Could not search rosters.', error);
               const message = 'Could not load rosters. Try again.';
 
               return of({ results: null, error: message });
@@ -121,7 +121,7 @@ export class CreateClassDialog implements OnDestroy {
 
     this.subscriptions.add(this.avatarSeedRequests.pipe(
       startWith(this.iconSeed()),
-      switchMap((seed: string) => this.classService.getAvatar(seed).pipe(
+      switchMap((seed: string) => this.courseManagementService.getAvatar(seed).pipe(
         catchError(error => {
           if (error instanceof HttpErrorResponse) {
             console.error('Could not load the course avatar.', error);
@@ -150,7 +150,7 @@ export class CreateClassDialog implements OnDestroy {
   }
 
   protected previewName(): string {
-    return this.name.value.trim() || 'New class';
+    return this.name.value.trim() || 'New course';
   }
 
   protected nameIsValid(): boolean {
@@ -176,7 +176,7 @@ export class CreateClassDialog implements OnDestroy {
     this.avatarSeedRequests.next(seed);
   }
 
-  protected selectRoster(roster: ClassRoster): void {
+  protected selectRoster(roster: RosterSummary): void {
     this.selectedRoster.set(roster);
     this.search.setValue('');
     this.resultsOpen.set(false);
@@ -190,7 +190,7 @@ export class CreateClassDialog implements OnDestroy {
   }
 
   // Co-teachers are optional and the toggle starts off; turning it on reveals the
-  // teacher search without changing what is required to create the class.
+  // teacher search without changing what is required to create the course.
   protected handleCoTeacherToggle(enabled: boolean): void {
     this.coTeacherEnabled.set(enabled);
     this.teacherSearchVersion++;
@@ -294,7 +294,7 @@ export class CreateClassDialog implements OnDestroy {
 
     this.submitting.set(true);
     try {
-      const result = await this.classService.createClass(this.name.value.trim(), selected.id, this.iconSeed());
+      const result = await this.courseManagementService.createCourse(this.name.value.trim(), selected.id, this.iconSeed());
       if (result.kind === 'error') {
         this.nameError.set(result.message);
 
@@ -306,7 +306,7 @@ export class CreateClassDialog implements OnDestroy {
         const added = await Promise.all(coTeachers.map(teacher =>
           this.courseTeacherService.addTeacher(result.value.id, teacher.id)));
         if (added.some(outcome => outcome !== 'ok')) {
-          this.snackbar.show('Class created, but some co-teachers could not be added');
+          this.snackbar.show('Course created, but some co-teachers could not be added');
         }
       }
 

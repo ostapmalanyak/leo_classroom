@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { ClassService } from '../../../core/services/class-service';
+import { CourseManagementService } from '../../../core/services/course-management-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 
 export interface DeleteCourseDialogData {
@@ -18,7 +18,7 @@ export interface DeleteCourseDialogData {
 })
 export class DeleteCourseDialog {
   protected readonly data = inject<DeleteCourseDialogData>(MAT_DIALOG_DATA);
-  private readonly classService = inject(ClassService);
+  private readonly courseManagementService = inject(CourseManagementService);
   private readonly dialogRef = inject(MatDialogRef<DeleteCourseDialog, boolean>);
   private readonly snackbar = inject(SnackbarService);
   protected readonly deleting = signal(false);
@@ -39,7 +39,7 @@ export class DeleteCourseDialog {
     this.dialogRef.disableClose = true;
     this.error.set('');
     try {
-      const result = await this.classService.deleteCourse(this.data.id);
+      const result = await this.courseManagementService.deleteCourse(this.data.id);
       if (result.kind === 'deleted') {
         this.dialogRef.close(true);
 

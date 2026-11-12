@@ -1,39 +1,39 @@
-<h1>My Classes</h1>
+<h1>My Courses</h1>
 
 @if (loading()) {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
 }
 
-<label class="class-search">
+<label class="course-search">
   <mat-icon aria-hidden="true">search</mat-icon>
   <input type="search" [value]="searchTerm()" (input)="handleSearchInput($event)"
-         placeholder="Search classes..." aria-label="Search classes">
+         placeholder="Search courses..." aria-label="Search courses">
 </label>
 
-@if (!loading() && visibleClasses().length === 0) {
+@if (!loading() && visibleCourses().length === 0) {
   <p class="empty">
     @if (searchTerm().trim() === '') {
-      You have no classes yet.
+      You have no courses yet.
     } @else {
-      No classes match your search.
+      No courses match your search.
     }
   </p>
 }
 
-<div class="class-grid">
+<div class="course-grid">
   @if (searchTerm().trim() === '') {
-    <button class="class-card class-card--add" type="button" aria-label="Add a class" (click)="openCreateDialog()">
-      <span class="class-card__add-icon" aria-hidden="true">+</span>
+    <button class="course-card course-card--add" type="button" aria-label="Add a course" (click)="openCreateDialog()">
+      <span class="course-card__add-icon" aria-hidden="true">+</span>
     </button>
   }
-  @for (course of visibleClasses(); track course.id) {
-    <a class="class-card" [routerLink]="['/courses', course.id, 'assignments']">
-      <img class="class-card__avatar" [src]="course.avatarUrl" [alt]="course.title + ' icon'">
-      <span class="class-card__body">
-        <span class="class-card__heading">
-          <span class="class-card__title">{{ course.title }}</span>
+  @for (course of visibleCourses(); track course.id) {
+    <a class="course-card" [routerLink]="['/courses', course.id, 'assignments']">
+      <img class="course-card__avatar" [src]="course.avatarUrl" [alt]="course.title + ' icon'">
+      <span class="course-card__body">
+        <span class="course-card__heading">
+          <span class="course-card__title">{{ course.title }}</span>
           @if (canManageCourses()) {
-            <button class="class-card__menu-button" mat-icon-button disableRipple type="button"
+            <button class="course-card__menu-button" mat-icon-button disableRipple type="button"
                     aria-label="Course options" [matMenuTriggerFor]="courseMenu"
                     (click)="stopCardNavigation($event)">
               <mat-icon>more_horiz</mat-icon>
@@ -53,7 +53,7 @@
             </mat-menu>
           }
         </span>
-        <span class="class-card__meta">
+        <span class="course-card__meta">
           @if (course.open !== null && course.open !== undefined && course.open > 0) {
             {{ course.open }} open
           } @else {

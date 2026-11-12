@@ -2,7 +2,7 @@
   color: var(--color-text-muted);
 }
 
-.class-search {
+.course-search {
   align-items: center;
   background-color: var(--color-bg-input);
   border: var(--border-width) solid var(--color-input-border);
@@ -42,36 +42,36 @@
   }
 }
 
-.class-grid {
-  --class-avatar-size: 5.5rem;
-  --class-content-gap: 1.25rem;
-  --class-card-padding: 1.5rem;
-  --class-title-font-size: 1.35rem;
-  --class-meta-font-size: 0.95rem;
+.course-grid {
+  --course-avatar-size: 5.5rem;
+  --course-content-gap: 1.25rem;
+  --course-card-padding: 1.5rem;
+  --course-title-font-size: 1.35rem;
+  --course-meta-font-size: 0.95rem;
 
   display: grid;
   gap: var(--space-4);
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 24rem));
 
   @media (max-width: 24rem) {
-    .class-card {
+    .course-card {
       gap: 1rem;
       padding: 1rem;
     }
   }
 }
 
-.class-card {
+.course-card {
   aspect-ratio: 2 / 1;
   align-items: center;
   background-color: var(--color-bg-surface);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--class-card-radius);
+  border-radius: var(--course-card-radius);
   color: var(--color-text);
   display: flex;
-  gap: var(--class-content-gap);
+  gap: var(--course-content-gap);
   min-height: 0;
-  padding: var(--class-card-padding);
+  padding: var(--course-card-padding);
   position: relative;
   text-decoration: none;
   transition: background-color var(--transition), border-color var(--transition);
@@ -83,11 +83,11 @@
   }
 
   &__avatar {
-    border-radius: var(--class-avatar-radius);
+    border-radius: var(--course-avatar-radius);
     flex: none;
-    height: var(--class-avatar-size);
+    height: var(--course-avatar-size);
     object-fit: cover;
-    width: var(--class-avatar-size);
+    width: var(--course-avatar-size);
   }
 
   &__body {
@@ -110,7 +110,7 @@
   &__title {
     color: var(--color-text-strong);
     flex: 1 1 auto;
-    font-size: var(--class-title-font-size);
+    font-size: var(--course-title-font-size);
     font-weight: 700;
     min-width: 0;
     overflow: hidden;
@@ -173,16 +173,16 @@
 
   &__meta {
     color: var(--color-text-muted);
-    font-size: var(--class-meta-font-size);
+    font-size: var(--course-meta-font-size);
   }
 }
 
-.class-card--add {
+.course-card--add {
   align-items: center;
   appearance: none;
   background-color: color-mix(in srgb, var(--color-bg-body) 90%, var(--color-text-muted) 10%);
   border: 0.125rem dashed color-mix(in srgb, var(--color-text-muted) 50%, transparent);
-  border-radius: var(--class-card-radius);
+  border-radius: var(--course-card-radius);
   cursor: pointer;
   font: inherit;
   grid-column: 1;
@@ -197,7 +197,7 @@
   }
 }
 
-.class-card__add-icon {
+.course-card__add-icon {
   color: var(--color-text-muted);
   font-size: 3rem;
   font-weight: 300;

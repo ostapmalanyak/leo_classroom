@@ -1,6 +1,6 @@
 <div class="dialog-shell">
   <header class="dialog-header">
-    <h2 mat-dialog-title [id]="data.titleId">Create Class</h2>
+    <h2 mat-dialog-title [id]="data.titleId">Create Course</h2>
     <button mat-icon-button type="button" aria-label="Close dialog" mat-dialog-close>
       <mat-icon>close</mat-icon>
     </button>
@@ -8,13 +8,13 @@
 
   <mat-dialog-content>
     <div class="dialog-columns">
-      <section class="preview" aria-label="Class preview">
+      <section class="preview" aria-label="Course preview">
         <div class="preview__image">
           @if (avatarUrl() === null) {
             <div class="preview__placeholder" aria-hidden="true"></div>
           }
           @if (avatarUrl(); as url) {
-            <img [src]="url" [alt]="previewName() + ' class image'">
+            <img [src]="url" [alt]="previewName() + ' course image'">
           }
           @if (avatarLoading()) {
             <div class="preview__spinner">
@@ -32,14 +32,14 @@
       <section class="form-area">
         <label class="field">
           <span>Enter Name...</span>
-          <input [formControl]="name" maxlength="50" autocomplete="off" aria-label="Class name">
+          <input [formControl]="name" maxlength="50" autocomplete="off" aria-label="Course name">
         </label>
         @if (nameError()) {
           <p class="field-error" role="alert">{{ nameError() }}</p>
         }
 
         <div class="field">
-          <span>Search Class...</span>
+          <span>Search roster...</span>
           <div #rosterSearch class="roster-search" (click)="focusRosterSearch(); openRosterResults()"
                (keydown)="handleSearchKeydown($event)">
             @if (selectedRoster(); as roster) {

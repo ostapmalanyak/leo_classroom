@@ -5,7 +5,7 @@
 
 .dialog-shell {
   background-color: var(--color-bg-surface);
-  border-radius: var(--class-card-radius);
+  border-radius: var(--course-card-radius);
   overflow: visible;
   position: relative;
 
@@ -72,7 +72,7 @@ mat-dialog-content {
   padding: 1.5rem;
 
   &__image {
-    border-radius: var(--class-avatar-radius);
+    border-radius: var(--course-avatar-radius);
     height: 12rem;
     overflow: hidden;
     position: relative;
@@ -390,7 +390,7 @@ mat-dialog-content {
 
 .results {
   border-top: 0.0625rem solid var(--color-border);
-  border-radius: 0 0 var(--class-card-radius) var(--class-card-radius);
+  border-radius: 0 0 var(--course-card-radius) var(--course-card-radius);
   max-height: 14rem;
   overflow-y: auto;
 

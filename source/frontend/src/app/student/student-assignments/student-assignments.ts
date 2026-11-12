@@ -34,7 +34,7 @@ export class StudentAssignments implements OnInit {
         id: a.courseId,
         title: a.courseTitle,
         initials: a.courseTitle.trim().slice(0, 2).toUpperCase(),
-        // stable per course, so a class keeps its colour between visits
+        // stable per course, so a course keeps its colour between visits
         color: `hsl(${(a.courseId * 137) % 360} 45% 38%)`,
         open: 0
       };

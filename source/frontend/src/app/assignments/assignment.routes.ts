@@ -9,7 +9,7 @@ import { CourseAssignments } from '../student/course-assignments/course-assignme
 import { authGuard } from '../../core/auth/auth-guard';
 import { Role } from '../../core/auth/roles';
 import { teacherOnlyGuard } from '../../core/auth/teacher-only-guard';
-import { MyClasses } from '../my-classes/my-classes';
+import { MyCourses } from '../my-courses/my-courses';
 
 export const assignmentRoutes: Routes = [
   {
@@ -48,8 +48,8 @@ export const assignmentRoutes: Routes = [
     data: { role: Role.Teacher }
   },
   {
-    path: 'my-classes',
-    component: MyClasses,
+    path: 'my-courses',
+    component: MyCourses,
     canActivate: [authGuard, teacherOnlyGuard],
     data: { role: Role.Teacher }
   },

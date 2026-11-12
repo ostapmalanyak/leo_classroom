@@ -55,7 +55,7 @@ interface AssignmentSections {
     MatFormField, MatLabel, MatIcon, MatInput, MatMenuModule, MatProgressBar, MatTabsModule, CourseDetail
   ],
   templateUrl: './course-assignments.html',
-  styleUrls: ['./course-assignments.scss', '../../my-classes/my-classes.scss']
+  styleUrls: ['./course-assignments.scss', '../../my-courses/my-courses.scss']
 })
 export class CourseAssignments implements OnInit {
   private readonly assignmentService = inject(AssignmentService);
@@ -70,7 +70,7 @@ export class CourseAssignments implements OnInit {
   /** Bound from the route parameter (withComponentInputBinding). */
   public readonly courseId = input.required<string>();
 
-  protected readonly title: WritableSignal<string> = signal('Class');
+  protected readonly title: WritableSignal<string> = signal('Course');
   protected readonly assignments: WritableSignal<CourseAssignment[]> = signal([]);
   protected readonly participants: WritableSignal<CourseParticipant[]> = signal([]);
   protected readonly teachers: WritableSignal<CourseTeacherParticipant[]> = signal([]);
@@ -147,8 +147,8 @@ export class CourseAssignments implements OnInit {
   private studentSearchTimer: ReturnType<typeof setTimeout> | null = null;
   private teacherSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
-  protected get classesRoute(): string {
-    return this.session.isTeacher() ? '/my-classes' : '/my-assignments';
+  protected get coursesRoute(): string {
+    return this.session.isTeacher() ? '/my-courses' : '/my-assignments';
   }
 
   protected formatDeadline(deadline: Instant): Date {
