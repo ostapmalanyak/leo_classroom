@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { z } from 'zod';
 import { BackendServiceBase } from './backend-service-base';
 import { InstantSchema } from '../util/zod-schemas';
+import { Role } from '../auth/roles';
 
 export type WriteResult<T> = T | 'conflict' | 'not-found' | null;
 
@@ -32,6 +33,54 @@ export class CourseService extends BackendServiceBase {
       return courseZod.parse(response);
     } catch (error) {
       return this.mapReadError(error);
+    }
+  }
+
+  public async getParticipants(id: number): Promise<CourseParticipants | null> {
+    try {
+      const response = await firstValueFrom(this.http.get<unknown>(this.buildUrl(`${id}/participants`)));
+
+      return courseParticipantsZod.parse(response);
+    } catch (error) {
+      return this.mapReadError(error);
+    }
+  }
+
+  public async searchAvailableStudents(courseId: number, term: string): Promise<CourseParticipant[] | null> {
+    try {
+      const params = this.createHttpParams(['q', term]);
+      const response = await firstValueFrom(
+        this.http.get<unknown>(this.buildUrl(`${courseId}/available-students`), { params }));
+
+      return courseParticipantZod.array().parse(response);
+    } catch (error) {
+      return this.mapReadError(error);
+    }
+  }
+
+  public async removeParticipant(courseId: number, userId: number): Promise<boolean> {
+    try {
+      await firstValueFrom(this.http.delete(this.buildUrl(`${courseId}/participants/${userId}`)));
+
+      return true;
+    } catch (error) {
+      if (error instanceof HttpErrorResponse) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  public async addParticipant(courseId: number, userId: number): Promise<boolean> {
+    try {
+      await firstValueFrom(this.http.post(this.buildUrl(`${courseId}/participants`), { userId }));
+
+      return true;
+    } catch (error) {
+      if (error instanceof HttpErrorResponse) {
+        return false;
+      }
+      throw error;
     }
   }
 
@@ -96,6 +145,7 @@ export class CourseService extends BackendServiceBase {
 const courseOverviewZod = z.object({
   id: z.int().positive(),
   title: z.string().min(1),
+  iconSeed: z.string().nullable().optional(),
   rosterId: z.int().positive(),
   rosterName: z.string(),
   memberCount: z.int().nonnegative(),
@@ -107,6 +157,7 @@ export type CourseOverview = z.infer<typeof courseOverviewZod>;
 const courseZod = z.object({
   id: z.int().positive(),
   title: z.string().min(1),
+  iconSeed: z.string().nullable().optional(),
   rosterId: z.int().positive(),
   ownerId: z.int().positive(),
   isReadOnly: z.boolean(),
@@ -114,3 +165,27 @@ const courseZod = z.object({
   createdAt: InstantSchema
 });
 export type Course = z.infer<typeof courseZod>;
+
+const courseParticipantZod = z.object({
+  id: z.int().positive(),
+  firstName: z.string(),
+  lastName: z.string(),
+  class: z.string().nullable(),
+  role: z.enum(Role)
+});
+export type CourseParticipant = z.infer<typeof courseParticipantZod>;
+
+const courseTeacherParticipantZod = z.object({
+  id: z.int().positive(),
+  firstName: z.string(),
+  lastName: z.string(),
+  isOwner: z.boolean()
+});
+export type CourseTeacherParticipant = z.infer<typeof courseTeacherParticipantZod>;
+
+const courseParticipantsZod = z.object({
+  title: z.string().min(1),
+  participants: courseParticipantZod.array(),
+  teachers: courseTeacherParticipantZod.array()
+});
+export type CourseParticipants = z.infer<typeof courseParticipantsZod>;

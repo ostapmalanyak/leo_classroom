@@ -48,8 +48,22 @@ public static class RosterEndpoints
     }
 
     private static async ValueTask<Ok<IReadOnlyCollection<RosterOverview>>> GetRostersAsync(
-        [FromServices] ICustomRosterService service) =>
-        TypedResults.Ok(await service.ListAsync());
+        [FromServices] ICustomRosterService service, [FromQuery] string? query)
+    {
+        IReadOnlyCollection<RosterOverview> rosters = await service.ListAsync();
+        if (query is null)
+        {
+            return TypedResults.Ok(rosters);
+        }
+
+        string search = query.Trim();
+        IReadOnlyCollection<RosterOverview> matches =
+            rosters.Where(roster => roster.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+                   .OrderBy(roster => roster.Name, StringComparer.OrdinalIgnoreCase)
+                   .ToArray();
+
+        return TypedResults.Ok(matches);
+    }
 
     private static async ValueTask<Results<Ok<IReadOnlyCollection<UserSummary>>, NotFound>> GetRosterMembersAsync(
         [FromRoute] long id, [FromServices] ICustomRosterService service)

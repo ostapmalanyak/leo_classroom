@@ -3,6 +3,7 @@ namespace LeoClassroom.Shared;
 public sealed record CourseOverview(
     long Id,
     string Title,
+    string? IconSeed,
     long RosterId,
     string RosterName,
     int MemberCount,

@@ -3,3 +3,69 @@
 html {
   color-scheme: dark;
 }
+
+.sort-menu-panel {
+  .mat-mdc-menu-item {
+    min-width: 12rem;
+  }
+
+  .mat-mdc-menu-item-text {
+    display: flex;
+    width: 100%;
+  }
+
+  // The check belongs next to its label, not pushed to the far end of the menu
+  // item, so the option reads as "Label ✓".
+  .sort-option {
+    align-items: center;
+    display: flex;
+    gap: var(--space-2);
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .sort-option__check {
+    align-items: center;
+    display: inline-flex;
+    flex: none;
+    height: 1.125rem;
+    justify-content: center;
+    width: 1.125rem;
+  }
+
+  .sort-option mat-icon {
+    color: var(--color-accent);
+    display: block;
+    font-size: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    width: 1.125rem;
+  }
+}
+
+.course-menu-panel {
+  .mat-mdc-menu-item.delete-item:hover,
+  .mat-mdc-menu-item.delete-item:focus,
+  .mat-mdc-menu-item.delete-item:focus-visible,
+  .mat-mdc-menu-item.delete-item.mat-mdc-menu-item-highlighted,
+  .mat-mdc-menu-item.delete-item.cdk-keyboard-focused,
+  .mat-mdc-menu-item.delete-item.cdk-program-focused {
+    --mat-menu-item-label-text-color: #fff;
+    --mat-menu-item-icon-color: #fff;
+    --mat-menu-item-hover-state-layer-color: transparent;
+    --mat-menu-item-focus-state-layer-color: transparent;
+
+    background-color: #ff0000 !important;
+    border-radius: 0 !important;
+    color: #fff !important;
+
+    .mat-mdc-menu-ripple {
+      display: none !important;
+    }
+
+    .mat-mdc-menu-item-text,
+    .mat-icon {
+      color: #fff !important;
+    }
+  }
+}

@@ -6,16 +6,16 @@ import { AssignmentDownload } from './assignment-download/assignment-download';
 import { StudentAssignments } from '../student/student-assignments/student-assignments';
 import { StudentAssignmentDetail } from '../student/assignment-detail/assignment-detail';
 import { CourseAssignments } from '../student/course-assignments/course-assignments';
-import { AssignmentList } from './assignment-list/assignment-list';
 import { authGuard } from '../../core/auth/auth-guard';
 import { Role } from '../../core/auth/roles';
+import { teacherOnlyGuard } from '../../core/auth/teacher-only-guard';
+import { MyCourses } from '../my-courses/my-courses';
 
 export const assignmentRoutes: Routes = [
   {
     path: 'courses/:courseId/assignments',
-    component: AssignmentList,
-    canActivate: [authGuard],
-    data: { role: Role.Teacher }
+    pathMatch: 'full',
+    redirectTo: '/my-assignments/course/:courseId'
   },
   {
     path: 'courses/:courseId/assignments/new',
@@ -45,6 +45,12 @@ export const assignmentRoutes: Routes = [
     path: 'assignments/:id/download',
     component: AssignmentDownload,
     canActivate: [authGuard],
+    data: { role: Role.Teacher }
+  },
+  {
+    path: 'my-courses',
+    component: MyCourses,
+    canActivate: [authGuard, teacherOnlyGuard],
     data: { role: Role.Teacher }
   },
   { path: 'my-assignments', component: StudentAssignments, canActivate: [authGuard] },

@@ -73,6 +73,7 @@ public sealed class DatabaseContext(DbContextOptions<DatabaseContext> options) :
         EntityTypeBuilder<Course> course = modelBuilder.Entity<Course>();
         course.HasKey(c => c.Id);
         course.Property(c => c.Id).ValueGeneratedOnAdd();
+        course.Property(c => c.IconSeed).HasMaxLength(64);
         course.HasOne(c => c.Roster)
               .WithMany()
               .HasForeignKey(c => c.RosterId)
@@ -84,6 +85,17 @@ public sealed class DatabaseContext(DbContextOptions<DatabaseContext> options) :
         course.HasMany(c => c.CoTeachers)
               .WithMany()
               .UsingEntity(j => j.ToTable("CourseTeacher"));
+        course.HasMany(c => c.Members)
+              .WithMany()
+              .UsingEntity<Dictionary<string, object>>(
+                  "CourseMember",
+                  member => member.HasOne<User>().WithMany().HasForeignKey("UserId"),
+                  course => course.HasOne<Course>().WithMany().HasForeignKey("CourseId"),
+                  join =>
+                  {
+                      join.ToTable("CourseMember");
+                      join.HasKey("CourseId", "UserId");
+                  });
         course.HasIndex(c => new { c.RosterId, c.Title });
     }
 

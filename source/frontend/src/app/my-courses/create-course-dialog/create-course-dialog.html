@@ -1,0 +1,157 @@
+<div class="dialog-shell">
+  <header class="dialog-header">
+    <h2 mat-dialog-title [id]="data.titleId">Create Course</h2>
+    <button mat-icon-button type="button" aria-label="Close dialog" mat-dialog-close>
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  <mat-dialog-content>
+    <div class="dialog-columns">
+      <section class="preview" aria-label="Course preview">
+        <div class="preview__image">
+          @if (avatarUrl() === null) {
+            <div class="preview__placeholder" aria-hidden="true"></div>
+          }
+          @if (avatarUrl(); as url) {
+            <img [src]="url" [alt]="previewName() + ' course image'">
+          }
+          @if (avatarLoading()) {
+            <div class="preview__spinner">
+              <mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner>
+            </div>
+          }
+          <button class="preview__shuffle" mat-icon-button type="button" aria-label="New icon"
+                  matTooltip="New icon" (click)="refreshAvatar()">
+            <mat-icon>refresh</mat-icon>
+          </button>
+        </div>
+        <h3>{{ previewName() }}</h3>
+      </section>
+
+      <section class="form-area">
+        <label class="field">
+          <span>Enter Name...</span>
+          <input [formControl]="name" maxlength="50" autocomplete="off" aria-label="Course name">
+        </label>
+        @if (nameError()) {
+          <p class="field-error" role="alert">{{ nameError() }}</p>
+        }
+
+        <div class="field">
+          <span>Search roster...</span>
+          <div #rosterSearch class="roster-search" (click)="focusRosterSearch(); openRosterResults()"
+               (keydown)="handleSearchKeydown($event)">
+            @if (selectedRoster(); as roster) {
+              <div class="roster-search__selected">
+                <span>{{ roster.name }}</span>
+                <button type="button" aria-label="Clear selected roster"
+                        (click)="removeSelectedRoster(); $event.stopPropagation()">
+                  <mat-icon aria-hidden="true">close</mat-icon>
+                </button>
+              </div>
+            } @else {
+              <div class="roster-search__input">
+                <input #rosterSearchInput [formControl]="search" autocomplete="off" aria-label="Search rosters"
+                       role="combobox" aria-autocomplete="list" aria-controls="roster-results"
+                       [attr.aria-expanded]="resultsOpen()"
+                       [attr.aria-activedescendant]="activeOptionId()"
+                       (focus)="openRosterResults()">
+              </div>
+            }
+            @if (selectedRoster() === null && resultsOpen()) {
+              <div id="roster-results" class="results" role="listbox" aria-label="Roster results">
+                @if (searchState() === 'loading') {
+                  <div class="status">
+                    <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+                    <span>Searching rosters…</span>
+                  </div>
+                } @else if (searchState() === 'error') {
+                  <div class="status status--error" role="alert">
+                    <span>{{ searchError() }}</span>
+                    <button mat-button type="button" (click)="retry()">Retry</button>
+                  </div>
+                } @else if (rosters().length === 0) {
+                  <p class="status">No rosters found</p>
+                } @else {
+                  @for (roster of rosters(); track roster.id; let index = $index) {
+                    <button class="result" type="button" role="option"
+                            [id]="'roster-option-' + roster.id"
+                            [class.result--active]="index === activeIndex()"
+                            [attr.aria-selected]="selectedRoster()?.id === roster.id"
+                            (click)="selectRoster(roster); $event.stopPropagation()"
+                            (mouseenter)="activeIndex.set(index)">
+                      <span>
+                        @let highlighted = highlight(roster.name);
+                        {{ highlighted.before }}<mark>{{ highlighted.match }}</mark>{{ highlighted.after }}
+                      </span>
+                      <span class="result__count">{{ roster.memberCount }} members</span>
+                      @if (selectedRoster()?.id === roster.id) {
+                        <mat-icon aria-hidden="true">check</mat-icon>
+                      }
+                    </button>
+                  }
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="co-teacher">
+          <div class="co-teacher__row">
+            <mat-slide-toggle [checked]="coTeacherEnabled()" (change)="handleCoTeacherToggle($event.checked)">
+              Add a co-teacher
+            </mat-slide-toggle>
+
+            @if (selectedCoTeachers().length > 0) {
+              <div class="selected-teachers">
+                @for (teacher of selectedCoTeachers(); track teacher.id) {
+                  <span class="selected-teacher">
+                    <span>{{ teacher.firstName }} {{ teacher.lastName }}</span>
+                    <button type="button" class="selected-teacher__remove"
+                            [attr.aria-label]="'Remove ' + teacher.firstName + ' ' + teacher.lastName"
+                            (click)="removeCoTeacher(teacher)">
+                      <mat-icon aria-hidden="true">close</mat-icon>
+                    </button>
+                  </span>
+                }
+              </div>
+            }
+          </div>
+
+          @if (coTeacherEnabled()) {
+            <div class="co-teacher__search">
+              <mat-icon aria-hidden="true">search</mat-icon>
+              <input [formControl]="teacherSearch" autocomplete="off" aria-label="Search teachers"
+                     placeholder="Search teachers...">
+              @if (teacherSearching()) {
+                <mat-progress-spinner mode="indeterminate" diameter="18"></mat-progress-spinner>
+              }
+            </div>
+          }
+
+          @if (coTeacherEnabled() && teacherResults().length > 0) {
+            <div class="results teacher-results" role="listbox" aria-label="Teacher results">
+              @for (teacher of teacherResults(); track teacher.id) {
+                <button class="result" type="button" role="option" (click)="addCoTeacher(teacher)">
+                  <span>{{ teacher.firstName }} {{ teacher.lastName }}</span>
+                  <span class="result__count">{{ teacher.studentId }}</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="actions">
+          <button class="create-button" type="button" [disabled]="createIsDisabled()" (click)="create()">
+            @if (submitting()) {
+              <mat-progress-spinner mode="indeterminate" diameter="18"></mat-progress-spinner>
+            } @else {
+              Create
+            }
+          </button>
+        </div>
+      </section>
+    </div>
+  </mat-dialog-content>
+</div>

@@ -38,7 +38,8 @@ internal sealed class AuditEventRepository(DbSet<AuditEvent> auditEvents) : IAud
         }
         if (!string.IsNullOrWhiteSpace(query.Actor))
         {
-            q = q.Where(e => e.ActorStudentId == query.Actor);
+            string actor = query.Actor.ToLower();
+            q = q.Where(e => e.ActorStudentId.ToLower() == actor);
         }
         if (query.Action is not null)
         {

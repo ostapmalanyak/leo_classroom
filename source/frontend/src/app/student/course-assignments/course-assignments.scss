@@ -1,23 +1,394 @@
-.section {
-  margin-block: var(--space-4);
+:host {
+  display: block;
+  position: relative;
 }
 
-.section mat-card-title {
-  border-bottom: 1px solid var(--color-border);
-  font-size: 1.25rem;
+.course-header {
+  display: block;
+}
+
+// The course is a centred column. The back link is taken out of the flow and floats
+// in the left gutter, so it can never pull the course off centre.
+.course-content {
+  margin-inline: auto;
+  max-width: 64rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.course-content mat-tab-group {
+  display: block;
+  min-width: 0;
+  width: 100%;
+}
+
+.course-tabs {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--space-4);
+  position: relative;
+}
+
+.back-to-courses {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  gap: var(--space-1);
+  height: var(--control-height);
+  left: 0;
+  min-height: var(--control-height);
+  // The tab strip starts after the h1 line and its bottom margin; line the back
+  // link up with it without putting it back into the course column.
+  position: absolute;
+  text-decoration: none;
+  top: calc(2.5rem + var(--space-4));
+  z-index: 1;
+
+  &:hover {
+    color: var(--color-text);
+  }
+
+  mat-icon {
+    height: 1.25rem;
+    width: 1.25rem;
+  }
+}
+
+.course-tab-group {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sort-control {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.25rem;
+  z-index: 2;
+
+  // This must beat the global `.mat-mdc-icon-button.mat-mdc-button-base` box, which
+  // otherwise makes the button taller than it is wide.
+  button.mat-mdc-icon-button {
+    --mat-icon-button-state-layer-size: 2.5rem;
+    --mat-icon-button-touch-target-size: 2.5rem;
+
+    align-items: center;
+    aspect-ratio: 1 / 1;
+    border-radius: var(--radius-button);
+    box-sizing: border-box;
+    cursor: pointer;
+    display: inline-flex;
+    flex: none;
+    height: 2.5rem;
+    justify-content: center;
+    line-height: 1;
+    min-height: 2.5rem;
+    min-width: 2.5rem;
+    padding: 0;
+    width: 2.5rem;
+  }
+
+  svg {
+    fill: none;
+    height: 1.25rem;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.75;
+    width: 1.25rem;
+  }
+}
+
+.create-assignment-grid {
+  margin: 1.5rem 0 0.75rem;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+}
+
+.course-card--add {
+  aspect-ratio: auto;
+  gap: 1rem;
+  height: 4.5rem;
+  min-height: 4.5rem;
+  white-space: nowrap;
+}
+
+.assignments {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin: 0;
+  width: 100%;
+}
+
+.assignment-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.assignment-group + .assignment-group {
+  margin-block-start: var(--space-4);
+}
+
+.section-heading {
+  align-items: center;
+  border-bottom: var(--border-width) solid var(--color-border);
+  display: flex;
+  font-size: 1rem;
   font-weight: 600;
-  padding: var(--space-4) var(--space-4) var(--space-3);
+  justify-content: space-between;
+  margin: 0;
+  padding-block-end: 0.375rem;
 }
 
-.section mat-card-content {
-  padding: var(--space-2) var(--space-3) var(--space-3);
+.section-heading--open {
+  color: var(--color-success-text);
+}
+
+// The status word carries the colour, while the divider keeps the same weight and
+// colour as the other section headings so the three sections read as one list.
+.section-heading--expired {
+  border-bottom-color: var(--color-border);
+  color: #f87171;
+}
+
+.subsection-heading {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+  padding-block: var(--space-1);
+}
+
+.participant-section + .participant-section {
+  margin-block-start: var(--space-6);
+}
+
+// The add co-teacher / add student controls are actions, not list entries, so they
+// get their own dashed, tinted box instead of the plain row look of the lists above.
+.add-row {
+  align-items: center;
+  background-color: color-mix(in srgb, var(--color-bg-input) 55%, transparent);
+  border: var(--border-width) dashed var(--color-input-border);
+  border-radius: var(--radius);
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  margin-block: var(--space-3);
+  min-height: 3.5rem;
+  // The dashed border adds to the inset, so subtract it to line the add button up
+  // with the remove buttons of the participant rows below.
+  padding-inline: calc(var(--space-2) - var(--border-width));
+
+  > span {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+  }
+}
+
+.search-field {
+  width: 100%;
+}
+
+.search-results {
+  background-color: var(--color-bg-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  margin-block-end: var(--space-4);
+}
+
+// The results box adds its own border to the row inset; subtract it so the + in a
+// search result lines up with the − buttons of the participant list.
+.search-results .participant-row {
+  padding-inline: calc(var(--space-2) - var(--border-width));
+}
+
+.participant-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.participant-row {
+  align-items: center;
+  border-bottom: var(--border-width) solid var(--color-border);
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  min-height: 3.5rem;
+  padding: var(--space-2);
+}
+
+.participant-name {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.participant-subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+// One size token drives every dimension, so the add (+) and remove (−) buttons can
+// never drift apart. The global `button:not(...)` rule sets `min-height`, which is why
+// both min-size values are spelled out as well as the concrete width and height.
+.icon-btn {
+  --icon-btn-size: 2.5rem;
+
+  appearance: none;
+  align-items: center;
+  aspect-ratio: 1 / 1;
+  background: transparent;
+  border: var(--border-width) solid transparent;
+  border-radius: 0.5rem;
+  box-sizing: border-box;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 var(--icon-btn-size);
+  height: var(--icon-btn-size);
+  justify-content: center;
+  line-height: 1;
+  margin: 0;
+  min-height: var(--icon-btn-size);
+  min-width: var(--icon-btn-size);
+  padding: 0;
+  width: var(--icon-btn-size);
+}
+
+// Both modifiers restate the same box so neither can be resized on its own.
+.icon-btn--add,
+.icon-btn--remove {
+  flex: 0 0 var(--icon-btn-size);
+  height: var(--icon-btn-size);
+  min-height: var(--icon-btn-size);
+  min-width: var(--icon-btn-size);
+  width: var(--icon-btn-size);
+}
+
+.icon-btn svg {
+  display: block;
+  flex: none;
+  height: 1.25rem;
+  width: 1.25rem;
+}
+
+.icon-btn--remove {
+  background-color: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-text);
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--color-danger-bg) 70%, #ff0000);
+    border-color: color-mix(in srgb, var(--color-danger-border) 60%, #ff0000);
+  }
+}
+
+.icon-btn--add {
+  background-color: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-success-text);
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--color-success-bg) 70%, #00ff66);
+    border-color: color-mix(in srgb, var(--color-success-border) 60%, #00ff66);
+  }
+}
+
+.course-card__add-icon {
+  display: block;
+  height: 1.5rem;
+  width: 1.5rem;
+}
+
+.assignment-card {
+  border-radius: var(--course-card-radius);
+  width: 100%;
+}
+
+.assignment-card mat-card-content {
+  align-items: center;
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+}
+
+.assignment-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.assignment-heading strong {
+  display: block;
+}
+
+.assignment-details {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
 }
 
 .empty {
   color: var(--color-text-muted);
-  padding: var(--space-2) var(--space-3);
+  margin-block: var(--space-4);
 }
 
-h1 {
-  margin-block-start: var(--space-4);
+@media (max-width: 72rem) {
+  .back-to-courses {
+    height: auto;
+    margin-block-end: var(--space-3);
+    min-height: 0;
+    position: static;
+    top: auto;
+  }
+
+  .course-content {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 48rem) {
+  .course-header {
+    width: 100%;
+
+    .course-content {
+      width: 100%;
+    }
+  }
+
+  .assignment-details {
+    justify-content: flex-start;
+  }
+}
+
+.course-header mat-tab-group {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: none;
+}
+
+.create-assignment-grid.create-assignment-grid {
+  display: block;
+  width: 100%;
+  max-width: none;
+}
+
+.create-assignment-grid .course-card--add.course-card--add {
+  width: 100%;
+  max-width: none;
+  aspect-ratio: auto;
+  height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.assignments .assignment-card {
+  width: 100%;
+  max-width: none;
 }

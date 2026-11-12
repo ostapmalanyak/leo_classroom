@@ -31,7 +31,7 @@ public sealed class StudentAssignmentEndpointTests(WebApiTestFixture fixture) : 
         var course = new Course
         {
             Title = "Algorithms", RosterId = roster.Id, OwnerId = owner.Id, StudentsRetainAccess = true,
-            CreatedAt = TestClock.GetCurrentInstant()
+            CreatedAt = TestClock.GetCurrentInstant(), Members = [member]
         };
         context.Courses.Add(course);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);

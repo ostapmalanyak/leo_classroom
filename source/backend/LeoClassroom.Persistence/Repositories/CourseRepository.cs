@@ -16,6 +16,8 @@ public interface ICourseRepository
     public ValueTask<bool> DeleteByIdAsync(long id);
     public ValueTask<Course?> GetTrackedWithTeachersAsync(long id);
     public ValueTask<Course?> GetWithTeachersAsync(long id);
+    public ValueTask<Course?> GetTrackedWithTeachersAndMembersAsync(long id);
+    public ValueTask<Course?> GetWithTeachersAndMembersAsync(long id);
     public ValueTask<IReadOnlyCollection<long>> GetIdsOwnedByAsync(long userId);
     public ValueTask<IReadOnlyCollection<long>> GetIdsUsingRostersAsync(IReadOnlyCollection<long> rosterIds);
     public ValueTask<IReadOnlyCollection<string>> GetForgejoOrgsAsync(IReadOnlyCollection<long> ids);
@@ -46,8 +48,29 @@ internal sealed class CourseRepository(DbSet<Course> courses) : ICourseRepositor
                      .Include(c => c.CoTeachers)
                      .FirstOrDefaultAsync(c => c.Id == id);
 
+    public async ValueTask<Course?> GetTrackedWithTeachersAndMembersAsync(long id) =>
+        await courses.AsSplitQuery()
+                     .Include(c => c.Owner)
+                     .Include(c => c.CoTeachers)
+                     .Include(c => c.Members)
+                     .FirstOrDefaultAsync(c => c.Id == id);
+
+    public async ValueTask<Course?> GetWithTeachersAndMembersAsync(long id) =>
+        await courses.AsNoTracking()
+                     .AsSplitQuery()
+                     .Include(c => c.Owner)
+                     .Include(c => c.CoTeachers)
+                     .Include(c => c.Members)
+                     .FirstOrDefaultAsync(c => c.Id == id);
+
     public async ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsAsync()
     {
+        List<CourseOverview> overviews = await courses.AsNoTracking()
+                                                      .OrderBy(c => c.Title)
+                                                      .Select(c => new CourseOverview(c.Id, c.Title, c.IconSeed, c.RosterId,
+                                                                  c.Roster.Name, c.Members.Count, c.IsReadOnly,
+                                                                  c.StudentsRetainAccess))
+                                                      .ToListAsync();
         return await ProjectOverviews(courses.AsNoTracking());
     }
 

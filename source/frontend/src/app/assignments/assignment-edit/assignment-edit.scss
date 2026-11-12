@@ -1,3 +1,28 @@
+:host {
+  display: block;
+}
+
+// Same arrangement as the course page: the content is a centred column and the back
+// link stands outside it, in the gutter, on the level of the page title.
+.page-content {
+  margin-inline: auto;
+  max-width: 64rem;
+  min-width: 0;
+  position: relative;
+  width: 100%;
+}
+
+// The title row anchors the back link, so that it can be centred on the title
+// however tall the row happens to be.
+.header {
+  margin-block-end: var(--space-4);
+  position: relative;
+
+  h1 {
+    margin: 0;
+  }
+}
+
 .section {
   margin-bottom: var(--space-5);
 }

@@ -1,0 +1,66 @@
+<h1>My Courses</h1>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
+
+<label class="course-search">
+  <mat-icon aria-hidden="true">search</mat-icon>
+  <input type="search" [value]="searchTerm()" (input)="handleSearchInput($event)"
+         placeholder="Search courses..." aria-label="Search courses">
+</label>
+
+@if (!loading() && visibleCourses().length === 0) {
+  <p class="empty">
+    @if (searchTerm().trim() === '') {
+      You have no courses yet.
+    } @else {
+      No courses match your search.
+    }
+  </p>
+}
+
+<div class="course-grid">
+  @if (searchTerm().trim() === '') {
+    <button class="course-card course-card--add" type="button" aria-label="Add a course" (click)="openCreateDialog()">
+      <span class="course-card__add-icon" aria-hidden="true">+</span>
+    </button>
+  }
+  @for (course of visibleCourses(); track course.id) {
+    <a class="course-card" [routerLink]="['/courses', course.id, 'assignments']">
+      <img class="course-card__avatar" [src]="course.avatarUrl" [alt]="course.title + ' icon'">
+      <span class="course-card__body">
+        <span class="course-card__heading">
+          <span class="course-card__title">{{ course.title }}</span>
+          @if (canManageCourses()) {
+            <button class="course-card__menu-button" mat-icon-button disableRipple type="button"
+                    aria-label="Course options" [matMenuTriggerFor]="courseMenu"
+                    (click)="stopCardNavigation($event)">
+              <mat-icon>more_horiz</mat-icon>
+            </button>
+            <mat-menu #courseMenu="matMenu" panelClass="course-menu-panel" (click)="$event.stopPropagation()">
+              <button mat-menu-item type="button" disableRipple
+                      [routerLink]="['/my-assignments/course', course.id]"
+                      [queryParams]="{ tab: 'settings' }">
+                <mat-icon>settings</mat-icon>
+                <span>Settings</span>
+              </button>
+              <button mat-menu-item type="button" class="delete-item" disableRipple
+                      (click)="openDeleteDialog($event, course)">
+                <mat-icon>delete</mat-icon>
+                <span>Delete course</span>
+              </button>
+            </mat-menu>
+          }
+        </span>
+        <span class="course-card__meta">
+          @if (course.open !== null && course.open !== undefined && course.open > 0) {
+            {{ course.open }} open
+          } @else {
+            All caught up
+          }
+        </span>
+      </span>
+    </a>
+  }
+</div>

@@ -33,7 +33,7 @@ internal sealed class NotificationRepository(
     {
         IQueryable<User> members = assignments.AsNoTracking()
             .Where(a => a.Id == assignmentId)
-            .SelectMany(a => a.Course.Roster.Members)
+            .SelectMany(a => a.Course.Members)
             .Where(m => m.Role == Role.Student && m.State == UserState.Active && m.Email != null);
 
         IQueryable<NotificationPreference> opted = trigger == NotificationTrigger.NewAssignment
