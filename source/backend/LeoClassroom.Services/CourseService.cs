@@ -14,13 +14,11 @@ public interface ICourseService
 {
     public ValueTask<OneOf<Success<Course>, NotFound, AlreadyExists>>
         AddCourseAsync(string title, long rosterId, string? iconSeed = null);
-    public ValueTask<OneOf<Course, NotFound>> GetCourseByIdAsync(long id);
     public ValueTask<OneOf<CourseParticipants, NotFound, Forbidden>> GetParticipantsAsync(long id);
     public ValueTask<OneOf<IReadOnlyCollection<CourseParticipant>, NotFound, Forbidden>>
         SearchAvailableStudentsAsync(long id, string term);
     public ValueTask<OneOf<Success, NotFound, Forbidden>> AddParticipantAsync(long id, long userId);
     public ValueTask<OneOf<Success, NotFound, Forbidden>> RemoveParticipantAsync(long id, long userId);
-    public ValueTask<OneOf<Success<Course>, NotFound, AlreadyExists>> AddCourseAsync(string title, long rosterId);
     public ValueTask<OneOf<Course, NotFound, Forbidden>> GetCourseByIdAsync(long id);
     public ValueTask<IReadOnlyCollection<CourseOverview>> GetCourseOverviewsAsync();
 
@@ -227,8 +225,6 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
         return new Success();
     }
 
-    public ValueTask<IReadOnlyCollection<CourseOverview>> GetCourseOverviewsAsync() =>
-        uow.CourseRepository.GetOverviewsAsync();
     public async ValueTask<IReadOnlyCollection<CourseOverview>> GetCourseOverviewsAsync()
     {
         if (currentUser.Roles.Contains(Role.Admin))
@@ -316,5 +312,4 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
         || string.Equals(course.Owner.StudentId, currentUser.StudentId, StringComparison.Ordinal)
         || course.CoTeachers.Any(teacher =>
             string.Equals(teacher.StudentId, currentUser.StudentId, StringComparison.Ordinal));
-        || course.CoTeachers.Any(t => string.Equals(t.StudentId, currentUser.StudentId, StringComparison.Ordinal));
 }

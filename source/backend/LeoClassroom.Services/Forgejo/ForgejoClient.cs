@@ -640,11 +640,27 @@ internal sealed class ForgejoClient(
     private async ValueTask<ForgejoError> ErrorAsync(
         HttpResponseMessage response, string operation, params string?[] additionalSecrets)
     {
-        string body = await ReadBodyAsync(response);
         int status = (int) response.StatusCode;
         string fallback = response.ReasonPhrase ?? response.StatusCode.ToString();
 
-        string detail = ExtractMessage(body) ?? reason;
+        string body = string.Empty;
+        try
+        {
+            body = (await response.Content.ReadAsStringAsync()).Trim();
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "Could not read Forgejo {Operation} error response (HTTP {Status})",
+                            operation, status);
+        }
+
+        string detail = ExtractMessage(body, operation, status) ?? fallback;
+        detail = Redact(detail, settings.Value.AdminToken, additionalSecrets);
+        if (detail.Length > MaxDetailLength)
+        {
+            detail = detail[..MaxDetailLength];
+        }
+        logger.LogError("Forgejo {Operation} failed with HTTP {Status}: {Message}", operation, status, detail);
 
         return new ForgejoError(status, $"{operation}: {detail}");
     }
@@ -666,7 +682,7 @@ internal sealed class ForgejoClient(
         return await request();
     }
 
-    private static async Task<bool> LooksLikeUnknownAccessTokenAsync(HttpResponseMessage response)
+    private async Task<bool> LooksLikeUnknownAccessTokenAsync(HttpResponseMessage response)
     {
         if (response.StatusCode is not (HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden))
         {
@@ -674,24 +690,11 @@ internal sealed class ForgejoClient(
         }
 
         string body = await ReadBodyAsync(response);
-        string? detail = ExtractMessage(body);
+        string? detail = ExtractMessage(body, "check access token", (int) response.StatusCode);
 
         return detail is not null
                && detail.Contains("access token does not exist", StringComparison.OrdinalIgnoreCase);
     }
-        catch (HttpRequestException ex)
-        {
-            logger.LogError(ex, "Could not read Forgejo {Operation} error response (HTTP {Status})",
-                            operation, status);
-        }
-
-        string detail = ExtractMessage(body, operation, status) ?? fallback;
-        detail = Redact(detail, settings.Value.AdminToken, additionalSecrets);
-        if (detail.Length > MaxDetailLength)
-        {
-            detail = detail[..MaxDetailLength];
-        }
-        logger.LogError("Forgejo {Operation} failed with HTTP {Status}: {Message}", operation, status, detail);
 
     private static async Task<string> ReadBodyAsync(HttpResponseMessage response)
     {
