@@ -100,6 +100,7 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
 
         created.Title.Should().Be("Algorithms");
         created.RosterId.Should().Be(_rosterId);
+        created.IsReadOnly.Should().BeTrue();
         created.IconSeed.Should().NotBeNull();
         created.IconSeed!.Should().MatchRegex("^[A-Za-z0-9-]{8,64}$");
     }
