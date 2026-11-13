@@ -4,6 +4,19 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-13 — A course's member count is its own membership, not the roster's
+
+**Status:** accepted.
+
+`CourseOverview.MemberCount` counts `Course.Members`, the students attached to that course, not
+`Roster.Members`, the whole class roster the course was opened for. The two stopped being the same when
+`CourseSpecificMembership` made course participation its own relation and the settings tab began adding and
+removing participants; a roster-wide count would show students who never accepted the course. The merge
+that brought that migration in left both projections side by side, so the roster count could silently win.
+What would change it: a column that deliberately reports class size, which would then need its own field.
+
+---
+
 ## 2026-11-05 — Forgejo `full_name` is `FamilyGiven`, no space
 
 **Status:** accepted.
