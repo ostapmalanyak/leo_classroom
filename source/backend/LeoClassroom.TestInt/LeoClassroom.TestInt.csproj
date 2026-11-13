@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
     <PropertyGroup>
         <OutputType>exe</OutputType>
+        <!-- The installed SDK (11.0.100-rc.3) fails JS-module endpoint validation for Web-SDK test
+             projects ("scoped css bundles do not have matching endpoints"). These tests serve no
+             static assets, so the pipeline is not needed here; drop this once the SDK is fixed. -->
+        <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\LeoClassroom.Persistence\LeoClassroom.Persistence.csproj"/>
