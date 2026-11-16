@@ -96,45 +96,59 @@
           </ng-template>
 
           @let sections = assignmentSections();
+
+          @if (assignments().length > 0) {
+            <div class="assignment-view">
+              <mat-button-toggle-group class="assignment-view__toggle"
+                                       aria-label="Assignment status"
+                                       [value]="assignmentView()"
+                                       (change)="setAssignmentView($event)"
+                                       hideSingleSelectionIndicator>
+                <mat-button-toggle value="open">Open ({{ openAssignmentCount() }})</mat-button-toggle>
+                <mat-button-toggle value="expired">Expired ({{ expiredAssignmentCount() }})</mat-button-toggle>
+              </mat-button-toggle-group>
+            </div>
+          }
+
           <div class="assignments">
-            @if (sections.open.length > 0) {
-              <section class="assignment-section">
-                <h2 class="section-heading section-heading--open">Open</h2>
-                @for (group of sections.open; track group.key) {
-                  <section class="assignment-group">
-                    <h3 class="subsection-heading">{{ group.date | date: 'dd.MM.yyyy' }}</h3>
-                    @for (assignment of group.assignments; track assignment.id) {
-                      <ng-container [ngTemplateOutlet]="assignmentCard"
-                                    [ngTemplateOutletContext]="{ $implicit: assignment }" />
-                    }
-                  </section>
-                }
-              </section>
-            }
+            @if (assignmentView() === 'open') {
+              @for (group of sections.open; track group.key) {
+                <section class="assignment-group">
+                  <h3 class="subsection-heading">{{ group.date | date: 'dd.MM.yyyy' }}</h3>
+                  @for (assignment of group.assignments; track assignment.id) {
+                    <ng-container [ngTemplateOutlet]="assignmentCard"
+                                  [ngTemplateOutletContext]="{ $implicit: assignment }" />
+                  }
+                </section>
+              }
 
-            @if (sections.noDate.length > 0) {
-              <section class="assignment-section">
-                <h2 class="section-heading">No Date</h2>
-                @for (assignment of sections.noDate; track assignment.id) {
-                  <ng-container [ngTemplateOutlet]="assignmentCard"
-                                [ngTemplateOutletContext]="{ $implicit: assignment }" />
-                }
-              </section>
-            }
+              @if (sections.noDate.length > 0) {
+                <section class="assignment-section">
+                  <h2 class="section-heading">No Date</h2>
+                  @for (assignment of sections.noDate; track assignment.id) {
+                    <ng-container [ngTemplateOutlet]="assignmentCard"
+                                  [ngTemplateOutletContext]="{ $implicit: assignment }" />
+                  }
+                </section>
+              }
 
-            @if (sections.expired.length > 0) {
-              <section class="assignment-section">
-                <h2 class="section-heading section-heading--expired">Expired</h2>
-                @for (group of sections.expired; track group.key) {
-                  <section class="assignment-group">
-                    <h3 class="subsection-heading">{{ group.date | date: 'dd.MM.yyyy' }}</h3>
-                    @for (assignment of group.assignments; track assignment.id) {
-                      <ng-container [ngTemplateOutlet]="assignmentCard"
-                                    [ngTemplateOutletContext]="{ $implicit: assignment }" />
-                    }
-                  </section>
-                }
-              </section>
+              @if (!loading() && assignments().length > 0 && sections.open.length === 0 && sections.noDate.length === 0) {
+                <p class="empty">No open assignments.</p>
+              }
+            } @else {
+              @for (group of sections.expired; track group.key) {
+                <section class="assignment-group">
+                  <h3 class="subsection-heading">{{ group.date | date: 'dd.MM.yyyy' }}</h3>
+                  @for (assignment of group.assignments; track assignment.id) {
+                    <ng-container [ngTemplateOutlet]="assignmentCard"
+                                  [ngTemplateOutletContext]="{ $implicit: assignment }" />
+                  }
+                </section>
+              }
+
+              @if (!loading() && assignments().length > 0 && sections.expired.length === 0) {
+                <p class="empty">No expired assignments.</p>
+              }
             }
           </div>
         </mat-tab>

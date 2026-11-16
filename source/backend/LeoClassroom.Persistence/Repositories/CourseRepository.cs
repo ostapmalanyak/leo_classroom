@@ -11,6 +11,7 @@ public interface ICourseRepository
     public ValueTask<Course?> GetTrackedByIdAsync(long id);
     public ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsAsync();
     public ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsForTeacherAsync(long userId);
+    public ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsForMemberAsync(long userId);
     public ValueTask<bool> ExistsWithTitleInRosterAsync(string title, long rosterId, long? excludingCourseId = null);
     public ValueTask<string?> GetOwnerStudentIdAsync(long id);
     public ValueTask<bool> DeleteByIdAsync(long id);
@@ -73,6 +74,14 @@ internal sealed class CourseRepository(DbSet<Course> courses) : ICourseRepositor
         IQueryable<Course> visibleCourses = courses.AsNoTracking()
                                                    .Where(c => c.OwnerId == userId
                                                                || c.CoTeachers.Any(t => t.Id == userId));
+
+        return await ProjectOverviews(visibleCourses);
+    }
+
+    public async ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsForMemberAsync(long userId)
+    {
+        IQueryable<Course> visibleCourses = courses.AsNoTracking()
+                                                   .Where(c => c.Members.Any(member => member.Id == userId));
 
         return await ProjectOverviews(visibleCourses);
     }

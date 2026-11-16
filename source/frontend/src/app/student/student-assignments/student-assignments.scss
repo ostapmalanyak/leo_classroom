@@ -1,59 +1,58 @@
-.empty {
-  color: var(--color-text-muted);
+h1 {
+  margin-block: 0 var(--space-4);
 }
 
-.tiles {
-  display: grid;
-  gap: var(--space-4);
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+// The status switch borrows the course tab look (`.tabs--compact`) but stays a
+// discrete strip on the right of the heading, the way Teams shows due/open/expired.
+.status-tabs {
+  display: inline-flex;
 }
 
-.tile {
-  align-items: center;
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  color: var(--color-text);
-  display: flex;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  min-height: 140px;
-  text-decoration: none;
-  transition: background-color var(--transition), border-color var(--transition);
-
-  &:hover,
-  &:focus-visible {
-    background-color: var(--color-bg-hover);
-  }
+.course {
+  margin-block-end: var(--space-6);
 }
 
-.tile__badge {
-  align-items: center;
-  border-radius: var(--radius);
-  color: #fff;
-  display: flex;
-  flex: none;
-  font-size: 1.75rem;
-  font-weight: 600;
-  height: 80px;
-  justify-content: center;
-  width: 80px;
+.course__title {
+  border-block-end: 1px solid var(--color-border);
+  color: var(--color-text-strong);
+  font-size: 1.25rem;
+  margin-block: 0 var(--space-3);
+  padding-block-end: var(--space-2);
 }
 
-.tile__body {
+.assignment-list {
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  gap: var(--space-4);
 }
 
-.tile__title {
-  font-size: 1.125rem;
-  color: var(--color-text-strong);
-  font-weight: 600;
-  overflow-wrap: anywhere;
+.assignment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.tile__meta {
+// The due date leads the card instead of sitting inside it: it is the first thing a
+// student scans for. It stays below the card title in size so the assignment name
+// keeps the visual lead.
+.assignment-date {
   color: var(--color-text-muted);
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+}
+
+.assignment-date--open {
+  color: var(--color-success-text);
+}
+
+// Overdue work is the one thing a student must not miss, so the date is both red
+// and a step larger than the open one.
+.assignment-date--expired {
+  color: color-mix(in srgb, var(--color-danger-border) 55%, var(--color-text-strong));
+  font-size: 0.9375rem;
+}
+
+.empty {
+  color: var(--color-text-muted);
 }

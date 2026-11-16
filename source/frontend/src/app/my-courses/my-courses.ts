@@ -11,7 +11,6 @@ import { ZodError } from 'zod';
 import { MatDialog } from '@angular/material/dialog';
 import { Assignment, AssignmentService } from '../../core/services/assignment-service';
 import { SessionService } from '../../core/auth/session-service';
-import { CourseTeacherService } from '../../core/services/course-teacher-service';
 import { CourseOverview, CourseService } from '../../core/services/course-service';
 import { CourseManagementService } from '../../core/services/course-management-service';
 import { SnackbarService } from '../../core/services/snackbar-service';
@@ -33,7 +32,6 @@ interface CourseTile {
 })
 export class MyCourses implements OnInit {
   private readonly assignmentService = inject(AssignmentService);
-  private readonly courseTeacherService = inject(CourseTeacherService);
   private readonly courseService = inject(CourseService);
   private readonly courseManagementService = inject(CourseManagementService);
   private readonly snackbar = inject(SnackbarService);
@@ -82,6 +80,10 @@ export class MyCourses implements OnInit {
     return this.session.isTeacher();
   }
 
+  protected courseRoute(course: CourseTile): readonly string[] {
+    return ['/my-assignments/course', String(course.id)];
+  }
+
   protected stopCardNavigation(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
@@ -117,38 +119,30 @@ export class MyCourses implements OnInit {
       return;
     }
 
-    const teacherId = this.session.identity()?.studentId;
-    if (teacherId === undefined) {
-      this.loading.set(false);
-      this.snackbar.show('Could not identify your teacher account');
-
-      return;
-    }
-
-    const teacherLists = await Promise.all(courses.map(course => this.courseTeacherService.getTeachers(course.id)));
-    if (teacherLists.some(teachers => teachers === null)) {
-      this.loading.set(false);
-      this.snackbar.show('Could not load course teachers');
-
-      return;
-    }
-
-    const myCourses = this.session.isAdmin()
-      ? courses
-      : courses.filter((course, index) => {
-        const teachers = teacherLists[index];
-
-        return teachers !== null
-          && teachers !== undefined
-          && (teachers.owner.studentId === teacherId
-            || teachers.coTeachers.some(teacher => teacher.studentId === teacherId));
-      });
     const now = Instant.now();
-    const tiles = myCourses.map(course => this.toTile(course, [], now));
+    const tiles = courses.map(course => this.toTile(course, [], now));
     this.courses.set(tiles);
     this.loading.set(false);
 
-    for (const course of myCourses) {
+    if (!this.session.isTeacher()) {
+      const mine = await this.assignmentService.listMine();
+      if (mine === null) {
+        this.snackbar.show('Could not load your assignments');
+
+        return;
+      }
+
+      const assignments = [...mine.accepted, ...mine.unaccepted];
+      this.courses.update(current => current.map(tile => ({
+        ...tile,
+        open: assignments.filter(assignment => assignment.courseId === tile.id
+          && (assignment.deadline === null || !assignment.deadline.isBefore(now))).length
+      })));
+
+      return;
+    }
+
+    for (const course of courses) {
       this.assignmentService.listForCourse$(course.id).pipe(
         catchError(error => {
           if (error instanceof HttpErrorResponse) {

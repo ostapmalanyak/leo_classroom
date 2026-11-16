@@ -128,8 +128,11 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3);
+  border: 0;
   border-bottom: calc(var(--border-width) * 2) solid transparent;
+  background: none;
   color: var(--color-text-muted);
+  cursor: pointer;
   text-decoration: none;
 
   &:hover,
@@ -149,6 +152,44 @@
 // room the rest of the page has.
 .course-tab-group .mat-mdc-tab-body-content {
   padding-block-start: var(--space-5);
+}
+
+// One assignment card, shared by the course page and "My Assignments". Only the
+// contents of `.assignment-details` differ between them (status vs. due date), so the
+// box is defined here once instead of twice in the components.
+.assignment-card {
+  border-radius: var(--course-card-radius);
+  width: 100%;
+}
+
+.assignment-card mat-card-content {
+  align-items: center;
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+}
+
+.assignment-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.assignment-heading strong {
+  display: block;
+}
+
+.assignment-details {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+@media (max-width: 48rem) {
+  .assignment-details {
+    justify-content: flex-start;
+  }
 }
 
 .badge {
@@ -530,8 +571,9 @@ mat-card.mat-mdc-card {
 }
 
 // Material's own controls use bare <button> elements internally (the slide-toggle
-// switch is one), so they must not receive the generic control box.
-button:not(.mat-mdc-button-base, .mat-mdc-menu-item, .mdc-switch) {
+// switch is one), and the tab strip is a row of bare buttons that must read as text,
+// so neither may receive the generic control box.
+button:not(.mat-mdc-button-base, .mat-mdc-menu-item, .mdc-switch, .tabs__item) {
   @include mixins.control-base;
 
   border-radius: var(--radius-button);

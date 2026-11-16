@@ -3,6 +3,7 @@ import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatButtonToggleChange, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
@@ -51,8 +52,9 @@ interface AssignmentSections {
 @Component({
   selector: 'app-course-assignments',
   imports: [
-    DatePipe, NgTemplateOutlet, RouterLink, FormsModule, MatButton, MatIconButton, MatCard, MatCardContent,
-    MatFormField, MatLabel, MatIcon, MatInput, MatMenuModule, MatProgressBar, MatTabsModule, CourseDetail
+    DatePipe, NgTemplateOutlet, RouterLink, FormsModule, MatButton, MatIconButton, MatButtonToggleModule, MatCard,
+    MatCardContent, MatFormField, MatLabel, MatIcon, MatInput, MatMenuModule, MatProgressBar, MatTabsModule,
+    CourseDetail
   ],
   templateUrl: './course-assignments.html',
   styleUrls: ['./course-assignments.scss', '../../my-courses/my-courses.scss']
@@ -78,6 +80,7 @@ export class CourseAssignments implements OnInit {
   protected readonly selectedTab = signal(0);
   protected readonly dateSort = signal<DateSort>('date-ascending');
   protected readonly sortByTitle = signal(false);
+  protected readonly assignmentView = signal<'open' | 'expired'>('open');
   protected readonly assignmentSections = computed<AssignmentSections>(() => {
     const direction = this.dateSort();
     const titleFirst = this.sortByTitle();
@@ -133,8 +136,14 @@ export class CourseAssignments implements OnInit {
 
     return { open: toGroups(byDate), noDate: noDate.sort(compare), expired: toGroups(expiredByDate) };
   });
-  protected readonly students = computed(() => this.participants().filter(participant => participant.role === Role.Student));
 
+  protected readonly openAssignmentCount = computed(() =>
+    this.assignmentSections().open.reduce((count, group) => count + group.assignments.length,
+      this.assignmentSections().noDate.length));
+
+  protected readonly expiredAssignmentCount = computed(() =>
+    this.assignmentSections().expired.reduce((count, group) => count + group.assignments.length, 0));
+  protected readonly students = computed(() => this.participants().filter(participant => participant.role === Role.Student));
   protected readonly showStudentSearch = signal(false);
   protected readonly studentSearchTerm = signal('');
   protected readonly studentSearchResults = signal<CourseParticipant[]>([]);
@@ -160,6 +169,10 @@ export class CourseAssignments implements OnInit {
     today.setHours(0, 0, 0, 0);
 
     return date.getTime() < today.getTime();
+  }
+
+  protected setAssignmentView(change: MatButtonToggleChange): void {
+    this.assignmentView.set(change.value === 'expired' ? 'expired' : 'open');
   }
 
   private dateKey(date: Date): string {

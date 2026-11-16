@@ -131,6 +131,12 @@
   margin-block-start: var(--space-4);
 }
 
+.assignment-view {
+  display: flex;
+  justify-content: flex-end;
+  margin-block: var(--space-2) 0;
+}
+
 .section-heading {
   align-items: center;
   border-bottom: var(--border-width) solid var(--color-border);
@@ -140,17 +146,6 @@
   justify-content: space-between;
   margin: 0;
   padding-block-end: 0.375rem;
-}
-
-.section-heading--open {
-  color: var(--color-success-text);
-}
-
-// The status word carries the colour, while the divider keeps the same weight and
-// colour as the other section headings so the three sections read as one list.
-.section-heading--expired {
-  border-bottom-color: var(--color-border);
-  color: #f87171;
 }
 
 .subsection-heading {
@@ -304,35 +299,6 @@
   width: 1.5rem;
 }
 
-.assignment-card {
-  border-radius: var(--course-card-radius);
-  width: 100%;
-}
-
-.assignment-card mat-card-content {
-  align-items: center;
-  display: flex;
-  gap: var(--space-4);
-  justify-content: space-between;
-}
-
-.assignment-heading {
-  flex: 1;
-  min-width: 0;
-}
-
-.assignment-heading strong {
-  display: block;
-}
-
-.assignment-details {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  justify-content: flex-end;
-}
-
 .empty {
   color: var(--color-text-muted);
   margin-block: var(--space-4);
@@ -360,10 +326,6 @@
       width: 100%;
     }
   }
-
-  .assignment-details {
-    justify-content: flex-start;
-  }
 }
 
 .course-header mat-tab-group {
@@ -386,9 +348,4 @@
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.assignments .assignment-card {
-  width: 100%;
-  max-width: none;
 }

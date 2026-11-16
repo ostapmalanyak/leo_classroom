@@ -1,25 +1,71 @@
-<h1>My courses</h1>
+<div class="page-header">
+  <h1>My Assignments</h1>
+
+  @if (!loading() && all().length > 0) {
+    <!-- Open / Expired reads like the tab strip of a course, only smaller and right-aligned. -->
+    <div class="tabs tabs--compact status-tabs" role="tablist" aria-label="Assignment status">
+      <button type="button" role="tab" class="tabs__item"
+              [class.is-active]="view() === 'open'"
+              [attr.aria-selected]="view() === 'open'"
+              (click)="setView('open')">Open ({{ openCount() }})</button>
+      <button type="button" role="tab" class="tabs__item"
+              [class.is-active]="view() === 'expired'"
+              [attr.aria-selected]="view() === 'expired'"
+              (click)="setView('expired')">Expired ({{ expiredCount() }})</button>
+    </div>
+  }
+</div>
 
 @if (loading()) {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-} @else if (courses().length === 0) {
-  <p class="empty">You have no assignments yet.</p>
 }
 
-<div class="tiles">
-  @for (course of courses(); track course.id) {
-    <a class="tile" [routerLink]="['/my-assignments/course', course.id]">
-      <span class="tile__badge" [style.background]="course.color">{{ course.initials }}</span>
-      <span class="tile__body">
-        <span class="tile__title">{{ course.title }}</span>
-        <span class="tile__meta">
-          @if (course.open > 0) {
-            {{ course.open }} open
-          } @else {
-            All caught up
-          }
-        </span>
-      </span>
-    </a>
-  }
-</div>
+@if (!loading() && sections().length === 0) {
+  <p class="empty">
+    @if (all().length === 0) {
+      You have no assignments yet.
+    } @else if (view() === 'open') {
+      No open assignments.
+    } @else {
+      No expired assignments.
+    }
+  </p>
+}
+
+@for (course of sections(); track course.id) {
+  <section class="course">
+    <h2 class="course__title">{{ course.title }}</h2>
+
+    <div class="assignment-list">
+      @for (assignment of course.assignments; track assignment.id) {
+        <div class="assignment">
+          <div class="assignment-date"
+               [class.assignment-date--expired]="view() === 'expired'"
+               [class.assignment-date--open]="view() === 'open'">
+            @if (assignment.deadline) {
+              Due {{ assignment.deadline | date: 'dd.MM.yyyy, HH:mm' }}
+            } @else {
+              No due date
+            }
+          </div>
+          <mat-card class="assignment-card">
+            <mat-card-content>
+              <div class="assignment-heading">
+                <strong>{{ assignment.title }}</strong>
+              </div>
+              <div class="assignment-details">
+                @if (assignment.accepted) {
+                  <a mat-button [routerLink]="['/my-assignments', assignment.id]">Open assignment</a>
+                } @else {
+                  <button mat-button type="button"
+                          [disabled]="accepting() === assignment.id"
+                          (click)="accept(assignment)">Accept</button>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      }
+    </div>
+  </section>
+}
