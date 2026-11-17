@@ -15,7 +15,8 @@ import {
   dueUrgency,
   relativeDue,
   studentAssignmentState,
-  timestampLabel
+  timestampLabel,
+  urgencyMarks
 } from '../../../core/util/assignment-state';
 import { CourseIcon } from '../../shared/course-icon/course-icon';
 
@@ -262,7 +263,8 @@ export class StudentAssignments implements OnInit {
     }
 
     const relative = relativeDue(assignment.deadline, now);
+    const marks = urgencyMarks(dueUrgency(assignment.deadline, now));
 
-    return assignment.deadline.isBefore(now) ? `Overdue · ${relative}` : `Due ${relative}`;
+    return assignment.deadline.isBefore(now) ? `Overdue · ${relative}${marks}` : `Due ${relative}${marks}`;
   }
 }

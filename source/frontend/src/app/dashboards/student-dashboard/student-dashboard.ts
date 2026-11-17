@@ -9,7 +9,8 @@ import { AssignedAssignment, AssignmentService, SubmissionStatus } from '../../.
 import { NowService } from '../../../core/services/now-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 import {
-  DueUrgency, dueLabel, dueUrgency, dueWithinHours, relativeDue, StatePresentation, statePresentation
+  DueUrgency, dueLabel, dueUrgency, dueWithinHours, relativeDue, StatePresentation, statePresentation,
+  urgencyMarks
 } from '../../../core/util/assignment-state';
 import { countViews, workEntries, WorkEntry } from '../../../core/util/student-work';
 import { CourseService } from '../../../core/services/course-service';
@@ -88,7 +89,8 @@ export class StudentDashboard implements OnInit {
       .map(entry => ({
         assignment: entry.assignment,
         dueLabel: dueLabel(entry.assignment.deadline),
-        relative: relativeDue(entry.assignment.deadline, now),
+        relative: relativeDue(entry.assignment.deadline, now)
+          + urgencyMarks(dueUrgency(entry.assignment.deadline, now)),
         urgency: dueUrgency(entry.assignment.deadline, now),
         state: statePresentation(entry.state)
       }));

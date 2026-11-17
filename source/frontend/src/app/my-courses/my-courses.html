@@ -1,46 +1,31 @@
 <div class="page-header">
   <h1>My Courses</h1>
-
-  <!-- The search is small and sits on the same line as the heading, so the courses stay the
-       main thing on the page. -->
-  <label class="course-search">
-    <mat-icon aria-hidden="true">search</mat-icon>
-    <input type="search" [value]="searchTerm()" (input)="handleSearchInput($event)"
-           placeholder="Search courses..." aria-label="Search courses by name or teacher">
-    @if (searchTerm().trim() !== '') {
-      <button type="button" class="course-search__clear" aria-label="Clear search"
-              (click)="clearSearch()">
-        <mat-icon>close</mat-icon>
-      </button>
-    }
-  </label>
 </div>
+
+<!-- The search is a field that opens a palette: it spans the whole grid, so it belongs to
+     the page and not to a single course. -->
+<app-search-palette [entries]="searchEntries()" placeholder="Search courses and assignments"></app-search-palette>
 
 @if (loading()) {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
 }
 
-@if (!loading() && visibleCourses().length === 0) {
+@if (!loading() && courses().length === 0) {
   <div class="empty card-surface" aria-live="polite">
     <span class="empty__icon" aria-hidden="true">
       <mat-icon>school</mat-icon>
     </span>
-    @if (searchTerm().trim() === '') {
-      <p class="empty__text">You have no courses yet.</p>
-    } @else {
-      <p class="empty__text">No courses match “{{ searchTerm().trim() }}”.</p>
-      <button type="button" class="empty__action" (click)="clearSearch()">Clear search</button>
-    }
+    <p class="empty__text">You have no courses yet.</p>
   </div>
 }
 
 <div class="course-grid">
-  @if (canManageCourses() && searchTerm().trim() === '') {
+  @if (canManageCourses()) {
     <button class="course-card course-card--add" type="button" aria-label="Add a course" (click)="openCreateDialog()">
       <span class="course-card__add-icon" aria-hidden="true">+</span>
     </button>
   }
-  @for (course of visibleCourses(); track course.id) {
+  @for (course of courses(); track course.id) {
     <a class="course-card card-surface card-surface--interactive" [routerLink]="courseRoute(course)">
       <img class="course-card__avatar" [src]="course.avatarUrl" [alt]="course.title + ' icon'">
       <span class="course-card__body">

@@ -130,13 +130,16 @@
   list-style: none;
 }
 
+// A row is a small card, like the assignment cards on My Assignments. The button keeps the
+// shared button colour, so it reads as a button here exactly as it does there.
 .next-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--space-3);
-  border-radius: var(--radius);
-  background-color: var(--color-bg-input);
+  border: var(--border-width) solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background-color: var(--color-bg-surface);
   padding: var(--space-3);
 }
 

@@ -299,6 +299,28 @@ export function relativeDue(deadline: Instant | null, now: Instant = Instant.now
   return days < 0 ? `${label} ago` : `in ${label}`;
 }
 
+/**
+ * How many exclamation marks a deadline carries. The closer it gets, the louder the row:
+ * a deadline that is days away stays quiet, the last hour does not. Red still belongs to
+ * a deadline that has passed - the marks say "now", the colour says "late".
+ */
+export function urgencyMarks(urgency: DueUrgency): string {
+  switch (urgency) {
+    case 'soon':
+      return '!';
+    case 'warm':
+      return '!!';
+    case 'urgent':
+      return '!!!';
+    case 'critical':
+      return '!!!!';
+    case 'overdue':
+      return '!!!!';
+    default:
+      return '';
+  }
+}
+
 /** Whole calendar days, so month lengths and DST never leak into a "days left" label. */
 export function calendarDaysBetween(from: Instant, to: Instant): number {
   const start = from.atZone(zone).toLocalDate();

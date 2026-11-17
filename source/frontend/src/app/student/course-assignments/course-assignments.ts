@@ -30,7 +30,8 @@ import {
   dueUrgency,
   relativeDue,
   studentAssignmentState,
-  timestampLabel
+  timestampLabel,
+  urgencyMarks
 } from '../../../core/util/assignment-state';
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -306,8 +307,9 @@ export class CourseAssignments implements OnInit {
     }
 
     const relative = relativeDue(deadline, now);
+    const marks = urgencyMarks(dueUrgency(deadline, now));
 
-    return deadline.isBefore(now) ? `Overdue · ${relative}` : `Due ${relative}`;
+    return deadline.isBefore(now) ? `Overdue · ${relative}${marks}` : `Due ${relative}${marks}`;
   }
 
   private dateKey(date: Date): string {

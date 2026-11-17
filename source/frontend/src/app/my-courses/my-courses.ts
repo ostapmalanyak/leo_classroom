@@ -16,6 +16,7 @@ import { CourseManagementService } from '../../core/services/course-management-s
 import { SnackbarService } from '../../core/services/snackbar-service';
 import { CreateCourseDialog } from './create-course-dialog/create-course-dialog';
 import { DeleteCourseDialog } from './delete-course-dialog/delete-course-dialog';
+import { SearchEntry, SearchPalette } from '../shared/search-palette/search-palette';
 
 interface CourseTile {
   id: number;
@@ -26,7 +27,7 @@ interface CourseTile {
 
 @Component({
   selector: 'app-my-courses',
-  imports: [RouterLink, MatProgressBar, MatButtonModule, MatIconModule, MatMenuModule],
+  imports: [RouterLink, MatProgressBar, MatButtonModule, MatIconModule, MatMenuModule, SearchPalette],
   templateUrl: './my-courses.html',
   styleUrl: './my-courses.scss'
 })
@@ -40,28 +41,24 @@ export class MyCourses implements OnInit {
 
   protected readonly loading: WritableSignal<boolean> = signal(false);
   protected readonly courses: WritableSignal<CourseTile[]> = signal([]);
-  protected readonly searchTerm: WritableSignal<string> = signal('');
-  protected readonly visibleCourses = computed<CourseTile[]>(() => {
-    const query = this.searchTerm().trim().toLocaleLowerCase();
-    if (query === '') {
-      return this.courses();
-    }
 
-    return this.courses().filter(course => course.title.toLocaleLowerCase().includes(query));
-  });
+  /** The assignments of the courses, so the palette can jump to one of them as well. */
+  private readonly assignments: WritableSignal<SearchEntry[]> = signal([]);
   private assignmentsFailureNotified = false;
+
+  /** Everything the search palette can find: the courses and the assignments of them. */
+  protected readonly searchEntries = computed<SearchEntry[]>(() => [
+    ...this.courses().map(course => ({
+      icon: 'school',
+      title: course.title,
+      subtitle: course.open > 0 ? `${course.open} open assignments` : 'All caught up',
+      route: ['/my-assignments/course', String(course.id)]
+    })),
+    ...this.assignments()
+  ]);
 
   public async ngOnInit(): Promise<void> {
     await this.loadCourses();
-  }
-
-  protected handleSearchInput(event: Event): void {
-    this.searchTerm.set((event.target as HTMLInputElement).value);
-  }
-
-  /** The empty state offers the way out of an empty result. */
-  protected clearSearch(): void {
-    this.searchTerm.set('');
   }
 
   protected openCreateDialog(): void {
@@ -143,6 +140,12 @@ export class MyCourses implements OnInit {
         open: assignments.filter(assignment => assignment.courseId === tile.id
           && (assignment.deadline === null || !assignment.deadline.isBefore(now))).length
       })));
+      this.assignments.set(assignments.map(assignment => ({
+        icon: 'assignment',
+        title: assignment.title,
+        subtitle: assignment.courseTitle,
+        route: ['/my-assignments', String(assignment.id)]
+      })));
 
       return;
     }
@@ -168,6 +171,15 @@ export class MyCourses implements OnInit {
       ).subscribe(assignments => {
         this.courses.update(current => current.map(tile =>
           tile.id === course.id ? this.toTile(course, assignments, now) : tile));
+        this.assignments.update(current => [
+          ...current.filter(entry => entry.subtitle !== course.title),
+          ...assignments.map(assignment => ({
+            icon: 'assignment',
+            title: assignment.title,
+            subtitle: course.title,
+            route: ['/my-assignments/course', String(course.id)]
+          }))
+        ]);
       });
     }
   }

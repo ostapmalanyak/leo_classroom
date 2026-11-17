@@ -4,6 +4,30 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-17 — A search field that opens a palette, and deadlines that shout when they are close
+
+**Status:** accepted.
+
+**The search field on *My Courses*.** The page has a field-shaped trigger that spans the whole course grid
+and opens a search palette (`app/shared/search-palette`) instead of filtering the grid in place. The
+reason is that the grid is a map of the courses - it should show all of them - while searching is a
+question with a single answer, and a palette can answer it with a jump instead of a filtered page. The
+trigger carries the shortcut hint (`Ctrl K`, or `Cmd K` on macOS) because the palette can be opened from
+anywhere on the page; the palette itself is one panel with a field, a list of courses and assignments and
+keyboard navigation (arrows, enter, escape). The courses, their sizes, their spacing and the columns of
+the grid are untouched by this.
+
+**Deadlines that shout.** `urgencyMarks` in `core/util/assignment-state.ts` adds exclamation marks to a
+deadline, and the count grows as the deadline comes closer: one inside three days, two inside a day, three
+inside six hours, four inside the last hour. The marks say "now", the colour ramp says "how late" - a
+deadline that is still reachable stays yellow to orange-red, and only a passed deadline turns red. The
+marks are part of the text rather than a separate badge so they cannot drift away from the deadline they
+belong to.
+
+What would change it: a search that has to filter the grid itself would need the inline field back.
+
+---
+
 ## 2026-11-17 — One urgency ramp, one button design, and a temporary git notice
 
 **Status:** accepted.
