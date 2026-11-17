@@ -18,11 +18,12 @@ keyboard navigation (arrows, enter, escape). The courses, their sizes, their spa
 the grid are untouched by this.
 
 **Deadlines that shout.** `urgencyMarks` in `core/util/assignment-state.ts` adds exclamation marks to a
-deadline, and the count grows as the deadline comes closer: one inside three days, two inside a day, three
-inside six hours, four inside the last hour. The marks say "now", the colour ramp says "how late" - a
-deadline that is still reachable stays yellow to orange-red, and only a passed deadline turns red. The
-marks are part of the text rather than a separate badge so they cannot drift away from the deadline they
-belong to.
+deadline, and the count grows the closer the deadline gets: a deadline days away stays quiet, one inside
+three days says `!`, one inside a day says `!!`, one inside twelve hours `!!!`, inside six hours `!!!!`
+and inside the last hour `!!!!!`. A deadline that has passed shouts loudest of all (ten marks, capped
+there so a deadline that is years old does not become a wall of punctuation): that is the state a
+student has to act on, and the marks make it impossible to scroll past. The marks are part of the
+text rather than a separate badge so they cannot drift away from the deadline they belong to.
 
 What would change it: a search that has to filter the grid itself would need the inline field back.
 

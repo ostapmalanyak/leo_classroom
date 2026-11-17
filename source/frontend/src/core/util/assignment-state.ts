@@ -167,7 +167,7 @@ export function missedPolicy(deadlineKind: DeadlineKind | null | undefined): str
     : 'The deadline has passed — a late push is still accepted.';
 }
 
-export type DueUrgency = 'none' | 'later' | 'soon' | 'warm' | 'urgent' | 'critical' | 'overdue';
+export type DueUrgency = 'none' | 'later' | 'soon' | 'warm' | 'imminent' | 'urgent' | 'critical' | 'overdue';
 
 /**
  * How close the deadline is. One scale for every screen, and it ramps: the closer the
@@ -192,6 +192,10 @@ export function dueUrgency(deadline: Instant | null, now: Instant = Instant.now(
 
   if (minutesLeft < 6 * 60) {
     return 'urgent';
+  }
+
+  if (minutesLeft < 12 * 60) {
+    return 'imminent';
   }
 
   if (minutesLeft < 24 * 60) {
@@ -300,22 +304,32 @@ export function relativeDue(deadline: Instant | null, now: Instant = Instant.now
 }
 
 /**
- * How many exclamation marks a deadline carries. The closer it gets, the louder the row:
- * a deadline that is days away stays quiet, the last hour does not. Red still belongs to
- * a deadline that has passed - the marks say "now", the colour says "late".
+ * How many exclamation marks a deadline carries. The closer it gets, the louder the row: a
+ * deadline days away stays quiet, one inside three days says "!", one inside a day says "!!",
+ * inside twelve hours "!!!", inside six hours "!!!!" and inside the last hour "!!!!!". A
+ * deadline that has passed shouts loudest of all - that is the state a student has to act on,
+ * and the marks make it impossible to scroll past. The missed state stops at ten marks, so a
+ * deadline that is years old does not turn the row into a wall of punctuation.
  */
+/** The most exclamation marks a missed deadline may carry. */
+const OVERDUE_MARKS = 10;
+
 export function urgencyMarks(urgency: DueUrgency): string {
   switch (urgency) {
     case 'soon':
       return '!';
     case 'warm':
       return '!!';
-    case 'urgent':
+    case 'imminent':
       return '!!!';
+    case 'urgent':
+      return '!!!!';
     case 'critical':
-      return '!!!!';
+      return '!!!!!';
+    // A deadline that has passed is the one state that has to shout the loudest - but the
+    // marks never grow past ten, however long ago it was.
     case 'overdue':
-      return '!!!!';
+      return '!'.repeat(OVERDUE_MARKS);
     default:
       return '';
   }

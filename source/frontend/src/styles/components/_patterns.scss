@@ -88,6 +88,10 @@
   --due-color: var(--color-urgency-warm);
 }
 
+.due--imminent {
+  --due-color: var(--color-urgency-urgent);
+}
+
 .due--urgent {
   --due-color: var(--color-urgency-urgent);
 }
@@ -144,6 +148,14 @@
   font-weight: var(--font-weight-medium);
   text-decoration: none;
   cursor: pointer;
+  // The colour belongs to the button, not to the link rules of the page: a hovered link
+  // would otherwise turn the label the colour of the button and the label would vanish.
+  color: var(--color-text);
+
+  &:hover {
+    color: var(--color-text-strong);
+    text-decoration: none;
+  }
 }
 
 .btn--primary {
@@ -154,6 +166,7 @@
   &:hover {
     border-color: var(--color-accent-hover);
     background-color: var(--color-accent-hover);
+    color: var(--color-on-accent);
   }
 }
 
