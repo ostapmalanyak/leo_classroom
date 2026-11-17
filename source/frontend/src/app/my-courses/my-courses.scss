@@ -1,26 +1,39 @@
+// The heading and the search share one line; the grid gets its own air below them, so
+// the courses read as the main thing on the page.
+.page-header {
+  margin-block-end: var(--space-6);
+}
+
 // The search is small and sits on the heading line, so the courses stay the main thing.
+// It follows the theme of the other inputs: one soft border, a muted magnifier and the
+// accent colour only when it is focused.
 .course-search {
   align-items: center;
   background-color: var(--color-bg-input);
-  border: var(--border-width) solid var(--color-input-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
   display: flex;
   gap: var(--space-2);
   inline-size: min(100%, 20rem);
+  min-height: 2.5rem;
   padding-inline: var(--space-3);
+  transition: border-color var(--transition), box-shadow var(--transition);
+
+  &:hover {
+    border-color: var(--color-input-border);
+  }
 
   &:focus-within {
     border-color: var(--color-accent);
-    outline: var(--border-width) solid var(--color-accent);
-    outline-offset: 0;
+    box-shadow: 0 0 0 0.1875rem color-mix(in srgb, var(--color-accent) 25%, transparent);
   }
 
   mat-icon {
-    color: var(--color-text-muted);
+    color: var(--color-text-subtle);
     flex: none;
-    font-size: 1.25rem;
-    height: 1.25rem;
-    width: 1.25rem;
+    font-size: 1.125rem;
+    height: 1.125rem;
+    width: 1.125rem;
   }
 
   input {
@@ -30,11 +43,16 @@
     color: var(--color-text);
     flex: 1 1 auto;
     font: inherit;
-    min-height: var(--control-height);
+    font-size: var(--font-size-sm);
+    min-height: 2.25rem;
     min-width: 0;
     outline: 0;
     padding: 0;
     width: 100%;
+
+    &::placeholder {
+      color: var(--color-text-subtle);
+    }
 
     // The browser draws its own cancel button, which would sit next to ours.
     &::-webkit-search-cancel-button {

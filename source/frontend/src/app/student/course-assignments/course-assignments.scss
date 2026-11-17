@@ -142,14 +142,6 @@
   gap: var(--space-1);
 }
 
-.assignment-due,
-.assignment-pushed {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  line-height: 1.2;
-}
-
 // The Overview tab is a link into My Assignments, so it has to look like the other tab labels.
 .overview {
   align-items: flex-start;

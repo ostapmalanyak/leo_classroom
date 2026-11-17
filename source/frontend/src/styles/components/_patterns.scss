@@ -65,6 +65,41 @@
   color: var(--color-info-text);
 }
 
+// A deadline badge that carries the urgency colour itself. The tint is mixed from the
+// urgency colour, so the badge walks the same ramp as the text next to it.
+.pill--due {
+  align-self: center;
+  background-color: color-mix(in srgb, var(--due-color, var(--color-neutral-text)) 18%, transparent);
+  color: var(--due-color, var(--color-neutral-text));
+}
+
+// The deadline ramp itself. The steps only set a custom property, so any element can pick
+// the colour up with `color: var(--due-color, ...)` without the two rules fighting over
+// specificity.
+.due--later {
+  --due-color: var(--color-urgency-later);
+}
+
+.due--soon {
+  --due-color: var(--color-urgency-soon);
+}
+
+.due--warm {
+  --due-color: var(--color-urgency-warm);
+}
+
+.due--urgent {
+  --due-color: var(--color-urgency-urgent);
+}
+
+.due--critical {
+  --due-color: var(--color-urgency-critical);
+}
+
+.due--overdue {
+  --due-color: var(--color-urgency-overdue);
+}
+
 .mat-mdc-form-field-subscript-wrapper {
   min-height: 0;
   margin-top: 0;
@@ -223,8 +258,9 @@
 .assignment-card mat-card-content {
   align-items: center;
   display: flex;
-  gap: var(--space-4);
+  gap: var(--space-5);
   justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
 }
 
 .assignment-heading {
@@ -234,6 +270,25 @@
 
 .assignment-heading strong {
   display: block;
+  font-size: 1.0625rem;
+  line-height: 1.4;
+}
+
+// The remaining time and the push note share one look. The colour of the remaining time
+// comes from the urgency ramp, so a deadline that is close turns orange and only a
+// deadline that has passed turns red.
+.assignment-due {
+  color: var(--due-color, var(--color-text-muted));
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.assignment-pushed {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.2;
 }
 
 .assignment-details {

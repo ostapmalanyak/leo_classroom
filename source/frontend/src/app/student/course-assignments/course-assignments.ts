@@ -26,6 +26,8 @@ import { Role } from '../../../core/auth/roles';
 import {
   AssignmentView,
   assignmentViewOf,
+  DueUrgency,
+  dueUrgency,
   relativeDue,
   studentAssignmentState,
   timestampLabel
@@ -54,6 +56,8 @@ interface StudentRow {
   view: AssignmentView;
   /** Relative due text, shown inside the card: "Due in 3 days", "Overdue · 5 days ago". */
   due: string;
+  /** How close the deadline is, so the card can colour the remaining time. */
+  urgency: DueUrgency;
   /** Push timestamp for work that is already in the student's repository. */
   pushed: string;
 }
@@ -130,6 +134,7 @@ export class CourseAssignments implements OnInit {
         accepted: assignment.accepted === true,
         view,
         due: this.dueText(assignment.deadline, now),
+        urgency: dueUrgency(assignment.deadline, now),
         pushed: view === 'pushed' && assignment.lastPushAt !== null
           ? `Pushed ${timestampLabel(assignment.lastPushAt)}`
           : ''

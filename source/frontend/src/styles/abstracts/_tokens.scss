@@ -34,11 +34,15 @@ $color-neutral-border: #445161;
 $color-neutral-text: #cbd5e1;
 $color-border-subtle: #1f2833;
 $color-text-subtle: #9aabbf;
-// One urgency scale for every deadline on every screen.
-$color-urgency-overdue: #fca5a5;
-$color-urgency-urgent: #ff8f6b;
-$color-urgency-soon: #ffd24a;
+// One urgency scale for every deadline on every screen. It ramps from quiet grey over
+// yellow to orange and orange-red, and only a deadline that has passed is red. Every step
+// keeps at least 4.5:1 against the card surface.
 $color-urgency-later: #9aabbf;
+$color-urgency-soon: #ffd24a;
+$color-urgency-warm: #f9a13b;
+$color-urgency-urgent: #fb7f45;
+$color-urgency-critical: #fa6548;
+$color-urgency-overdue: #f87171;
 
 $font-family-base: -apple-system, "Segoe UI", system-ui, "Noto Sans", roboto, "Helvetica Neue", arial, sans-serif;
 $font-family-mono: ui-monospace, "SFMono-Regular", "SF Mono", menlo, monaco, consolas, "Liberation Mono", "Courier New", monospace;
@@ -127,7 +131,9 @@ $viewport-height: 100dvh;
   --color-border-subtle: #{$color-border-subtle};
   --color-text-subtle: #{$color-text-subtle};
   --color-urgency-overdue: #{$color-urgency-overdue};
+  --color-urgency-critical: #{$color-urgency-critical};
   --color-urgency-urgent: #{$color-urgency-urgent};
+  --color-urgency-warm: #{$color-urgency-warm};
   --color-urgency-soon: #{$color-urgency-soon};
   --color-urgency-later: #{$color-urgency-later};
   --font-family-base: #{$font-family-base};

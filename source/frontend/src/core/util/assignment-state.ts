@@ -167,11 +167,14 @@ export function missedPolicy(deadlineKind: DeadlineKind | null | undefined): str
     : 'The deadline has passed — a late push is still accepted.';
 }
 
-export type DueUrgency = 'none' | 'normal' | 'soon' | 'urgent' | 'overdue';
+export type DueUrgency = 'none' | 'later' | 'soon' | 'warm' | 'urgent' | 'critical' | 'overdue';
 
 /**
- * How close the deadline is. One scale for every screen: overdue red, under 24 h orange-red,
- * under 72 h amber, later neutral. "Still on time, act now" never borrows the missed-work red.
+ * How close the deadline is. One scale for every screen, and it ramps: the closer the
+ * deadline gets, the more orange the text turns - quiet grey while it is still days away,
+ * yellow inside three days, orange inside a day, orange-red inside six hours and a deep
+ * orange-red inside the last hour. Red is reserved for a deadline that has already passed:
+ * work that is still on time never borrows the colour of missed work.
  */
 export function dueUrgency(deadline: Instant | null, now: Instant = Instant.now()): DueUrgency {
   if (deadline === null) {
@@ -183,11 +186,31 @@ export function dueUrgency(deadline: Instant | null, now: Instant = Instant.now(
   }
 
   const minutesLeft = now.until(deadline, ChronoUnit.MINUTES);
-  if (minutesLeft < 24 * 60) {
+  if (minutesLeft < 60) {
+    return 'critical';
+  }
+
+  if (minutesLeft < 6 * 60) {
     return 'urgent';
   }
 
-  return minutesLeft < 72 * 60 ? 'soon' : 'normal';
+  if (minutesLeft < 24 * 60) {
+    return 'warm';
+  }
+
+  return minutesLeft < 72 * 60 ? 'soon' : 'later';
+}
+
+/**
+ * True when the deadline is still ahead of us but inside the next few hours. Used for the
+ * "due in 24 h" counters, which care about the distance and not about the colour.
+ */
+export function dueWithinHours(deadline: Instant | null, hours: number, now: Instant = Instant.now()): boolean {
+  if (deadline === null || deadline.isBefore(now)) {
+    return false;
+  }
+
+  return now.until(deadline, ChronoUnit.MINUTES) < hours * 60;
 }
 
 const timeFormat = DateTimeFormatter.ofPattern('HH:mm');

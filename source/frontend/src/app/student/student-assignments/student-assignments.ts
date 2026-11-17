@@ -1,6 +1,5 @@
 import { Component, computed, inject, OnInit, signal, Signal, WritableSignal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { MatButton } from '@angular/material/button';
 import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatIcon } from '@angular/material/icon';
 import { MatMenu, MatMenuTrigger } from '@angular/material/menu';
@@ -12,6 +11,8 @@ import { SnackbarService } from '../../../core/services/snackbar-service';
 import {
   AssignmentView,
   assignmentViewOf,
+  DueUrgency,
+  dueUrgency,
   relativeDue,
   studentAssignmentState,
   timestampLabel
@@ -28,6 +29,8 @@ interface AssignmentRow {
   view: AssignmentView;
   /** Relative due text, shown inside the card: "Due in 3 days", "Overdue · 5 days ago". */
   due: string;
+  /** How close the deadline is, so the card can colour the remaining time. */
+  urgency: DueUrgency;
   /** Push timestamp for work that is already in the student's repository. */
   pushed: string;
 }
@@ -40,7 +43,7 @@ interface CourseSection {
 
 @Component({
   selector: 'app-student-assignments',
-  imports: [RouterLink, MatButton, MatCard, MatCardContent, MatIcon, MatMenu, MatMenuTrigger, MatProgressBar, CourseIcon],
+  imports: [RouterLink, MatCard, MatCardContent, MatIcon, MatMenu, MatMenuTrigger, MatProgressBar, CourseIcon],
   templateUrl: './student-assignments.html',
   styleUrl: './student-assignments.scss'
 })
@@ -82,6 +85,7 @@ export class StudentAssignments implements OnInit {
         accepted: assignment.accepted,
         view,
         due: this.dueText(assignment, now),
+        urgency: dueUrgency(assignment.deadline, now),
         pushed: view === 'pushed' && assignment.lastPushAt !== null
           ? `Pushed ${timestampLabel(assignment.lastPushAt)}`
           : ''
@@ -164,12 +168,19 @@ export class StudentAssignments implements OnInit {
       this.courseFilter.set(Number(requested));
     }
 
+    // Home links into a tab, so the state the list shows is part of the URL as well.
+    const requestedView = this.route.snapshot.queryParamMap.get('view');
+    if (requestedView === 'pushed' || requestedView === 'past-due') {
+      this.view.set(requestedView);
+    }
+
     await this.load();
     this.iconSeeds.set(await this.courseService.getCourseIconSeeds());
   }
 
   protected setView(view: AssignmentView): void {
     this.view.set(view);
+    void this.syncViewParam();
   }
 
   /** Clicking the active course again clears the filter, so the row always has a way out. */
@@ -188,6 +199,16 @@ export class StudentAssignments implements OnInit {
     await this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { course: this.courseFilter() },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+  }
+
+  /** The same for the state tabs: "To do" is the plain page, the others are named. */
+  private async syncViewParam(): Promise<void> {
+    await this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { view: this.view() === 'todo' ? null : this.view() },
       queryParamsHandling: 'merge',
       replaceUrl: true
     });

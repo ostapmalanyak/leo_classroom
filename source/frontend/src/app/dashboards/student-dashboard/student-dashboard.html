@@ -1,16 +1,30 @@
-<header class="home-head">
-  <h1>Hi, {{ firstName() }}</h1>
-</header>
+<!-- Temporary notice about the git credentials. Delete this line and the component to remove it. -->
+<app-git-credentials-notice></app-git-credentials-notice>
 
 @if (loading()) {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
 }
 
 <div class="home-grid">
-  <mat-card class="panel">
+  <mat-card class="panel panel--main">
     <mat-card-content>
+      <h1 class="home-head">Hi, {{ firstName() }}</h1>
+
+      <!-- The numbers of the week, each one a way into the list it counts. -->
+      <div class="stats">
+        @for (stat of stats(); track stat.label) {
+          <a class="stat"
+             [class.stat--urgent]="stat.tone === 'urgent' && stat.count > 0"
+             [class.stat--danger]="stat.tone === 'danger' && stat.count > 0"
+             [routerLink]="'/my-assignments'" [queryParams]="stat.query">
+            <span class="stat__value">{{ stat.count }}</span>
+            <span class="stat__label">{{ stat.label }}</span>
+          </a>
+        }
+      </div>
+
       <div class="panel__head">
-        <h2>Next up</h2>
+        <h2>Due soon</h2>
         <a routerLink="/my-assignments">All assignments</a>
       </div>
 
@@ -32,19 +46,16 @@
                   <span class="next-row__course">{{ item.assignment.courseTitle }}</span>
                 </span>
               </a>
-              <span class="next-row__side">
-                <span class="pill" [class]="'pill pill--' + item.state.tone">{{ item.state.label }}</span>
-                <span class="next-row__due" [class.next-row__due--soon]="item.urgency === 'soon'"
-                      [class.next-row__due--urgent]="item.urgency === 'urgent'"
-                      [class.next-row__due--overdue]="item.urgency === 'overdue'">
-                  <span>{{ item.dueLabel }}</span>
-                  <span class="next-row__relative"><span aria-hidden="true">· </span>{{ item.relative }}</span>
-                </span>
-              </span>
+
+              <!-- The deadline wears the urgency colour of the ramp: the closer it is, the
+                   warmer the badge gets. Red is reserved for a deadline that has passed. -->
+              <span class="pill" [class]="'pill pill--due due--' + item.urgency"
+                    [title]="item.dueLabel">{{ item.relative }}</span>
+
               <!-- The action lives beside the link, never inside it: a button in an anchor is
                    neither valid HTML nor operable by keyboard. -->
               @if (item.assignment.accepted === false) {
-                <button class="next-row__accept" type="button"
+                <button class="btn btn--secondary" type="button"
                         [disabled]="accepting() === item.assignment.id"
                         (click)="accept(item.assignment.id)">
                   {{ accepting() === item.assignment.id ? 'Accepting…' : 'Accept' }}
@@ -57,37 +68,23 @@
     </mat-card-content>
   </mat-card>
 
-  <div class="home-aside">
-    <mat-card class="panel">
-      <mat-card-content>
-        <h2>Your work</h2>
-        <div class="stats">
-          @for (stat of stats(); track stat.view) {
-            <a class="stat" [routerLink]="'/my-assignments'" [queryParams]="{ view: stat.view }">
-              <span class="stat__value">{{ stat.count }}</span>
-              <span class="stat__label">
-                {{ stat.label }}
-                @if (stat.danger) {
-                  <span class="stat__dot" aria-hidden="true"></span>
-                }
-              </span>
-            </a>
-          }
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="panel">
-      <mat-card-content>
+  <mat-card class="panel panel--forgejo">
+    <mat-card-content>
+      <div class="forgejo__head">
+        <span class="forgejo__icon" aria-hidden="true">
+          <mat-icon>account_tree</mat-icon>
+        </span>
         <h2>Forgejo</h2>
-        <p class="panel__text">Your repos live in Forgejo, signed in with your school account.</p>
-        <div class="panel__actions">
-          <a class="panel__action" [href]="forgejoLoginUrl" target="_blank" rel="noopener">
-            Open Forgejo<mat-icon aria-hidden="true">open_in_new</mat-icon>
-          </a>
-          <a class="panel__action panel__action--quiet" routerLink="/account">Generate git password</a>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
+      </div>
+
+      <p class="panel__text">Your repos live in Forgejo, signed in with your school account.</p>
+
+      <div class="forgejo__actions">
+        <a class="btn btn--primary" [href]="forgejoLoginUrl" target="_blank" rel="noopener">
+          Open Forgejo<mat-icon aria-hidden="true">open_in_new</mat-icon>
+        </a>
+        <a class="btn btn--secondary" routerLink="/account">Generate git password</a>
+      </div>
+    </mat-card-content>
+  </mat-card>
 </div>

@@ -4,6 +4,38 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-17 — One urgency ramp, one button design, and a temporary git notice
+
+**Status:** accepted.
+
+**The urgency ramp.** `dueUrgency` in `core/util/assignment-state.ts` is the single place that decides how
+close a deadline is, and it ramps: quiet grey (`later`) while the deadline is days away, yellow (`soon`)
+inside three days, orange (`warm`) inside a day, orange-red (`urgent`) inside six hours, a deeper
+orange-red (`critical`) inside the last hour, and red (`overdue`) only once the deadline has passed. The
+reason for the ramp rather than three coarse buckets is that a deadline that is one hour away and one that
+is six hours away are not the same situation, and a flat "soon" hides that. Red is reserved for work that
+was missed: a deadline that is still reachable must never wear the colour of one that is not, or students
+learn to ignore red. The thresholds are minutes, not days, so the last hours are visible; `relativeDue`
+prints minutes inside the last hour and whole hours inside the last day.
+
+**One button design.** Every action in the student UI uses the shared `.btn` / `.btn--primary` /
+`.btn--secondary` classes from `styles/components/_patterns.scss`. Earlier iterations had a hand-written
+accept button on the home page and Material buttons on the assignment cards, which made the same action
+look different depending on where it was. The rule now is that a component may not restyle a button; it
+picks a variant and leaves the shape to the global class.
+
+**The git notice.** `app/shared/git-credentials-notice` is a temporary banner on the home page: while git
+asks for a username and password, students have to use the credentials from *Generate git password*.
+The banner is a separate component that owns its own markup, styles and state so it can be removed by
+deleting one component and one line in the home page. Its dismissed state lives in `localStorage` under
+`git-credentials-notice-v1-hidden`; the version suffix is part of the key, so bumping it brings the notice
+back for everyone. The banner links to the account page rather than generating a credential itself,
+because the credential is shown exactly once and the account page is where that already happens.
+
+What would change it: the git login problem being fixed, which removes the banner entirely.
+
+---
+
 ## 2026-11-13 — A course's member count is its own membership, not the roster's
 
 **Status:** accepted.

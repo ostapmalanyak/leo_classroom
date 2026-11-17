@@ -71,6 +71,8 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-normal);
   line-height: 1;
+  // The brand and the navigation are two different things; the gap keeps them apart.
+  margin-inline-end: var(--space-5);
 }
 
 .navbar__items {
@@ -105,6 +107,8 @@
   }
 }
 
+// The navigation reads in the order a student works in: home first, then the work, then
+// the courses. The routes here are the ones the links actually point at.
 .navbar__items [data-route="/"] {
   order: 1;
 }
@@ -113,24 +117,20 @@
   order: 2;
 }
 
-.navbar__items [data-route="/courses"] {
+.navbar__items [data-route="/my-courses"] {
   order: 3;
 }
 
-.navbar__items [data-route="/rosters"] {
+.navbar__items [data-route="/cli"] {
   order: 4;
 }
 
-.navbar__items [data-route="/cli"] {
+.navbar__items [data-route="/audit"] {
   order: 5;
 }
 
-.navbar__items [data-route="/audit"] {
-  order: 6;
-}
-
 .navbar__items [data-route="/admin/forgejo"] {
-  order: 8;
+  order: 6;
 }
 
 .navbar-account {

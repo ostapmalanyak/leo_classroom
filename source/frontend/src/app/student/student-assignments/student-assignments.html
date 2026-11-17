@@ -94,16 +94,20 @@
             <mat-card-content>
               <div class="assignment-heading">
                 <strong>{{ assignment.title }}</strong>
-                <span class="assignment-due">{{ assignment.due }}</span>
                 @if (assignment.pushed) {
                   <span class="assignment-pushed">{{ assignment.pushed }}</span>
                 }
               </div>
+              <!-- The remaining time has its own column, so it lines up with the action
+                   instead of hanging below the title. -->
+              <span class="assignment-due" [class]="'assignment-due due--' + assignment.urgency">
+                {{ assignment.due }}
+              </span>
               <div class="assignment-details">
                 @if (assignment.accepted) {
-                  <a mat-button [routerLink]="['/my-assignments', assignment.id]">Open assignment</a>
+                  <a class="btn btn--secondary" [routerLink]="['/my-assignments', assignment.id]">Open assignment</a>
                 } @else {
-                  <button mat-button type="button"
+                  <button class="btn btn--secondary" type="button"
                           [disabled]="accepting() === assignment.id"
                           (click)="accept(assignment)">Accept</button>
                 }

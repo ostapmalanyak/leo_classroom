@@ -9,11 +9,12 @@ import { AssignedAssignment, AssignmentService, SubmissionStatus } from '../../.
 import { NowService } from '../../../core/services/now-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 import {
-  DueUrgency, dueLabel, dueUrgency, relativeDue, StatePresentation, statePresentation
+  DueUrgency, dueLabel, dueUrgency, dueWithinHours, relativeDue, StatePresentation, statePresentation
 } from '../../../core/util/assignment-state';
 import { countViews, workEntries, WorkEntry } from '../../../core/util/student-work';
 import { CourseService } from '../../../core/services/course-service';
 import { CourseIcon } from '../../shared/course-icon/course-icon';
+import { GitCredentialsNotice } from '../../shared/git-credentials-notice/git-credentials-notice';
 
 interface NextUpItem {
   assignment: AssignedAssignment;
@@ -23,16 +24,17 @@ interface NextUpItem {
   state: StatePresentation;
 }
 
-interface StatRow {
+/** One tile of the overview row. The tone says how urgent the number is, nothing else. */
+interface StatTile {
   label: string;
   count: number;
-  view: 'todo' | 'pushed' | 'past-due';
-  danger: boolean;
+  query: Record<string, string> | null;
+  tone: 'neutral' | 'urgent' | 'danger';
 }
 
 @Component({
   selector: 'app-student-dashboard',
-  imports: [RouterLink, MatCard, MatCardContent, MatIcon, MatProgressBar, CourseIcon],
+  imports: [RouterLink, MatCard, MatCardContent, MatIcon, MatProgressBar, CourseIcon, GitCredentialsNotice],
   templateUrl: './student-dashboard.html',
   styleUrl: './student-dashboard.scss'
 })
@@ -59,12 +61,20 @@ export class StudentDashboard implements OnInit {
 
   private readonly counts = computed(() => countViews(this.entries()));
 
-  protected readonly pastDueCount = computed(() => this.counts().pastDue);
+  /** Work that is due within the next day: the number that decides what to do first. */
+  protected readonly dueSoonCount: Signal<number> = computed(() => {
+    const now = this.clock.now();
 
-  protected readonly stats: Signal<StatRow[]> = computed(() => [
-    { label: 'To do', count: this.counts().todo, view: 'todo', danger: false },
-    { label: 'Pushed', count: this.counts().pushed, view: 'pushed', danger: false },
-    { label: 'Past due', count: this.counts().pastDue, view: 'past-due', danger: this.counts().pastDue > 0 }
+    return this.entries().filter(entry => entry.view === 'todo'
+      && entry.assignment.deadline !== null
+      && dueWithinHours(entry.assignment.deadline, 24, now)).length;
+  });
+
+  protected readonly stats: Signal<StatTile[]> = computed(() => [
+    { label: 'To do', count: this.counts().todo, query: { view: 'todo' }, tone: 'neutral' },
+    { label: 'Pushed', count: this.counts().pushed, query: { view: 'pushed' }, tone: 'neutral' },
+    { label: 'Due in 24 h', count: this.dueSoonCount(), query: null, tone: 'urgent' },
+    { label: 'Past due', count: this.counts().pastDue, query: { view: 'past-due' }, tone: 'danger' }
   ]);
 
   /** The three soonest deadlines: on a landing page, the next three are the whole point. */
@@ -83,13 +93,6 @@ export class StudentDashboard implements OnInit {
         state: statePresentation(entry.state)
       }));
   });
-
-  /** Missed work is an alert, not a grey number in a table. */
-  protected readonly pastDueNames: Signal<string> = computed(() =>
-    this.entries()
-      .filter(entry => entry.view === 'past-due')
-      .map(entry => entry.assignment.title)
-      .join(', '));
 
   public async ngOnInit(): Promise<void> {
     await this.load();
