@@ -37,16 +37,15 @@
                     (click)="stopCardNavigation($event)">
               <mat-icon>more_horiz</mat-icon>
             </button>
-            <mat-menu #courseMenu="matMenu" panelClass="course-menu-panel" (click)="$event.stopPropagation()">
+            <!-- The same compact popover the course picker uses on My Assignments. -->
+            <mat-menu #courseMenu="matMenu" class="course-menu" (click)="$event.stopPropagation()">
               <button mat-menu-item type="button" disableRipple
                       [routerLink]="['/my-assignments/course', course.id]"
                       [queryParams]="{ tab: 'settings' }">
-                <mat-icon>settings</mat-icon>
                 <span>Settings</span>
               </button>
-              <button mat-menu-item type="button" class="delete-item" disableRipple
+              <button mat-menu-item type="button" class="course-menu__delete" disableRipple
                       (click)="openDeleteDialog($event, course)">
-                <mat-icon>delete</mat-icon>
                 <span>Delete course</span>
               </button>
             </mat-menu>

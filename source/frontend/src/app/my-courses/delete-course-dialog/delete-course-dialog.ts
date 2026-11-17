@@ -3,16 +3,19 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CourseManagementService } from '../../../core/services/course-management-service';
+import { CourseIcon } from '../../shared/course-icon/course-icon';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 
 export interface DeleteCourseDialogData {
   readonly id: number;
   readonly title: string;
+  /** The seed of the icon the backend draws for this course. */
+  readonly iconSeed: string | null;
 }
 
 @Component({
   selector: 'app-delete-course-dialog',
-  imports: [MatButtonModule, MatDialogModule, MatProgressSpinnerModule],
+  imports: [MatButtonModule, MatDialogModule, MatProgressSpinnerModule, CourseIcon],
   templateUrl: './delete-course-dialog.html',
   styleUrl: './delete-course-dialog.scss'
 })

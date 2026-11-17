@@ -1,11 +1,16 @@
 <div class="delete-dialog">
-  <h2 mat-dialog-title id="delete-course-title">Delete course?</h2>
+  <header class="delete-dialog__head">
+    <app-course-icon size="md" [courseId]="data.id" [iconSeed]="data.iconSeed" [name]="data.title" />
+    <h2 mat-dialog-title id="delete-course-title">Delete {{ data.title }}</h2>
+  </header>
+
   <mat-dialog-content>
-    <p>This will permanently delete "{{ data.title }}". This cannot be undone.</p>
+    <p>The course and its assignments are deleted. This cannot be undone.</p>
     @if (error()) {
       <p class="delete-dialog__error" role="alert">{{ error() }}</p>
     }
   </mat-dialog-content>
+
   <mat-dialog-actions align="end">
     <button mat-button type="button" [disabled]="deleting()" (click)="close()">Cancel</button>
     <button mat-flat-button class="delete-dialog__confirm" type="button" [disabled]="deleting()" (click)="delete()">

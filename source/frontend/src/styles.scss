@@ -43,29 +43,3 @@ html {
   }
 }
 
-.course-menu-panel {
-  .mat-mdc-menu-item.delete-item:hover,
-  .mat-mdc-menu-item.delete-item:focus,
-  .mat-mdc-menu-item.delete-item:focus-visible,
-  .mat-mdc-menu-item.delete-item.mat-mdc-menu-item-highlighted,
-  .mat-mdc-menu-item.delete-item.cdk-keyboard-focused,
-  .mat-mdc-menu-item.delete-item.cdk-program-focused {
-    --mat-menu-item-label-text-color: #fff;
-    --mat-menu-item-icon-color: #fff;
-    --mat-menu-item-hover-state-layer-color: transparent;
-    --mat-menu-item-focus-state-layer-color: transparent;
-
-    background-color: #ff0000 !important;
-    border-radius: 0 !important;
-    color: #fff !important;
-
-    .mat-mdc-menu-ripple {
-      display: none !important;
-    }
-
-    .mat-mdc-menu-item-text,
-    .mat-icon {
-      color: #fff !important;
-    }
-  }
-}

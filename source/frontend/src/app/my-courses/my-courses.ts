@@ -22,6 +22,8 @@ interface CourseTile {
   id: number;
   title: string;
   avatarUrl: string;
+  /** The seed of the icon the backend draws for this course. */
+  iconSeed: string | null;
   open: number;
 }
 
@@ -99,7 +101,7 @@ export class MyCourses implements OnInit {
       ariaLabelledBy: 'delete-course-title',
       ariaModal: true,
       autoFocus: true,
-      data: { id: course.id, title: course.title }
+      data: { id: course.id, title: course.title, iconSeed: course.iconSeed }
     });
 
     dialogRef.afterClosed().subscribe(deleted => {
@@ -189,6 +191,7 @@ export class MyCourses implements OnInit {
       id: course.id,
       title: course.title,
       avatarUrl: this.courseManagementService.avatarUrl(course.iconSeed ?? `legacy-${course.id}`),
+      iconSeed: course.iconSeed ?? null,
       open: assignments.filter(assignment => assignment.deadline === null || !assignment.deadline.isBefore(now)).length
     };
   }

@@ -4,6 +4,37 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-17 — A teacher gets a home page of their own
+
+**Status:** accepted.
+
+**The teacher home.** `/home/teacher` is its own page (`app/dashboards/teacher-dashboard`) and a teacher
+lands there; the student page stays `/home/student`. The page answers three questions in a fixed order:
+what can I do (four action cards), how much work is open (three tiles) and what closes next (the list of
+the four nearest deadlines). A teacher who is not technical should be able to reach every task of the
+app from the first screen, so the action cards are the largest elements on the page and only link to
+pages that already exist - the course list, the create-assignment flow (the card asks which course the
+assignment belongs to and then opens the existing form), the rosters and the CLI download. The tiles
+count only work that is still open; the missed work is a list of its own at the bottom of the page, the
+five most recent deadlines first, with a button for the rest. A teacher who is not technical should be
+able to reach every task of the app from the first screen, and should still see what was missed without
+the page opening with a wall of red.
+
+**The shared home layout.** The grid, the panels, the tiles and the rows of the student home moved into
+`styles/components/_patterns.scss`, so the teacher home reuses them instead of carrying a copy. The two
+pages therefore cannot drift apart, and a change to the card style reaches both.
+
+**Deadlines speak the same everywhere.** The closing-soon pills use `dueUrgency` and `urgencyMarks` from
+`core/util/assignment-state.ts`, the same functions the student pages use: the colour of the ramp and
+the number of exclamation marks depend on the deadline, not on the page that shows it. The teacher page
+adds a short form of the remaining time ("22 h", "1 h 40 min", "1 day") because the list is about what is
+closing, not about the date, and an aria-label spells the time out for a screen reader.
+
+What would change it: a teacher who should see a different set of actions, or a course overview that
+replaces the tiles.
+
+---
+
 ## 2026-11-17 — A search field that opens a palette, and deadlines that shout when they are close
 
 **Status:** accepted.

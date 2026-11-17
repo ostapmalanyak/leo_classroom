@@ -1,5 +1,50 @@
-@use "../../../styles/abstracts/mixins" as mixins;
+// The teacher home: what to do on the left, the Forgejo card on the right. On a phone the
+// two columns become one, in the same order.
+.teacher-grid {
+  align-items: start;
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
 
-:host {
-  @include mixins.component-host;
+  @media (max-width: 60rem) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.teacher-grid__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.action-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  @media (max-width: 30rem) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.teacher-tiles {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  @media (max-width: 48rem) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.teacher-section__head {
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  font-weight: var(--font-weight-medium);
+  margin: 0 0 var(--space-3);
+}
+
+// More past due assignments wait behind this button.
+.teacher-more {
+  margin-block-start: var(--space-3);
 }

@@ -1,25 +1,89 @@
-<h1>My courses</h1>
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
 
-<app-loading-indicator [loading]="loading()"></app-loading-indicator>
+<h1 class="home-head">Hi, {{ firstName() }}</h1>
 
-@if (failed()) {
-  <app-inline-error message="Could not load your courses" [retryable]="true" (retry)="load()"></app-inline-error>
-} @else if (list(); as courses) {
-  @if (courses.length === 0) {
-    <app-empty-state message="You have no courses yet" icon="school"></app-empty-state>
-  } @else {
-    <mat-card>
-      <mat-card-content>
-        <mat-nav-list>
-          @for (c of courses; track c.id) {
-            <a mat-list-item [routerLink]="['/courses', c.id]">
-              <span matListItemTitle>{{ c.title }}</span>
-              <span matListItemLine>{{ c.rosterName }} · {{ c.memberCount }} members</span>
-            </a>
+<div class="teacher-grid">
+  <div class="teacher-grid__main">
+    <section aria-label="What you can do">
+      <div class="action-grid">
+        <app-action-card icon="school" label="Go to Courses" description="Open, create or delete a course"
+                         [route]="['/my-courses']" [primary]="true" />
+        <app-action-card icon="assignment" label="Create assignment" description="Give students a new task"
+                         [choices]="courseChoices()" (chosen)="createIn($event)" />
+        <app-action-card icon="groups" label="Rosters" description="See your class lists"
+                         [route]="['/rosters']" />
+        <app-action-card icon="terminal" label="Teacher CLI" description="Download the command line tool"
+                         [route]="['/cli']" />
+      </div>
+    </section>
+
+    <section class="teacher-tiles" aria-label="Overview">
+      <app-overview-tile [value]="courses().length" label="Courses" />
+      <app-overview-tile [value]="activeCount()" label="Active assignments" />
+      <app-overview-tile [value]="closingIn24h()" label="Close in 24 h" [warning]="true" />
+      <app-overview-tile [value]="recentlyMissed()" label="Missed this week" [danger]="true" />
+    </section>
+
+    <section>
+      <h2 class="teacher-section__head">Closing soon</h2>
+      <app-closing-soon [items]="closing()" />
+    </section>
+
+    @if (pastDue().length > 0) {
+      <section>
+        <h2 class="teacher-section__head">Past due</h2>
+
+        <ul class="next-list">
+          @for (entry of visiblePastDue(); track entry.id) {
+            <li class="next-row">
+              <span class="next-row__text">
+                <strong>{{ entry.title }}</strong>
+                <span class="next-row__course">
+                  {{ entry.courseTitle }}
+                  @if (pastDueCount(entry.id); as count) {
+                    · {{ count.accepted }} of {{ count.total }} accepted
+                  }
+                </span>
+              </span>
+
+              <span class="pill pill--due due--overdue" [attr.aria-label]="'Past due ' + relative(entry.deadline)">
+                {{ relative(entry.deadline) }}
+              </span>
+
+              <a class="btn btn--secondary" [routerLink]="['/assignments', entry.id, 'students']">Open</a>
+            </li>
           }
-        </mat-nav-list>
+        </ul>
+
+        @if (pastDue().length > visiblePastDue().length) {
+          <button class="btn btn--secondary teacher-more" type="button" (click)="showMorePastDue()">
+            Load more
+          </button>
+        }
+      </section>
+    }
+  </div>
+
+  <aside class="teacher-grid__side">
+    <mat-card class="panel panel--forgejo">
+      <mat-card-content>
+        <div class="forgejo__head">
+          <span class="forgejo__icon" aria-hidden="true">
+            <mat-icon>account_tree</mat-icon>
+          </span>
+          <h2>Forgejo</h2>
+        </div>
+
+        <p class="panel__text">Student repos live here.</p>
+
+        <div class="forgejo__actions">
+          <a class="btn btn--primary" [href]="forgejoUrl" target="_blank" rel="noopener">
+            Open Forgejo<mat-icon aria-hidden="true">open_in_new</mat-icon>
+          </a>
+        </div>
       </mat-card-content>
     </mat-card>
-  }
-
-}
+  </aside>
+</div>

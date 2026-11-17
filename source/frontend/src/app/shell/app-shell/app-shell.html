@@ -7,7 +7,8 @@
         @for (entry of entries(); track entry.route) {
           <a class="navbar-item" [attr.data-route]="entry.route" [routerLink]="entry.route"
              routerLinkActive="active-nav"
-             [routerLinkActiveOptions]="{ exact: entry.route === '/' }">
+             [routerLinkActiveOptions]="{ exact: entry.route === '/' }"
+             [class.active-nav]="entry.route === '/' && url().startsWith('/home')">
             <mat-icon>{{ entry.icon }}</mat-icon>
             <span>{{ entry.label }}</span>
           </a>
