@@ -44,7 +44,10 @@
   margin: 0 0 var(--space-3);
 }
 
-// More past due assignments wait behind this button.
-.teacher-more {
+// More past due assignments wait behind these buttons.
+.teacher-more-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   margin-block-start: var(--space-3);
 }

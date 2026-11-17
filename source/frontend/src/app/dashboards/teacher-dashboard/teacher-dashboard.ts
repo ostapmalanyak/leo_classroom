@@ -21,6 +21,9 @@ interface TeacherCourse {
   title: string;
 }
 
+/** How many past due assignments the page shows at once. */
+const PAST_DUE_BATCH = 5;
+
 /** An assignment whose deadline has passed. */
 interface TeacherPastDue {
   id: number;
@@ -49,7 +52,7 @@ export class TeacherDashboard implements OnInit {
 
   protected readonly loading: WritableSignal<boolean> = signal(true);
   protected readonly pastDue: WritableSignal<TeacherPastDue[]> = signal([]);
-  private readonly pastDueLimit: WritableSignal<number> = signal(5);
+  private readonly pastDueLimit: WritableSignal<number> = signal(PAST_DUE_BATCH);
   private readonly pastDueCounts: WritableSignal<Map<number, { accepted: number; total: number }>> =
     signal(new Map());
   private readonly courseTotals: Map<number, number> = new Map();
@@ -64,8 +67,8 @@ export class TeacherDashboard implements OnInit {
   protected readonly forgejoUrl = forgejoOrigin();
 
   /**
-   * The assignments that were missed in the last week. A deadline that is older than that is
-   * history; a missed week is still something a teacher can talk to the class about.
+   * The assignments that closed in the last week. A teacher has to look at those - the
+   * submissions have to be marked - while a deadline that is older than that is history.
    */
   protected readonly recentlyMissed: Signal<number> = computed(() => {
     const week = this.clock.now().minus(7, ChronoUnit.DAYS);
@@ -90,6 +93,11 @@ export class TeacherDashboard implements OnInit {
   protected showMorePastDue(): void {
     this.pastDueLimit.update(limit => limit + 5);
     void this.loadPastDueCounts();
+  }
+
+  /** Puts the last batch away again. */
+  protected showLessPastDue(): void {
+    this.pastDueLimit.update(limit => Math.max(PAST_DUE_BATCH, limit - PAST_DUE_BATCH));
   }
 
   /** The courses a new assignment can be created in. */

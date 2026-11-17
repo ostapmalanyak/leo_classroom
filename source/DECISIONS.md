@@ -24,11 +24,19 @@ the page opening with a wall of red.
 `styles/components/_patterns.scss`, so the teacher home reuses them instead of carrying a copy. The two
 pages therefore cannot drift apart, and a change to the card style reaches both.
 
-**Deadlines speak the same everywhere.** The closing-soon pills use `dueUrgency` and `urgencyMarks` from
-`core/util/assignment-state.ts`, the same functions the student pages use: the colour of the ramp and
-the number of exclamation marks depend on the deadline, not on the page that shows it. The teacher page
-adds a short form of the remaining time ("22 h", "1 h 40 min", "1 day") because the list is about what is
-closing, not about the date, and an aria-label spells the time out for a screen reader.
+**Deadlines speak the same everywhere - except the marks.** The closing-soon pills use `dueUrgency` from
+`core/util/assignment-state.ts`, the same function the student pages use, so the colour of a deadline
+depends on the deadline and not on the page that shows it. The exclamation marks are the exception: they
+are the student's way of saying "this is urgent", and a teacher reads the time itself, so the teacher page
+shows "35 min" where the student page shows "35 min!!!!!". The teacher page adds a short form of the
+remaining time ("22 h", "1 h 40 min", "1 day") because the list is about what is closing, not about the
+date, and an aria-label spells the time out for a screen reader.
+
+**A teacher counts work, not misses.** The tiles of the teacher page count what the teacher has to do:
+courses, assignments that are still open, assignments that close within a day and assignments that closed
+in the last week and are waiting to be looked at. The last one is called "To review", because an
+assignment whose deadline passed is not something a teacher missed - it is something a teacher still has
+to mark, and a count of misses would say the opposite.
 
 What would change it: a teacher who should see a different set of actions, or a course overview that
 replaces the tiles.

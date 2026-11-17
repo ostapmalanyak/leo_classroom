@@ -23,7 +23,8 @@
       <app-overview-tile [value]="courses().length" label="Courses" />
       <app-overview-tile [value]="activeCount()" label="Active assignments" />
       <app-overview-tile [value]="closingIn24h()" label="Close in 24 h" [warning]="true" />
-      <app-overview-tile [value]="recentlyMissed()" label="Missed this week" [danger]="true" />
+      <app-overview-tile [value]="recentlyMissed()" label="To review" [danger]="true"
+                         hint="Assignments that closed in the last week and are waiting for you" />
     </section>
 
     <section>
@@ -57,11 +58,14 @@
           }
         </ul>
 
-        @if (pastDue().length > visiblePastDue().length) {
-          <button class="btn btn--secondary teacher-more" type="button" (click)="showMorePastDue()">
-            Load more
-          </button>
-        }
+        <div class="teacher-more-row">
+          @if (pastDue().length > visiblePastDue().length) {
+            <button class="btn btn--secondary" type="button" (click)="showMorePastDue()">Load more</button>
+          }
+          @if (visiblePastDue().length > 5) {
+            <button class="btn btn--secondary" type="button" (click)="showLessPastDue()">Load less</button>
+          }
+        </div>
       </section>
     }
   </div>
