@@ -59,6 +59,11 @@ export class MyCourses implements OnInit {
     this.searchTerm.set((event.target as HTMLInputElement).value);
   }
 
+  /** The empty state offers the way out of an empty result. */
+  protected clearSearch(): void {
+    this.searchTerm.set('');
+  }
+
   protected openCreateDialog(): void {
     const dialogRef = this.dialog.open(CreateCourseDialog, {
       width: 'min(56rem, 92vw)',

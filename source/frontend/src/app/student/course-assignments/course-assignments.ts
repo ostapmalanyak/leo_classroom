@@ -1,9 +1,8 @@
-import { Component, computed, inject, input, OnInit, signal, WritableSignal } from '@angular/core';
+import { Component, computed, inject, input, OnInit, signal, Signal, WritableSignal } from '@angular/core';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatButton, MatIconButton } from '@angular/material/button';
-import { MatButtonToggleChange, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
@@ -13,6 +12,7 @@ import { MatProgressBar } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Instant } from '@js-joda/core';
 import { CourseDetail } from '../../course-detail/course-detail';
+import { CourseIcon } from '../../shared/course-icon/course-icon';
 import { AssignmentService, SubmissionStatus } from '../../../core/services/assignment-service';
 import {
   CourseParticipant, CourseService, CourseTeacherParticipant
@@ -23,6 +23,13 @@ import { SessionService } from '../../../core/auth/session-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 import { UserRole, UserService, UserSummary } from '../../../core/services/user-service';
 import { Role } from '../../../core/auth/roles';
+import {
+  AssignmentView,
+  assignmentViewOf,
+  relativeDue,
+  studentAssignmentState,
+  timestampLabel
+} from '../../../core/util/assignment-state';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const MIN_SEARCH_LENGTH = 2;
@@ -33,6 +40,22 @@ interface CourseAssignment {
   deadline: Instant | null;
   accepted: boolean | null;
   status: SubmissionStatus | null;
+  /** Last push of the student's own repository; only a student knows this. */
+  lastPushAt: Instant | null;
+  late: boolean;
+}
+
+/** A student assignment with the state it is in, the same states the My Assignments page uses. */
+interface StudentRow {
+  id: number;
+  title: string;
+  deadline: Instant | null;
+  accepted: boolean;
+  view: AssignmentView;
+  /** Relative due text, shown inside the card: "Due in 3 days", "Overdue · 5 days ago". */
+  due: string;
+  /** Push timestamp for work that is already in the student's repository. */
+  pushed: string;
 }
 
 type DateSort = 'date-ascending' | 'date-descending';
@@ -44,17 +67,16 @@ interface AssignmentDateGroup {
 }
 
 interface AssignmentSections {
-  open: AssignmentDateGroup[];
+  dated: AssignmentDateGroup[];
   noDate: CourseAssignment[];
-  expired: AssignmentDateGroup[];
 }
 
 @Component({
   selector: 'app-course-assignments',
   imports: [
-    DatePipe, NgTemplateOutlet, RouterLink, FormsModule, MatButton, MatIconButton, MatButtonToggleModule, MatCard,
+    DatePipe, NgTemplateOutlet, RouterLink, FormsModule, MatButton, MatIconButton, MatCard,
     MatCardContent, MatFormField, MatLabel, MatIcon, MatInput, MatMenuModule, MatProgressBar, MatTabsModule,
-    CourseDetail
+    CourseDetail, CourseIcon
   ],
   templateUrl: './course-assignments.html',
   styleUrls: ['./course-assignments.scss', '../../my-courses/my-courses.scss']
@@ -80,7 +102,81 @@ export class CourseAssignments implements OnInit {
   protected readonly selectedTab = signal(0);
   protected readonly dateSort = signal<DateSort>('date-ascending');
   protected readonly sortByTitle = signal(false);
-  protected readonly assignmentView = signal<'open' | 'expired'>('open');
+
+  /** The state switch a student sees: the same To do / Pushed / Past due as My Assignments. */
+  protected readonly studentView = signal<AssignmentView>('todo');
+  protected readonly accepting = signal<number | null>(null);
+
+  /** The icon seed of every course, so a course always shows the icon it really has. */
+  protected readonly iconSeeds: WritableSignal<Map<number, string | null>> = signal(new Map());
+
+  /** Students see their work split by state, teachers see every assignment of the course. */
+  protected readonly studentRows: Signal<StudentRow[]> = computed(() => {
+    const now = Instant.now();
+
+    return this.assignments().map(assignment => {
+      const view = assignmentViewOf(studentAssignmentState({
+        accepted: assignment.accepted === true,
+        status: assignment.status,
+        lastPushAt: assignment.lastPushAt,
+        late: assignment.late,
+        deadline: assignment.deadline
+      }, now));
+
+      return {
+        id: assignment.id,
+        title: assignment.title,
+        deadline: assignment.deadline,
+        accepted: assignment.accepted === true,
+        view,
+        due: this.dueText(assignment.deadline, now),
+        pushed: view === 'pushed' && assignment.lastPushAt !== null
+          ? `Pushed ${timestampLabel(assignment.lastPushAt)}`
+          : ''
+      };
+    });
+  });
+
+  protected readonly todoCount: Signal<number> = computed(() => this.countStudentRows('todo'));
+  protected readonly pushedCount: Signal<number> = computed(() => this.countStudentRows('pushed'));
+  protected readonly pastDueCount: Signal<number> = computed(() => this.countStudentRows('past-due'));
+
+  /** The rows of the state the student is looking at, soonest deadline first. */
+  protected readonly visibleStudentRows: Signal<StudentRow[]> = computed(() =>
+    this.studentRows()
+      .filter(row => row.view === this.studentView())
+      .sort((left, right) => {
+        if (left.deadline === null && right.deadline === null) {
+          return left.title.localeCompare(right.title);
+        }
+        if (left.deadline === null) {
+          return 1;
+        }
+        if (right.deadline === null) {
+          return -1;
+        }
+
+        return left.deadline.compareTo(right.deadline);
+      }));
+
+  /**
+   * The heading follows the tab that is open. Students have an extra Overview tab in front of
+   * Participants, so the index of the participants tab depends on the role.
+   */
+  protected readonly heading: Signal<string> = computed(() => {
+    const index = this.selectedTab();
+
+    if (index === 0) {
+      return this.title();
+    }
+
+    if (this.session.isTeacher()) {
+      return `${this.title()}'s ${index === 1 ? 'Participants' : 'Settings'}`;
+    }
+
+    // Overview is a shortcut to My Assignments, so the course keeps its own name there.
+    return index === 2 ? `${this.title()}'s Participants` : this.title();
+  });
   protected readonly assignmentSections = computed<AssignmentSections>(() => {
     const direction = this.dateSort();
     const titleFirst = this.sortByTitle();
@@ -106,11 +202,9 @@ export class CourseAssignments implements OnInit {
       return direction === 'date-descending' ? -byDate : byDate;
     };
 
-    // Every dated assignment is grouped by its deadline date, open and expired alike, so the
-    // date is read from the subsection heading instead of from each card. Undated work gets
-    // its own flat section.
+    // Every dated assignment is grouped by its deadline date, so the date is read from the
+    // subsection heading instead of from each card. Undated work gets its own flat section.
     const byDate = new Map<string, AssignmentDateGroup>();
-    const expiredByDate = new Map<string, AssignmentDateGroup>();
     const noDate: CourseAssignment[] = [];
 
     for (const assignment of this.assignments()) {
@@ -120,11 +214,10 @@ export class CourseAssignments implements OnInit {
       }
 
       const date = this.formatDeadline(assignment.deadline);
-      const groups = this.isExpired(date) ? expiredByDate : byDate;
       const key = this.dateKey(date);
-      const group: AssignmentDateGroup = groups.get(key) ?? { key, date, assignments: [] };
+      const group: AssignmentDateGroup = byDate.get(key) ?? { key, date, assignments: [] };
       group.assignments.push(assignment);
-      groups.set(key, group);
+      byDate.set(key, group);
     }
 
     const toGroups = (groups: Map<string, AssignmentDateGroup>): AssignmentDateGroup[] =>
@@ -134,15 +227,9 @@ export class CourseAssignments implements OnInit {
           : left.date.getTime() - right.date.getTime())
         .map(group => ({ ...group, assignments: group.assignments.sort(compare) }));
 
-    return { open: toGroups(byDate), noDate: noDate.sort(compare), expired: toGroups(expiredByDate) };
+    return { dated: toGroups(byDate), noDate: noDate.sort(compare) };
   });
 
-  protected readonly openAssignmentCount = computed(() =>
-    this.assignmentSections().open.reduce((count, group) => count + group.assignments.length,
-      this.assignmentSections().noDate.length));
-
-  protected readonly expiredAssignmentCount = computed(() =>
-    this.assignmentSections().expired.reduce((count, group) => count + group.assignments.length, 0));
   protected readonly students = computed(() => this.participants().filter(participant => participant.role === Role.Student));
   protected readonly showStudentSearch = signal(false);
   protected readonly studentSearchTerm = signal('');
@@ -164,15 +251,58 @@ export class CourseAssignments implements OnInit {
     return new Date(deadline.toEpochMilli());
   }
 
-  protected isExpired(date: Date): boolean {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    return date.getTime() < today.getTime();
+  /** The seed of a course's icon, so a course always shows the icon it really has. */
+  protected iconSeed(): string | null {
+    return this.iconSeeds().get(this.courseIdNumber()) ?? null;
   }
 
-  protected setAssignmentView(change: MatButtonToggleChange): void {
-    this.assignmentView.set(change.value === 'expired' ? 'expired' : 'open');
+  /** The course id as a number, so the icon component can look the seed up. */
+  protected courseIdNumber(): number {
+    return Number(this.courseId());
+  }
+
+  /** Switches between the To do / Pushed / Past due states a student works in. */
+  protected setStudentView(view: AssignmentView): void {
+    this.studentView.set(view);
+  }
+
+  /** Accepts an assignment from the course page, the same action the My Assignments page offers. */
+  protected async accept(row: StudentRow): Promise<void> {
+    this.accepting.set(row.id);
+    const result = await this.assignmentService.accept(row.id);
+    this.accepting.set(null);
+
+    if (result === 'conflict') {
+      await this.loadAssignments();
+
+      return;
+    }
+    if (typeof result === 'string' || result === null) {
+      this.snackbar.show('Could not accept the assignment');
+
+      return;
+    }
+
+    this.assignments.update(assignments => assignments.map(assignment =>
+      assignment.id === row.id
+        ? { ...assignment, accepted: true, status: assignment.status ?? SubmissionStatus.Provisioning }
+        : assignment));
+    this.snackbar.show('Assignment accepted');
+  }
+
+  private countStudentRows(view: AssignmentView): number {
+    return this.studentRows().filter(row => row.view === view).length;
+  }
+
+  /** The deadline is relative, so a card says "Due in 3 days" instead of a bare date. */
+  private dueText(deadline: Instant | null, now: Instant): string {
+    if (deadline === null) {
+      return 'No due date';
+    }
+
+    const relative = relativeDue(deadline, now);
+
+    return deadline.isBefore(now) ? `Overdue · ${relative}` : `Due ${relative}`;
   }
 
   private dateKey(date: Date): string {
@@ -184,6 +314,10 @@ export class CourseAssignments implements OnInit {
     if (tab === 'settings' && this.session.isTeacher()) {
       this.selectedTab.set(2);
     } else if (tab === 'participants') {
+      // Students have an Overview tab in front of Participants, so the index differs per role.
+      this.selectedTab.set(this.session.isTeacher() ? 1 : 2);
+    } else if (!this.session.isTeacher()) {
+      // A student opens the course on Overview, where their own work is split by state.
       this.selectedTab.set(1);
     }
 
@@ -201,45 +335,55 @@ export class CourseAssignments implements OnInit {
       this.title.set(course.title);
       this.participants.set(course.participants);
       this.teachers.set(course.teachers);
+      this.iconSeeds.set(await this.courseService.getCourseIconSeeds());
 
-      if (this.session.isTeacher()) {
-        const assignments = await this.assignmentService.listForCourse(Number(this.courseId()));
-        if (assignments === null) {
-          this.snackbar.show('Could not load assignments');
-
-          return;
-        }
-        this.assignments.set(assignments.map(assignment => ({
-          id: assignment.id,
-          title: assignment.title,
-          deadline: assignment.deadline,
-          accepted: null,
-          status: null
-        })));
-
-        return;
-      }
-
-      const mine = await this.assignmentService.listMine();
-      if (mine === null) {
-        this.snackbar.show('Could not load your assignments');
-
-        return;
-      }
-      const courseId = Number(this.courseId());
-      const assignments = [...mine.accepted, ...mine.unaccepted]
-        .filter(assignment => assignment.courseId === courseId)
-        .map(assignment => ({
-          id: assignment.id,
-          title: assignment.title,
-          deadline: assignment.deadline,
-          accepted: assignment.accepted,
-          status: assignment.status
-        }));
-      this.assignments.set(assignments);
+      await this.loadAssignments();
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** Loads the assignments of this course: all of them for a teacher, the student's own for a student. */
+  private async loadAssignments(): Promise<void> {
+    if (this.session.isTeacher()) {
+      const assignments = await this.assignmentService.listForCourse(Number(this.courseId()));
+      if (assignments === null) {
+        this.snackbar.show('Could not load assignments');
+
+        return;
+      }
+      this.assignments.set(assignments.map(assignment => ({
+        id: assignment.id,
+        title: assignment.title,
+        deadline: assignment.deadline,
+        accepted: null,
+        status: null,
+        lastPushAt: null,
+        late: false
+      })));
+
+      return;
+    }
+
+    const mine = await this.assignmentService.listMine();
+    if (mine === null) {
+      this.snackbar.show('Could not load your assignments');
+
+      return;
+    }
+    const courseId = Number(this.courseId());
+    const assignments = [...mine.accepted, ...mine.unaccepted]
+      .filter(assignment => assignment.courseId === courseId)
+      .map(assignment => ({
+        id: assignment.id,
+        title: assignment.title,
+        deadline: assignment.deadline,
+        accepted: assignment.accepted,
+        status: assignment.status,
+        lastPushAt: assignment.lastPushAt,
+        late: assignment.late
+      }));
+    this.assignments.set(assignments);
   }
 
   protected async removeParticipant(participant: CourseParticipant): Promise<void> {

@@ -152,10 +152,17 @@ internal sealed class AssignmentRepository(DbSet<Assignment> assignments) : IAss
         List<AssignedAssignment> rows = await assignments.AsNoTracking()
             .Where(a => a.Course.Members.Any(m => m.Id == studentId))
             .OrderBy(a => a.Course.Title).ThenBy(a => a.Title)
-            .Select(a => new AssignedAssignment(a.Id, a.CourseId, a.Course.Title, a.Title, a.Deadline, a.DeadlineKind,
+            .Select(a => new AssignedAssignment(a.Id, a.CourseId, a.Course.Title, a.Title, a.Description, a.Deadline,
+                        a.DeadlineKind,
                         a.Acceptances.Any(ac => ac.StudentId == studentId),
                         a.Acceptances.Where(ac => ac.StudentId == studentId)
-                                     .Select(ac => (SubmissionStatus?)ac.Status).FirstOrDefault()))
+                                     .Select(ac => (SubmissionStatus?)ac.Status).FirstOrDefault(),
+                        a.Acceptances.Where(ac => ac.StudentId == studentId)
+                                     .Select(ac => ac.LastPushAt).FirstOrDefault(),
+                        a.Acceptances.Any(ac => ac.StudentId == studentId && ac.Late),
+                        a.Acceptances.Where(ac => ac.StudentId == studentId)
+                                     .Select(ac => (FeedbackState?)ac.FeedbackState).FirstOrDefault()
+                        ?? FeedbackState.None))
             .ToListAsync();
 
         return rows.AsReadOnly();

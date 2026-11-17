@@ -1,20 +1,65 @@
 <div class="page-header">
   <h1>My Assignments</h1>
+</div>
 
-  @if (!loading() && all().length > 0) {
-    <!-- Open / Expired reads like the tab strip of a course, only smaller and right-aligned. -->
+@if (!loading() && all().length > 0) {
+  <!-- To do / Pushed / Past due sit under the heading and above the courses, so the
+       state switch reads before the course names it applies to. The course picker lives on
+       the same line, right after the last tab, so the page keeps one control row. -->
+  <div class="assignment-controls">
     <div class="tabs tabs--compact status-tabs" role="tablist" aria-label="Assignment status">
       <button type="button" role="tab" class="tabs__item"
-              [class.is-active]="view() === 'open'"
-              [attr.aria-selected]="view() === 'open'"
-              (click)="setView('open')">Open ({{ openCount() }})</button>
+              [class.is-active]="view() === 'todo'"
+              [attr.aria-selected]="view() === 'todo'"
+              (click)="setView('todo')">To do ({{ todoCount() }})</button>
       <button type="button" role="tab" class="tabs__item"
-              [class.is-active]="view() === 'expired'"
-              [attr.aria-selected]="view() === 'expired'"
-              (click)="setView('expired')">Expired ({{ expiredCount() }})</button>
+              [class.is-active]="view() === 'pushed'"
+              [attr.aria-selected]="view() === 'pushed'"
+              (click)="setView('pushed')">Pushed ({{ pushedCount() }})</button>
+      <button type="button" role="tab" class="tabs__item"
+              [class.is-active]="view() === 'past-due'"
+              [attr.aria-selected]="view() === 'past-due'"
+              (click)="setView('past-due')">Past due ({{ pastDueCount() }})</button>
     </div>
-  }
-</div>
+
+    @if (courses().length > 1) {
+      <!-- The picker is a single button: the horizontal dots open the list of courses, and
+           picking one narrows the list. Clicking the chosen course again clears the filter. -->
+      <div class="course-filter" role="group" aria-label="Filter by course">
+        @if (selectedCourse(); as course) {
+          <button type="button" class="course-filter__current"
+                  title="Show every course again"
+                  (click)="setCourse(null)">
+            <app-course-icon size="sm" [courseId]="course.id" [iconSeed]="iconSeed(course.id)"
+                             [name]="course.title"></app-course-icon>
+            <span class="course-filter__label">{{ course.title }}</span>
+          </button>
+        }
+
+        <button type="button" class="course-filter__more"
+                [class.is-active]="selectedCourse() !== null"
+                [matMenuTriggerFor]="courseMenu"
+                aria-label="Choose a course"
+                title="Choose a course">
+          <mat-icon>more_horiz</mat-icon>
+        </button>
+
+        <mat-menu #courseMenu="matMenu" class="course-menu">
+          @for (course of courses(); track course.id) {
+            <button mat-menu-item type="button" (click)="setCourse(course.id)">
+              <app-course-icon size="sm" [courseId]="course.id" [iconSeed]="iconSeed(course.id)"
+                               [name]="course.title"></app-course-icon>
+              <span class="course-menu__label" [title]="course.title">{{ course.title }}</span>
+              @if (courseFilter() === course.id) {
+                <mat-icon class="course-menu__check">check</mat-icon>
+              }
+            </button>
+          }
+        </mat-menu>
+      </div>
+    }
+  </div>
+}
 
 @if (loading()) {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
@@ -24,34 +69,35 @@
   <p class="empty">
     @if (all().length === 0) {
       You have no assignments yet.
-    } @else if (view() === 'open') {
-      No open assignments.
+    } @else if (view() === 'todo') {
+      Nothing to do right now.
+    } @else if (view() === 'pushed') {
+      You have not pushed anything yet.
     } @else {
-      No expired assignments.
+      Nothing is past due.
     }
   </p>
 }
 
 @for (course of sections(); track course.id) {
   <section class="course">
-    <h2 class="course__title">{{ course.title }}</h2>
+    <h2 class="course__title">
+      <app-course-icon size="sm" [courseId]="course.id" [iconSeed]="iconSeed(course.id)"
+                       [name]="course.title"></app-course-icon>
+      <span>{{ course.title }}</span>
+    </h2>
 
     <div class="assignment-list">
       @for (assignment of course.assignments; track assignment.id) {
         <div class="assignment">
-          <div class="assignment-date"
-               [class.assignment-date--expired]="view() === 'expired'"
-               [class.assignment-date--open]="view() === 'open'">
-            @if (assignment.deadline) {
-              Due {{ assignment.deadline | date: 'dd.MM.yyyy, HH:mm' }}
-            } @else {
-              No due date
-            }
-          </div>
           <mat-card class="assignment-card">
             <mat-card-content>
               <div class="assignment-heading">
                 <strong>{{ assignment.title }}</strong>
+                <span class="assignment-due">{{ assignment.due }}</span>
+                @if (assignment.pushed) {
+                  <span class="assignment-pushed">{{ assignment.pushed }}</span>
+                }
               </div>
               <div class="assignment-details">
                 @if (assignment.accepted) {

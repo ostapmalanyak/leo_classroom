@@ -1,7 +1,4 @@
-.empty {
-  color: var(--color-text-muted);
-}
-
+// The search is small and sits on the heading line, so the courses stay the main thing.
 .course-search {
   align-items: center;
   background-color: var(--color-bg-input);
@@ -9,9 +6,8 @@
   border-radius: var(--radius);
   display: flex;
   gap: var(--space-2);
-  margin-block: 0 var(--space-4);
+  inline-size: min(100%, 20rem);
   padding-inline: var(--space-3);
-  width: 100%;
 
   &:focus-within {
     border-color: var(--color-accent);
@@ -39,6 +35,90 @@
     outline: 0;
     padding: 0;
     width: 100%;
+
+    // The browser draws its own cancel button, which would sit next to ours.
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+  }
+}
+
+.course-search__clear {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  justify-content: center;
+  padding: 0;
+
+  mat-icon {
+    font-size: 1.125rem;
+    height: 1.125rem;
+    width: 1.125rem;
+  }
+
+  &:hover {
+    color: var(--color-text-strong);
+  }
+
+  &:focus-visible {
+    outline: var(--border-width) solid var(--color-accent);
+    outline-offset: var(--border-width);
+  }
+}
+
+// An empty result is a card like every other, with the way out inside it.
+.empty {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+
+.empty__icon {
+  align-items: center;
+  background-color: color-mix(in srgb, var(--color-accent) 14%, var(--color-bg-surface));
+  border-radius: var(--radius);
+  color: var(--color-accent-hover);
+  display: inline-flex;
+  height: 3rem;
+  justify-content: center;
+  width: 3rem;
+
+  mat-icon {
+    font-size: 1.5rem;
+    height: 1.5rem;
+    width: 1.5rem;
+  }
+}
+
+.empty__text {
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.empty__action {
+  background: none;
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius-button);
+  color: var(--color-accent-hover);
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  padding: var(--space-2) var(--space-4);
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-bg-surface));
+  }
+
+  &:focus-visible {
+    outline: var(--border-width) solid var(--color-accent);
+    outline-offset: var(--border-width);
   }
 }
 
@@ -51,7 +131,7 @@
 
   display: grid;
   gap: var(--space-4);
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 24rem));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
 
   @media (max-width: 24rem) {
     .course-card {
@@ -61,26 +141,18 @@
   }
 }
 
+// The card surface itself comes from the shared card style, so a course tile looks like
+// every other card in the app.
 .course-card {
   aspect-ratio: 2 / 1;
   align-items: center;
-  background-color: var(--color-bg-surface);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--course-card-radius);
-  color: var(--color-text);
   display: flex;
   gap: var(--course-content-gap);
   min-height: 0;
   padding: var(--course-card-padding);
   position: relative;
   text-decoration: none;
-  transition: background-color var(--transition), border-color var(--transition);
   width: 100%;
-
-  &:hover,
-  &:focus-visible {
-    background-color: var(--color-bg-hover);
-  }
 
   &__avatar {
     border-radius: var(--course-avatar-radius);

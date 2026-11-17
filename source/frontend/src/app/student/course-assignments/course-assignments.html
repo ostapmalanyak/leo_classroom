@@ -5,7 +5,11 @@
 
 <div class="course-header">
   <div class="course-content">
-    <h1>{{ selectedTab() === 0 ? title() : title() + "'s " + (selectedTab() === 1 ? 'Participants' : 'Settings') }}</h1>
+    <h1>
+      <app-course-icon size="sm" [courseId]="courseIdNumber()" [iconSeed]="iconSeed()"
+                       [name]="title()"></app-course-icon>
+      {{ heading() }}
+    </h1>
     <div class="course-tabs">
       @if (selectedTab() === 0) {
         <div class="sort-control">
@@ -97,61 +101,100 @@
 
           @let sections = assignmentSections();
 
-          @if (assignments().length > 0) {
-            <div class="assignment-view">
-              <mat-button-toggle-group class="assignment-view__toggle"
-                                       aria-label="Assignment status"
-                                       [value]="assignmentView()"
-                                       (change)="setAssignmentView($event)"
-                                       hideSingleSelectionIndicator>
-                <mat-button-toggle value="open">Open ({{ openAssignmentCount() }})</mat-button-toggle>
-                <mat-button-toggle value="expired">Expired ({{ expiredAssignmentCount() }})</mat-button-toggle>
-              </mat-button-toggle-group>
-            </div>
-          }
-
           <div class="assignments">
-            @if (assignmentView() === 'open') {
-              @for (group of sections.open; track group.key) {
-                <section class="assignment-group">
-                  <h3 class="subsection-heading">{{ group.date | date: 'dd.MM.yyyy' }}</h3>
-                  @for (assignment of group.assignments; track assignment.id) {
-                    <ng-container [ngTemplateOutlet]="assignmentCard"
-                                  [ngTemplateOutletContext]="{ $implicit: assignment }" />
-                  }
-                </section>
-              }
+            @for (group of sections.dated; track group.key) {
+              <section class="assignment-group">
+                <h3 class="subsection-heading">{{ group.date | date: 'dd.MM.yyyy' }}</h3>
+                @for (assignment of group.assignments; track assignment.id) {
+                  <ng-container [ngTemplateOutlet]="assignmentCard"
+                                [ngTemplateOutletContext]="{ $implicit: assignment }" />
+                }
+              </section>
+            }
 
-              @if (sections.noDate.length > 0) {
-                <section class="assignment-section">
-                  <h2 class="section-heading">No Date</h2>
-                  @for (assignment of sections.noDate; track assignment.id) {
-                    <ng-container [ngTemplateOutlet]="assignmentCard"
-                                  [ngTemplateOutletContext]="{ $implicit: assignment }" />
-                  }
-                </section>
-              }
-
-              @if (!loading() && assignments().length > 0 && sections.open.length === 0 && sections.noDate.length === 0) {
-                <p class="empty">No open assignments.</p>
-              }
-            } @else {
-              @for (group of sections.expired; track group.key) {
-                <section class="assignment-group">
-                  <h3 class="subsection-heading">{{ group.date | date: 'dd.MM.yyyy' }}</h3>
-                  @for (assignment of group.assignments; track assignment.id) {
-                    <ng-container [ngTemplateOutlet]="assignmentCard"
-                                  [ngTemplateOutletContext]="{ $implicit: assignment }" />
-                  }
-                </section>
-              }
-
-              @if (!loading() && assignments().length > 0 && sections.expired.length === 0) {
-                <p class="empty">No expired assignments.</p>
-              }
+            @if (sections.noDate.length > 0) {
+              <section class="assignment-section">
+                <h2 class="section-heading">No Date</h2>
+                @for (assignment of sections.noDate; track assignment.id) {
+                  <ng-container [ngTemplateOutlet]="assignmentCard"
+                                [ngTemplateOutletContext]="{ $implicit: assignment }" />
+                }
+              </section>
             }
           </div>
         </mat-tab>
+        @if (!session.isTeacher()) {
+          <!-- Overview holds the states a student cares about: to do, pushed and past due. -->
+          <mat-tab label="Overview">
+            @if (loading()) {
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            }
+
+            @if (assignments().length > 0) {
+              <div class="tabs tabs--compact status-tabs" role="tablist" aria-label="Assignment status">
+                <button type="button" role="tab" class="tabs__item"
+                        [class.is-active]="studentView() === 'todo'"
+                        [attr.aria-selected]="studentView() === 'todo'"
+                        (click)="setStudentView('todo')">To do ({{ todoCount() }})</button>
+                <button type="button" role="tab" class="tabs__item"
+                        [class.is-active]="studentView() === 'pushed'"
+                        [attr.aria-selected]="studentView() === 'pushed'"
+                        (click)="setStudentView('pushed')">Pushed ({{ pushedCount() }})</button>
+                <button type="button" role="tab" class="tabs__item"
+                        [class.is-active]="studentView() === 'past-due'"
+                        [attr.aria-selected]="studentView() === 'past-due'"
+                        (click)="setStudentView('past-due')">Past due ({{ pastDueCount() }})</button>
+              </div>
+            }
+
+            <div class="assignments">
+              @for (row of visibleStudentRows(); track row.id) {
+                <div class="assignment">
+                  <mat-card class="assignment-card">
+                    <mat-card-content>
+                      <div class="assignment-heading">
+                        <strong>{{ row.title }}</strong>
+                        <span class="assignment-due">{{ row.due }}</span>
+                        @if (row.pushed) {
+                          <span class="assignment-pushed">{{ row.pushed }}</span>
+                        }
+                      </div>
+                      <div class="assignment-details">
+                        @if (row.accepted) {
+                          <a mat-button [routerLink]="['/my-assignments', row.id]">Open assignment</a>
+                        } @else {
+                          <button mat-button type="button"
+                                  [disabled]="accepting() === row.id"
+                                  (click)="accept(row)">Accept</button>
+                        }
+                      </div>
+                    </mat-card-content>
+                  </mat-card>
+                </div>
+              }
+
+              @if (!loading() && visibleStudentRows().length === 0) {
+                <p class="empty">
+                  @if (assignments().length === 0) {
+                    No assignments in this course yet.
+                  } @else if (studentView() === 'todo') {
+                    Nothing to do right now.
+                  } @else if (studentView() === 'pushed') {
+                    You have not pushed anything yet.
+                  } @else {
+                    Nothing is past due.
+                  }
+                </p>
+              }
+            </div>
+
+            <div class="overview">
+              <a mat-button [routerLink]="['/my-assignments']" [queryParams]="{ course: courseId() }">
+                Open in My Assignments
+              </a>
+            </div>
+          </mat-tab>
+        }
         <mat-tab label="Participants">
           @if (loading()) {
             <mat-progress-bar mode="indeterminate"></mat-progress-bar>

@@ -1,19 +1,93 @@
-<mat-card class="welcome-card">
-  <mat-card-content>
-    <h1>Welcome</h1>
+<header class="home-head">
+  <h1>Hi, {{ firstName() }}</h1>
+</header>
 
-    <p>
-      Log in to
-      <a [href]="forgejoLoginUrl" target="_blank" rel="noopener">Forgejo</a>
-      to access your repositories.
-    </p>
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+}
 
-    <p>
-      Your Forgejo username and password are available in your My Account tab.
-    </p>
+<div class="home-grid">
+  <mat-card class="panel">
+    <mat-card-content>
+      <div class="panel__head">
+        <h2>Next up</h2>
+        <a routerLink="/my-assignments">All assignments</a>
+      </div>
 
-    <a mat-flat-button color="primary" routerLink="/account">My Account</a>
+      @if (nextUp().length === 0) {
+        <div class="panel__empty">
+          <mat-icon aria-hidden="true">task_alt</mat-icon>
+          <p>Nothing is due. Open assignments appear here as soon as they are added.</p>
+        </div>
+      } @else {
+        <ul class="next-list">
+          @for (item of nextUp(); track item.assignment.id) {
+            <li class="next-row">
+              <a class="next-row__main" [routerLink]="['/my-assignments', item.assignment.id]">
+                <app-course-icon size="sm" [courseId]="item.assignment.courseId"
+                                 [iconSeed]="iconSeed(item.assignment.courseId)"
+                                 [name]="item.assignment.courseTitle"></app-course-icon>
+                <span class="next-row__text">
+                  <strong>{{ item.assignment.title }}</strong>
+                  <span class="next-row__course">{{ item.assignment.courseTitle }}</span>
+                </span>
+              </a>
+              <span class="next-row__side">
+                <span class="pill" [class]="'pill pill--' + item.state.tone">{{ item.state.label }}</span>
+                <span class="next-row__due" [class.next-row__due--soon]="item.urgency === 'soon'"
+                      [class.next-row__due--urgent]="item.urgency === 'urgent'"
+                      [class.next-row__due--overdue]="item.urgency === 'overdue'">
+                  <span>{{ item.dueLabel }}</span>
+                  <span class="next-row__relative"><span aria-hidden="true">· </span>{{ item.relative }}</span>
+                </span>
+              </span>
+              <!-- The action lives beside the link, never inside it: a button in an anchor is
+                   neither valid HTML nor operable by keyboard. -->
+              @if (item.assignment.accepted === false) {
+                <button class="next-row__accept" type="button"
+                        [disabled]="accepting() === item.assignment.id"
+                        (click)="accept(item.assignment.id)">
+                  {{ accepting() === item.assignment.id ? 'Accepting…' : 'Accept' }}
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </mat-card-content>
+  </mat-card>
 
-    <p>Accept an assignment and follow the Forgejo link it generates to start working on it.</p>
-  </mat-card-content>
-</mat-card>
+  <div class="home-aside">
+    <mat-card class="panel">
+      <mat-card-content>
+        <h2>Your work</h2>
+        <div class="stats">
+          @for (stat of stats(); track stat.view) {
+            <a class="stat" [routerLink]="'/my-assignments'" [queryParams]="{ view: stat.view }">
+              <span class="stat__value">{{ stat.count }}</span>
+              <span class="stat__label">
+                {{ stat.label }}
+                @if (stat.danger) {
+                  <span class="stat__dot" aria-hidden="true"></span>
+                }
+              </span>
+            </a>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="panel">
+      <mat-card-content>
+        <h2>Forgejo</h2>
+        <p class="panel__text">Your repos live in Forgejo, signed in with your school account.</p>
+        <div class="panel__actions">
+          <a class="panel__action" [href]="forgejoLoginUrl" target="_blank" rel="noopener">
+            Open Forgejo<mat-icon aria-hidden="true">open_in_new</mat-icon>
+          </a>
+          <a class="panel__action panel__action--quiet" routerLink="/account">Generate git password</a>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

@@ -14,6 +14,14 @@
   max-width: 64rem;
   min-width: 0;
   width: 100%;
+
+  // The course icon sits in front of the heading, the same way it sits in front of a
+  // course name everywhere else.
+  h1 {
+    align-items: center;
+    display: flex;
+    gap: var(--space-3);
+  }
 }
 
 .course-content mat-tab-group {
@@ -120,6 +128,37 @@
   width: 100%;
 }
 
+// The state switch of the student view: the same To do / Pushed / Past due tabs as on
+// My Assignments, so both pages read the work of a course the same way.
+.status-tabs {
+  margin-block-end: var(--space-4);
+}
+
+// A student reads the deadline inside the card, relative to today, so the heading stacks the
+// title above the due line instead of putting a date next to it.
+.assignment-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.assignment-due,
+.assignment-pushed {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+}
+
+// The Overview tab is a link into My Assignments, so it has to look like the other tab labels.
+.overview {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+}
+
 .assignment-group {
   display: flex;
   flex-direction: column;
@@ -129,12 +168,6 @@
 
 .assignment-group + .assignment-group {
   margin-block-start: var(--space-4);
-}
-
-.assignment-view {
-  display: flex;
-  justify-content: flex-end;
-  margin-block: var(--space-2) 0;
 }
 
 .section-heading {

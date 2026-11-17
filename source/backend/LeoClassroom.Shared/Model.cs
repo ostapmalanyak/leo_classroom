@@ -75,7 +75,11 @@ public sealed record AssignedAssignment(
     long CourseId,
     string CourseTitle,
     string Title,
+    string? Description,
     Instant? Deadline,
     DeadlineKind DeadlineKind,
     bool Accepted,
-    SubmissionStatus? Status);
+    SubmissionStatus? Status,
+    Instant? LastPushAt,
+    bool Late,
+    FeedbackState FeedbackState);

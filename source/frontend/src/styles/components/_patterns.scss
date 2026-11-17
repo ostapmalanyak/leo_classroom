@@ -1,10 +1,68 @@
 @use "../abstracts/mixins" as mixins;
 
+// One card style for the whole app. Assignment cards, course tiles and the panels on the
+// home page all use it, so a card looks the same wherever it shows up: a flat surface, no
+// border and a generous corner radius.
 .card,
-.mat-mdc-card {
-  @include mixins.surface;
-
+.mat-mdc-card,
+.card-surface {
+  background-color: var(--color-bg-surface);
+  border: 0;
+  border-radius: var(--course-card-radius);
+  color: var(--color-text);
   box-shadow: none;
+}
+
+// A card that can be clicked says so through its surface, not through a border.
+.card-surface--interactive {
+  transition: background-color var(--transition);
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--color-bg-hover);
+  }
+}
+
+// A state is a tinted capsule, so the same status reads identically wherever it appears.
+.pill {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-neutral-bg);
+  padding: 0.125rem var(--space-3);
+  color: var(--color-neutral-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.pill--success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.pill--warning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.pill--late {
+  background-color: var(--color-late-bg);
+  color: var(--color-late-text);
+}
+
+.pill--danger {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.pill--info {
+  background-color: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 .mat-mdc-form-field-subscript-wrapper {
@@ -293,7 +351,7 @@ app-empty-state .empty-state[class] {
     text-decoration: none;
   }
 
-  // The glyph must be told its size as well as its box: mat-icon defaults to a 24px
+  // The glyph must be told its size as well as its box: mat-icon defaults to a 1.5rem
   // font, which would render the arrow larger than the 1.25rem box and push it off
   // centre.
   mat-icon {
@@ -435,8 +493,8 @@ app-inline-error .inline-error[role="alert"] {
 }
 
 mat-card.mat-mdc-card {
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
+  border: 0;
+  border-radius: var(--course-card-radius);
   background-color: var(--color-bg-surface);
   color: var(--color-text);
   box-shadow: none;
@@ -738,4 +796,76 @@ select:not(.mat-mdc-input-element) {
   .page-header {
     align-items: flex-start;
   }
+}
+
+// The course picker on My Assignments opens as a compact popover instead of Material's roomy
+// menu: small rows, one line per course and the same initials badge the rest of the page uses.
+// The rules are bound to the panel class, so every other menu in the app keeps its current look.
+.mat-mdc-menu-panel.course-menu {
+  --mat-menu-container-color: var(--color-bg-input);
+  --mat-menu-item-label-text-color: var(--color-text);
+  --mat-menu-item-hover-state-layer-color: var(--color-bg-hover);
+
+  min-width: 12rem;
+  max-width: 18rem;
+  padding: var(--space-1);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: var(--color-bg-input);
+  box-shadow: 0 0.75rem 1.75rem -1rem rgb(0 0 0 / 80%);
+}
+
+.mat-mdc-menu-panel.course-menu .mat-mdc-menu-content {
+  padding: 0;
+}
+
+// Material renders menu rows as plain buttons and loads its own panel styles after the global
+// sheet, so the rules are written against the panel element to win the cascade.
+.mat-mdc-menu-panel.course-menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-button);
+  background: none;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  text-align: start;
+  color: var(--color-text);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text-strong);
+  }
+}
+
+.mat-mdc-menu-panel.course-menu .mat-mdc-menu-item-text {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.course-menu__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-menu__check {
+  margin-inline-start: auto;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  font-size: var(--icon-sm);
+  color: var(--color-accent);
 }
