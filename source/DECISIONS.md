@@ -4,6 +4,28 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-17 — A teacher sees their own rosters first, and the teacher pages stay teacher pages
+
+**Status:** accepted.
+
+**The rosters of a teacher.** The rosters page starts with the rosters the teacher created and the form
+to create another one, because that is what a teacher opens the page for. The list of every roster of the
+school sits below it in a foldable section, and for now only administrators see it: a teacher does not
+need the class lists of other classes, and a page full of rosters that are none of their business is
+noise. The backend marks the rosters of the signed in user (`RosterOverview.IsOwner`), because the
+browser knows the school user name of the teacher but not the local account that owns the roster.
+
+**The teacher pages are the teacher's pages.** The home page of a teacher (`/home/teacher`), the course
+lists (`/courses`, `/courses/:id`) and the roster pages require the teacher role; an administrator passes
+every check, a student gets the forbidden page. The landing route sends a teacher to `/home/teacher` and
+a student to `/home/student`, so the first page of the app is always the one that belongs to the role of
+the signed in user.
+
+What would change it: rosters that every teacher should see - then the foldable list comes back for
+teachers as well.
+
+---
+
 ## 2026-11-17 — A teacher gets a home page of their own
 
 **Status:** accepted.

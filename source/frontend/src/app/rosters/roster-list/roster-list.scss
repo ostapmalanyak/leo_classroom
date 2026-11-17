@@ -1,3 +1,107 @@
+// The page is for teachers: their own rosters come first, the list of every roster of the
+// school is a second, foldable thing below.
+.my-rosters {
+  margin-block-end: var(--space-6);
+
+  h2 {
+    color: var(--color-text-strong);
+    font-size: var(--font-size-h2);
+    margin: 0 0 var(--space-3);
+  }
+}
+
+// Making a roster is what a teacher comes here for, so it sits on top.
+.create-roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+
+  .input {
+    flex: 1 1 16rem;
+    min-width: 0;
+  }
+}
+
+.roster-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.roster-list__row {
+  align-items: center;
+  background-color: var(--color-bg-surface);
+  border: 0;
+  border-radius: var(--radius-card);
+  color: var(--color-text);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: var(--space-3);
+  inline-size: 100%;
+  padding: var(--space-3) var(--space-4);
+  text-align: start;
+
+  &:hover {
+    background-color: var(--color-bg-hover);
+  }
+
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
+  }
+
+  mat-icon {
+    color: var(--color-text-subtle);
+    flex: none;
+  }
+}
+
+.roster-list__name {
+  flex: 1;
+  font-weight: var(--font-weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster-list__meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+// The list of all rosters can be folded away.
+.section-toggle {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: var(--color-text-strong);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: var(--space-2);
+  margin-block-end: var(--space-3);
+  padding: 0;
+
+  h2 {
+    font-size: var(--font-size-h2);
+    margin: 0;
+  }
+
+  mat-icon {
+    color: var(--color-text-muted);
+  }
+
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
+  }
+}
+
 .roster-table {
   width: 100%;
 }
@@ -8,16 +112,4 @@
 
 .empty {
   color: var(--color-text-muted);
-}
-
-.create-roster {
-  display: flex;
-  gap: var(--space-4);
-  align-items: flex-start;
-  flex-wrap: wrap;
-  margin-block-start: var(--space-5);
-}
-
-.create-roster h2 {
-  flex-basis: 100%;
 }

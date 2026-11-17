@@ -1,10 +1,7 @@
-import { Component, inject, OnInit, signal, WritableSignal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
-import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButton } from '@angular/material/button';
-import { MatFormField, MatLabel } from '@angular/material/form-field';
-import { MatInput } from '@angular/material/input';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { MatIcon } from '@angular/material/icon';
 import { Roster, RosterKind, RosterOverview, RosterService } from '../../../core/services/roster-service';
@@ -15,12 +12,8 @@ import { SessionService } from '../../../core/auth/session-service';
 @Component({
   selector: 'app-roster-list',
   imports: [
-    FormsModule,
     MatTableModule,
     MatButton,
-    MatFormField,
-    MatLabel,
-    MatInput,
     MatProgressBar,
     MatIcon
   ],
@@ -39,12 +32,23 @@ export class RosterList implements OnInit {
   protected readonly rosters: WritableSignal<RosterOverview[]> = signal([]);
   protected readonly loading: WritableSignal<boolean> = signal(false);
 
+  /** The rosters the signed in teacher created. */
+  protected readonly myRosters = computed<RosterOverview[]>(() =>
+    this.rosters().filter(roster => roster.isOwner));
+
+  /** The list of all rosters can be folded away. */
+  protected readonly allOpen: WritableSignal<boolean> = signal(true);
+
   protected readonly newName: WritableSignal<string> = signal('');
   protected readonly creating: WritableSignal<boolean> = signal(false);
   protected readonly syncing: WritableSignal<boolean> = signal(false);
 
   public async ngOnInit(): Promise<void> {
     await this.reload();
+  }
+
+  protected toggleAll(): void {
+    this.allOpen.update(open => !open);
   }
 
   protected async handleRowClicked(roster: RosterOverview): Promise<void> {

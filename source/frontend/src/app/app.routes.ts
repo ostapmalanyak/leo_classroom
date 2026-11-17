@@ -18,6 +18,8 @@ export const routes: Routes = [
   },
   {
     path: 'home/teacher',
+    canActivate: [authGuard],
+    data: { role: Role.Teacher },
     loadComponent: () => import('./dashboards/teacher-dashboard/teacher-dashboard').then(m => m.TeacherDashboard)
   },
   { path: 'home/teachers', pathMatch: 'full', redirectTo: '/home/teacher' },
@@ -31,6 +33,7 @@ export const routes: Routes = [
   {
     path: 'courses',
     canActivate: [authGuard],
+    data: { role: Role.Teacher },
     loadComponent: () => import('./course-list/course-list').then(m => m.CourseList)
   },
   {
@@ -42,6 +45,7 @@ export const routes: Routes = [
   {
     path: 'courses/:id',
     canActivate: [authGuard],
+    data: { role: Role.Teacher },
     loadComponent: () => import('./course-detail/course-detail').then(m => m.CourseDetail)
   },
   {

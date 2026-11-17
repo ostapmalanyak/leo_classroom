@@ -11,7 +11,7 @@
         <app-action-card icon="school" label="Go to Courses" description="Open, create or delete a course"
                          [route]="['/my-courses']" [primary]="true" />
         <app-action-card icon="assignment" label="Create assignment" description="Give students a new task"
-                         [choices]="courseChoices()" (chosen)="createIn($event)" />
+                         (picked)="openChooseCourse()" />
         <app-action-card icon="groups" label="Rosters" description="See your class lists"
                          [route]="['/rosters']" />
         <app-action-card icon="terminal" label="Teacher CLI" description="Download the command line tool"

@@ -225,9 +225,16 @@
   padding-inline: calc(var(--space-2) - var(--border-width));
 }
 
+// A long list scrolls inside its own box: the page around it stays where it is, and the
+// pointer does not chain the scroll on to the page when the list ends.
 .participant-list {
   display: flex;
   flex-direction: column;
+  max-block-size: min(28rem, 60vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--color-border) transparent;
+  scrollbar-width: thin;
 }
 
 .participant-row {

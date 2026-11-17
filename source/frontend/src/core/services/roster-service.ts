@@ -147,7 +147,9 @@ const rosterOverviewZod = z.object({
   name: z.string().min(1),
   kind: z.enum(RosterKind),
   memberCount: z.int().nonnegative(),
-  ownerId: z.int().positive().nullable()
+  ownerId: z.int().positive().nullable(),
+  /** The roster belongs to the signed in teacher. */
+  isOwner: z.boolean().default(false)
 });
 export type RosterOverview = z.infer<typeof rosterOverviewZod>;
 

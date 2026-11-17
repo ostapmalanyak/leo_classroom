@@ -673,11 +673,19 @@ mat-card.mat-mdc-card {
 }
 
 .mat-mdc-icon-button.mat-mdc-button-base {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
   width: var(--control-height);
   height: var(--control-height);
   padding: 0;
   border: var(--border-width) solid var(--color-border);
   background-color: var(--color-bg-input);
+  line-height: 1;
+
+  mat-icon {
+    line-height: 1;
+  }
 }
 
 .mat-mdc-button-base:disabled,
@@ -699,7 +707,9 @@ mat-card.mat-mdc-card {
 // Material's own controls use bare <button> elements internally (the slide-toggle
 // switch is one), and the tab strip is a row of bare buttons that must read as text,
 // so neither may receive the generic control box.
-button:not(.mat-mdc-button-base, .mat-mdc-menu-item, .mdc-switch, .tabs__item) {
+// A plain button gets the shape of a control. A button that carries the shared .btn class
+// is styled by .btn alone, so its variant (primary, secondary) is not overwritten here.
+button:not(.mat-mdc-button-base, .mat-mdc-menu-item, .mdc-switch, .tabs__item, .btn) {
   @include mixins.control-base;
 
   border-radius: var(--radius-button);
@@ -864,6 +874,14 @@ select:not(.mat-mdc-input-element) {
   .page-header {
     align-items: flex-start;
   }
+}
+
+// A dialog title and the close button next to it share one line: the title centres in the
+// line instead of sitting below the button.
+h2[mat-dialog-title] {
+  align-items: center;
+  display: flex;
+  line-height: 1.2;
 }
 
 // The course picker on My Assignments opens as a compact popover instead of Material's roomy
