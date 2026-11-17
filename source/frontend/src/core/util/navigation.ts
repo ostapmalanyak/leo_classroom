@@ -17,6 +17,7 @@ export const navEntries: readonly NavEntry[] = [
   { label: 'Home', route: '/', icon: 'home' },
   { label: 'My Assignments', route: '/my-assignments', icon: 'assignment', requiredRole: Role.Student },
   { label: 'My Courses', route: '/my-courses', icon: 'school' },
+  { label: 'Rosters', route: '/rosters', icon: 'groups', requiredRole: Role.Teacher },
   { label: 'Teacher CLI', route: '/cli', icon: 'terminal', requiredRole: Role.Teacher },
   { label: 'Audit Log', route: '/audit', icon: 'fact_check', requiredRole: Role.Admin },
   { label: 'Forgejo Connection', route: '/admin/forgejo', icon: 'cable', requiredRole: Role.Admin }

@@ -4,7 +4,12 @@
 
 <!-- The search is a field that opens a palette: it spans the whole grid, so it belongs to
      the page and not to a single course. -->
-<app-search-palette [entries]="searchEntries()" placeholder="Search courses and assignments"></app-search-palette>
+<button class="course-search" type="button" aria-label="Search courses and assignments"
+        (click)="openSearch()">
+  <mat-icon aria-hidden="true">search</mat-icon>
+  <span class="course-search__text">Search courses and assignments</span>
+  <kbd class="course-search__key">{{ searchShortcut() }}</kbd>
+</button>
 
 @if (loading()) {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>

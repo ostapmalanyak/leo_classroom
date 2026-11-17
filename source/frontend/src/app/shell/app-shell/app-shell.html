@@ -1,42 +1,91 @@
 <div class="shell-layout">
-  <mat-toolbar class="shell-toolbar navbar">
-    <div class="container navbar__inner">
-      <span class="app-title">LEO Classroom</span>
+  <nav class="navbar" aria-label="Main">
+    <div class="navbar__inner">
+      <a class="brand" routerLink="/" aria-label="LEO Classroom, home">
+        <span class="brand__mark" aria-hidden="true">L</span>
+        <span class="brand__name">LEO Classroom</span>
+      </a>
 
-      <nav class="navbar__items" aria-label="Main navigation">
+      <div class="navbar__links">
         @for (entry of entries(); track entry.route) {
-          <a class="navbar-item" [attr.data-route]="entry.route" [routerLink]="entry.route"
-             routerLinkActive="active-nav"
+          <a class="navbar-link"
+             [routerLink]="entry.route"
+             routerLinkActive="is-active"
              [routerLinkActiveOptions]="{ exact: entry.route === '/' }"
-             [class.active-nav]="entry.route === '/' && url().startsWith('/home')">
-            <mat-icon>{{ entry.icon }}</mat-icon>
-            <span>{{ entry.label }}</span>
-          </a>
+             [class.is-active]="entry.route === '/' && url().startsWith('/home')"
+             [attr.aria-current]="isCurrent(entry) ? 'page' : null">{{ entry.label }}</a>
         }
-      </nav>
+      </div>
 
-      <button class="navbar-item navbar-account" mat-button [matMenuTriggerFor]="userMenu" aria-label="Account">
-        <mat-icon>account_circle</mat-icon>
-        <span class="identity">{{ session.identity()?.displayName }}</span>
-      </button>
-      <mat-menu #userMenu="matMenu">
-        <a class="navbar-item" mat-menu-item routerLink="/account">
-          <mat-icon>account_circle</mat-icon>
-          <span>My account</span>
-        </a>
-        @if (isStudent()) {
-          <a class="navbar-item" mat-menu-item routerLink="/notification-settings">
-            <mat-icon>notifications</mat-icon>
-            <span>Notifications</span>
-          </a>
-        }
-        <button class="navbar-item" mat-menu-item (click)="logout()">
-          <mat-icon>logout</mat-icon>
-          <span>Logout</span>
+      <div class="navbar__actions">
+        <button class="icon-button" type="button" [matTooltip]="'Search (' + searchShortcut() + ')'"
+                [attr.aria-label]="'Search (' + searchShortcut() + ')'" (click)="openSearch()">
+          <mat-icon aria-hidden="true">search</mat-icon>
         </button>
-      </mat-menu>
+
+        <app-notification-bell />
+
+        <button class="avatar" type="button" [matMenuTriggerFor]="userMenu"
+                [class.is-open]="avatarMenuOpen()" [attr.aria-label]="'Account of ' + (session.identity()?.displayName ?? '')"
+                (click)="avatarMenuOpen.set(true)" (closed)="avatarMenuOpen.set(false)">
+          {{ initials() }}
+        </button>
+
+        <button class="icon-button navbar__burger" type="button" aria-label="Menu"
+                [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())">
+          <mat-icon aria-hidden="true">{{ menuOpen() ? 'close' : 'menu' }}</mat-icon>
+        </button>
+      </div>
     </div>
-  </mat-toolbar>
+
+    @if (menuOpen()) {
+      <div class="navbar__panel">
+        @for (entry of entries(); track entry.route) {
+          <a class="navbar-link navbar-link--panel"
+             [routerLink]="entry.route"
+             [class.is-active]="isCurrent(entry)"
+             [attr.aria-current]="isCurrent(entry) ? 'page' : null">{{ entry.label }}</a>
+        }
+      </div>
+    }
+  </nav>
+
+  <mat-menu #userMenu="matMenu" class="account-menu">
+    <div class="account-menu__head" (click)="$event.stopPropagation()">
+      <span class="account-menu__name">{{ session.identity()?.displayName }}</span>
+      <span class="account-menu__role">{{ roleLabel() }}</span>
+    </div>
+
+    <div class="account-menu__divider" aria-hidden="true"></div>
+
+    <a mat-menu-item class="account-menu__item" [href]="forgejoUrl" target="_blank" rel="noopener">
+      <span>Open Forgejo</span>
+      <!-- An inline icon, because Material would move a mat-icon to the front of the row. -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14 4h6v6" />
+        <path d="M20 4 10 14" />
+        <path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5" />
+      </svg>
+    </a>
+    @if (isAdmin()) {
+      <a mat-menu-item class="account-menu__item" routerLink="/admin/forgejo">
+        <span>Forgejo connection</span>
+      </a>
+    }
+    <a mat-menu-item class="account-menu__item" routerLink="/account">
+      <span>Generate git password</span>
+    </a>
+
+    <div class="account-menu__divider" aria-hidden="true"></div>
+
+    <a mat-menu-item class="account-menu__item" routerLink="/account">
+      <span>Profile</span>
+    </a>
+    <button mat-menu-item class="account-menu__item" type="button" (click)="logout()">
+      <span>Log out</span>
+    </button>
+  </mat-menu>
 
   <main class="shell-content container">
     <router-outlet></router-outlet>
@@ -52,3 +101,5 @@
     </div>
   </footer>
 </div>
+
+<app-search-palette />

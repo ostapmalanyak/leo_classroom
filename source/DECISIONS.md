@@ -4,6 +4,35 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-17 — The bar carries the work, the page carries the content
+
+**Status:** accepted.
+
+**The bar.** The navigation is a `<nav aria-label="Main">` that sticks to the top: a brand mark with the
+letter of the app, the links as text only, and three icon buttons on the right - search, the bell of the
+deadlines and the avatar. The links are text because an icon next to every link says less than the word
+does; the icons are kept for the three buttons, where the picture is the whole message. The current page
+wears the accent colour and an underline that touches the bottom edge of the bar, so the place in the app
+is visible without reading the links. On a phone the links move into a panel behind a hamburger button.
+
+**The search lives in the bar.** The palette is mounted in the shell and reads the courses and the
+assignments of the signed in user itself, so the keyboard shortcut (Ctrl K, Cmd K on macOS) opens the same
+search on every page and the field on the courses page opens the same palette. One palette, one place
+that knows what can be found.
+
+**The bell counts deadlines.** The bell shows how many assignments close within the next day - for a
+student the ones they have not handed in, for a teacher the ones of their courses - and the menu lists the
+next five with the urgency pill of the assignment cards. A deadline that has passed is not counted: the
+bell is about what is still coming.
+
+**The avatar is the account.** The round avatar with the initials opens the menu of the things that belong
+to the person: the name with the role, the Forgejo links, the profile and the way out. The name next to
+the avatar is gone - it is in the menu, where there is room for it.
+
+What would change it: a bar with more than three icon buttons, which would need a group for them.
+
+---
+
 ## 2026-11-17 — A teacher sees their own rosters first, and the teacher pages stay teacher pages
 
 **Status:** accepted.

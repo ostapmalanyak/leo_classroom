@@ -709,7 +709,7 @@ mat-card.mat-mdc-card {
 // so neither may receive the generic control box.
 // A plain button gets the shape of a control. A button that carries the shared .btn class
 // is styled by .btn alone, so its variant (primary, secondary) is not overwritten here.
-button:not(.mat-mdc-button-base, .mat-mdc-menu-item, .mdc-switch, .tabs__item, .btn) {
+button:not(.mat-mdc-button-base, .mat-mdc-menu-item, .mdc-switch, .tabs__item, .btn, .icon-button) {
   @include mixins.control-base;
 
   border-radius: var(--radius-button);
@@ -882,6 +882,45 @@ h2[mat-dialog-title] {
   align-items: center;
   display: flex;
   line-height: 1.2;
+}
+
+// The menu of the avatar: a header with the name and the role, then the entries.
+.account-menu__head {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.account-menu__name {
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-medium);
+}
+
+.account-menu__role {
+  background-color: var(--color-bg-input);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  padding: 0.0625rem var(--space-2);
+}
+
+.account-menu__divider {
+  background-color: var(--color-border);
+  block-size: var(--border-width);
+  margin: var(--space-1) 0;
+}
+
+.account-menu__item {
+  justify-content: space-between;
+
+  svg {
+    color: var(--color-text-muted);
+    flex: none;
+    height: 1rem;
+    margin-inline-start: var(--space-3);
+    width: 1rem;
+  }
 }
 
 // The course picker on My Assignments opens as a compact popover instead of Material's roomy

@@ -11,12 +11,13 @@ import { ZodError } from 'zod';
 import { MatDialog } from '@angular/material/dialog';
 import { Assignment, AssignmentService } from '../../core/services/assignment-service';
 import { SessionService } from '../../core/auth/session-service';
+import { SearchPaletteService } from '../../core/services/search-palette-service';
 import { CourseOverview, CourseService } from '../../core/services/course-service';
 import { CourseManagementService } from '../../core/services/course-management-service';
 import { SnackbarService } from '../../core/services/snackbar-service';
 import { CreateCourseDialog } from './create-course-dialog/create-course-dialog';
 import { DeleteCourseDialog } from './delete-course-dialog/delete-course-dialog';
-import { SearchEntry, SearchPalette } from '../shared/search-palette/search-palette';
+
 
 interface CourseTile {
   id: number;
@@ -29,7 +30,7 @@ interface CourseTile {
 
 @Component({
   selector: 'app-my-courses',
-  imports: [RouterLink, MatProgressBar, MatButtonModule, MatIconModule, MatMenuModule, SearchPalette],
+  imports: [RouterLink, MatProgressBar, MatButtonModule, MatIconModule, MatMenuModule],
   templateUrl: './my-courses.html',
   styleUrl: './my-courses.scss'
 })
@@ -40,28 +41,25 @@ export class MyCourses implements OnInit {
   private readonly snackbar = inject(SnackbarService);
   private readonly session = inject(SessionService);
   private readonly dialog = inject(MatDialog);
+  private readonly palette = inject(SearchPaletteService);
 
   protected readonly loading: WritableSignal<boolean> = signal(false);
   protected readonly courses: WritableSignal<CourseTile[]> = signal([]);
 
-  /** The assignments of the courses, so the palette can jump to one of them as well. */
-  private readonly assignments: WritableSignal<SearchEntry[]> = signal([]);
   private assignmentsFailureNotified = false;
-
-  /** Everything the search palette can find: the courses and the assignments of them. */
-  protected readonly searchEntries = computed<SearchEntry[]>(() => [
-    ...this.courses().map(course => ({
-      icon: 'school',
-      title: course.title,
-      subtitle: course.open > 0 ? `${course.open} open assignments` : 'All caught up',
-      route: ['/my-assignments/course', String(course.id)]
-    })),
-    ...this.assignments()
-  ]);
 
   public async ngOnInit(): Promise<void> {
     await this.loadCourses();
   }
+
+  /** The field on the page opens the palette of the shell. */
+  protected openSearch(): void {
+    this.palette.open();
+  }
+
+  /** The hint on the field says which shortcut opens the palette. */
+  protected readonly searchShortcut = computed(() =>
+    typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? 'Cmd K' : 'Ctrl K');
 
   protected openCreateDialog(): void {
     const dialogRef = this.dialog.open(CreateCourseDialog, {
@@ -142,12 +140,6 @@ export class MyCourses implements OnInit {
         open: assignments.filter(assignment => assignment.courseId === tile.id
           && (assignment.deadline === null || !assignment.deadline.isBefore(now))).length
       })));
-      this.assignments.set(assignments.map(assignment => ({
-        icon: 'assignment',
-        title: assignment.title,
-        subtitle: assignment.courseTitle,
-        route: ['/my-assignments', String(assignment.id)]
-      })));
 
       return;
     }
@@ -173,15 +165,6 @@ export class MyCourses implements OnInit {
       ).subscribe(assignments => {
         this.courses.update(current => current.map(tile =>
           tile.id === course.id ? this.toTile(course, assignments, now) : tile));
-        this.assignments.update(current => [
-          ...current.filter(entry => entry.subtitle !== course.title),
-          ...assignments.map(assignment => ({
-            icon: 'assignment',
-            title: assignment.title,
-            subtitle: course.title,
-            route: ['/my-assignments/course', String(course.id)]
-          }))
-        ]);
       });
     }
   }
