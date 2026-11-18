@@ -1,0 +1,96 @@
+// The dialog looks like the other dialogs of the app: a dark surface, one radius, no chrome.
+:host {
+  color: var(--color-text);
+  display: block;
+}
+
+.choose-dialog {
+  background-color: var(--color-bg-surface);
+  border-radius: var(--course-card-radius);
+  padding: var(--space-4) var(--space-4) var(--space-5);
+
+  &__head {
+    align-items: center;
+    display: flex;
+    gap: var(--space-3);
+    justify-content: space-between;
+    margin: 0 0 var(--space-4);
+  }
+
+  // The heading stands where the list starts: Material would push it to the right.
+  h2 {
+    color: var(--color-text-strong);
+    font-size: var(--font-size-h2);
+    margin: 0;
+    padding: 0;
+  }
+
+  mat-dialog-content {
+    color: var(--color-text);
+    max-height: 22rem;
+    padding: 0;
+  }
+
+  &__empty {
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  &__courses {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  &__course {
+    align-items: center;
+    background: none;
+    border: var(--border-width) solid transparent;
+    border-radius: var(--radius);
+    color: var(--color-text);
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    gap: var(--space-3);
+    inline-size: 100%;
+    padding: var(--space-2) var(--space-3);
+    text-align: start;
+
+    &:hover {
+      background-color: var(--color-bg-hover);
+    }
+
+    &:focus-visible {
+      border-color: var(--color-accent);
+      outline: 0.125rem solid var(--color-accent);
+      outline-offset: 0.125rem;
+    }
+
+    &.is-selected {
+      background-color: var(--color-bg-input);
+      border-color: var(--color-accent);
+    }
+  }
+
+  &__title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__check {
+    color: var(--color-accent);
+    flex: none;
+  }
+
+  mat-dialog-actions {
+    gap: var(--space-2);
+    margin: var(--space-4) 0 0;
+    min-height: 0;
+    padding: 0;
+  }
+}

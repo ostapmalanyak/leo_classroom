@@ -1,0 +1,22 @@
+:host {
+  display: inline-flex;
+  flex: none;
+}
+
+.course-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--course-avatar-radius);
+  object-fit: cover;
+  background-color: var(--color-bg-input);
+}
+
+.course-icon--sm {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.course-icon--lg {
+  width: 5.5rem;
+  height: 5.5rem;
+}

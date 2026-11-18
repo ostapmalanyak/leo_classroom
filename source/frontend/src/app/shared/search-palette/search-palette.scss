@@ -1,0 +1,136 @@
+// The field and the palette speak the same language as the rest of the app: one soft
+// border, the accent colour only for focus and the muted text for everything else.
+:host {
+  display: contents;
+}
+
+// The palette floats over the page: a dim backdrop and one panel below the top edge.
+.palette-backdrop {
+  background-color: rgb(0 0 0 / 55%);
+  inset: 0;
+  position: fixed;
+  z-index: 20;
+}
+
+.palette {
+  background-color: var(--color-bg-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 1.5rem 3rem -1rem rgb(0 0 0 / 70%);
+  inset-block-start: 12%;
+  inset-inline: 0;
+  margin-inline: auto;
+  max-height: 70vh;
+  overflow: hidden;
+  position: fixed;
+  inline-size: min(35rem, 92vw);
+  z-index: 21;
+
+  &__field {
+    align-items: center;
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+
+    mat-icon {
+      color: var(--color-text-subtle);
+      flex: none;
+      font-size: 1.25rem;
+      height: 1.25rem;
+      width: 1.25rem;
+    }
+
+    input {
+      background: transparent;
+      border: 0;
+      color: var(--color-text);
+      flex: 1 1 auto;
+      font: inherit;
+      min-width: 0;
+      outline: 0;
+      padding: 0;
+
+      &::placeholder {
+        color: var(--color-text-subtle);
+      }
+    }
+  }
+
+  // A short line in the middle separates the field from the results - a full width rule
+  // would cut the panel in two.
+  &__results {
+    list-style: none;
+    margin: 0;
+    max-height: 24rem;
+    overflow-y: auto;
+    padding: var(--space-2);
+
+    &::before {
+      background-color: var(--color-border);
+      block-size: var(--border-width);
+      content: '';
+      display: block;
+      inline-size: 3rem;
+      margin: var(--space-2) auto;
+    }
+  }
+
+  &__result {
+    align-items: center;
+    background: none;
+    border: 0;
+    border-radius: var(--radius);
+    color: var(--color-text);
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    gap: var(--space-3);
+    inline-size: 100%;
+    padding: var(--space-2) var(--space-3);
+    text-align: start;
+
+    mat-icon {
+      color: var(--color-text-muted);
+      flex: none;
+      font-size: 1.25rem;
+      height: 1.25rem;
+      width: 1.25rem;
+    }
+
+    &.is-active,
+    &:hover {
+      background-color: var(--color-bg-hover);
+    }
+
+    &:focus-visible {
+      outline: 0.125rem solid var(--color-accent);
+      outline-offset: -0.125rem;
+    }
+  }
+
+  &__result-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+
+    strong {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    span {
+      color: var(--color-text-muted);
+      font-size: var(--font-size-sm);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  &__empty {
+    color: var(--color-text-muted);
+    padding: var(--space-4) var(--space-3);
+    text-align: center;
+  }
+}

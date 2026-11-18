@@ -1,0 +1,33 @@
+@if (palette.opened()) {
+  <div class="palette-backdrop" (click)="close()"></div>
+
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Search">
+    <div class="palette__field">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input #field type="text" role="searchbox" [value]="query()" placeholder="Search courses and assignments"
+             aria-label="Search courses and assignments" autocomplete="off"
+             (input)="onInput($event)" (keydown)="onKeydown($event)">
+    </div>
+
+    <ul class="palette__results">
+      @if (loading()) {
+        <li class="palette__empty">Searching…</li>
+      } @else {
+        @for (entry of results(); track entry.title + entry.subtitle) {
+          <li>
+            <button type="button" class="palette__result" [class.is-active]="active() === $index"
+                    (mouseenter)="active.set($index)" (click)="choose(entry)">
+              <mat-icon aria-hidden="true">{{ entry.icon }}</mat-icon>
+              <span class="palette__result-text">
+                <strong>{{ entry.title }}</strong>
+                <span>{{ entry.subtitle }}</span>
+              </span>
+            </button>
+          </li>
+        } @empty {
+          <li class="palette__empty">Nothing matches “{{ query() }}”.</li>
+        }
+      }
+    </ul>
+  </div>
+}

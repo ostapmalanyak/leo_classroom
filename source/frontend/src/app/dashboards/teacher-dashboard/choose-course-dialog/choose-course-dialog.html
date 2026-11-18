@@ -1,0 +1,38 @@
+<div class="choose-dialog">
+  <header class="choose-dialog__head">
+    <h2 mat-dialog-title id="choose-course-title">Choose Course</h2>
+    <button mat-icon-button type="button" aria-label="Close dialog" mat-dialog-close>
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  <mat-dialog-content>
+    @if (data.courses.length === 0) {
+      <p class="choose-dialog__empty">You have no courses yet. Create one first, then add the assignment.</p>
+    } @else {
+      <ul class="choose-dialog__courses">
+        @for (course of data.courses; track course.id) {
+          <li>
+            <button class="choose-dialog__course" type="button"
+                    [class.is-selected]="selected() === course.id"
+                    [attr.aria-pressed]="selected() === course.id"
+                    (click)="pick(course.id)">
+              <app-course-icon size="sm" [courseId]="course.id" [iconSeed]="course.iconSeed" [name]="course.title" />
+              <span class="choose-dialog__title">{{ course.title }}</span>
+              @if (selected() === course.id) {
+                <mat-icon class="choose-dialog__check" aria-hidden="true">check</mat-icon>
+              }
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" mat-dialog-close>Cancel</button>
+    <button class="btn btn--primary" type="button" [disabled]="selected() === null" mat-dialog-close="create">
+      Create Assignment<mat-icon aria-hidden="true">arrow_forward</mat-icon>
+    </button>
+  </mat-dialog-actions>
+</div>

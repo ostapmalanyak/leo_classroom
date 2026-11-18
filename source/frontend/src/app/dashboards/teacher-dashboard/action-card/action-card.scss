@@ -1,0 +1,91 @@
+// A button card: the whole card is the target, so it reads as one clickable thing.
+:host {
+  display: block;
+}
+
+.action-card {
+  align-items: center;
+  background-color: var(--color-bg-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-card);
+  color: var(--color-text);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: var(--space-3);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  inline-size: 100%;
+  padding: var(--space-4);
+  text-align: start;
+  text-decoration: none;
+  transition: background-color var(--transition), border-color var(--transition);
+
+  &:hover {
+    background-color: var(--color-bg-hover);
+    border-color: var(--color-input-border);
+  }
+
+  &:focus-visible {
+    border-color: var(--color-accent);
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
+  }
+
+  &__icon {
+    align-items: center;
+    background-color: var(--color-bg-input);
+    border-radius: var(--radius);
+    color: var(--color-text-muted);
+    display: inline-flex;
+    height: 2.5rem;
+    justify-content: center;
+    width: 2.5rem;
+
+    mat-icon {
+      font-size: 1.25rem;
+      height: 1.25rem;
+      width: 1.25rem;
+    }
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+
+    strong {
+      color: var(--color-text-strong);
+      font-size: 1.0625rem;
+    }
+  }
+
+  // One line only: the explanation is a hint, not a paragraph.
+  &__description {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__arrow {
+    color: var(--color-accent);
+  }
+
+  // The one card that matters most carries the accent.
+  &--primary {
+    background-color: color-mix(in srgb, var(--color-accent) 12%, var(--color-bg-surface));
+    border-color: var(--color-accent);
+
+    .action-card__icon {
+      background-color: color-mix(in srgb, var(--color-accent) 18%, var(--color-bg-surface));
+      color: var(--color-accent-hover);
+    }
+
+    &:hover {
+      background-color: color-mix(in srgb, var(--color-accent) 18%, var(--color-bg-surface));
+      border-color: var(--color-accent-hover);
+    }
+  }
+}
