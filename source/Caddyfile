@@ -64,12 +64,15 @@
 	# client or the backend can present; Forgejo's proxy login does not cover them, and an SSO redirect would
 	# break them. They go straight through, without the login header.
 	#
+	# /login/oauth/access_token is called by git-credential-oauth (a CLI, not a browser) to swap the code it got
+	# for a token; an SSO redirect would break it. The browser step, /login/oauth/authorize, stays behind SSO.
+	#
 	# Only the git protocol's own endpoints are listed, not every `*.git` path: the link the app shows
 	# students is the bare `.../repo.git` URL, which a browser opens, and Forgejo answers an anonymous
 	# request for a private repository with 404. That one must go through the sign-in below, after which
 	# Forgejo redirects it to the repository page.
 	@machine {
-		expression {path}.startsWith("/api/") || {path}.matches("^/[^/]+/[^/]+\\.git/(info/refs|git-upload-pack|git-receive-pack|HEAD|objects/|info/lfs)")
+		expression {path}.startsWith("/api/") || {path} == "/login/oauth/access_token" || {path}.matches("^/[^/]+/[^/]+\\.git/(info/refs|git-upload-pack|git-receive-pack|HEAD|objects/|info/lfs)")
 	}
 	handle @machine {
 		reverse_proxy forgejo:3000

@@ -41,6 +41,7 @@
       @if (step() === 0) {
         <section class="card-surface edit-card">
           <h2 class="edit-card__title">Basics</h2>
+          <p class="edit-hint">Give the assignment a clear title. Students see the description and hints on their assignment page; Markdown is supported.</p>
 
           <div class="field">
             <label class="field__label" for="field-title">Title</label>
@@ -69,6 +70,7 @@
       @if (step() === 1) {
         <section class="card-surface edit-card" [class.edit-card--invalid]="deadlineError() !== null">
           <h2 class="edit-card__title">Deadline</h2>
+          <p class="edit-hint">A soft deadline is informational only. A hard deadline takes away students' write access when it passes. Times are in your local time zone.</p>
 
           <div class="segmented" role="group" aria-label="Deadline kind">
             <button type="button" [class.is-active]="deadlineKind() === DeadlineKind.None"
@@ -116,6 +118,7 @@
       @if (step() === 2) {
         <section class="card-surface edit-card" [class.edit-card--invalid]="repoError() !== null">
           <h2 class="edit-card__title">Starter</h2>
+          <p class="edit-hint">Choose what each student starts with: just the description, or a copy of a template repository that becomes their own repository.</p>
 
           <div class="starter-grid" role="group" aria-label="Starter source">
             <button class="starter" type="button" [class.is-active]="!isCopyRepo()"
@@ -167,6 +170,7 @@
       @if (step() === 3) {
         <section class="card-surface edit-card">
           <h2 class="edit-card__title">Lifecycle</h2>
+          <p class="edit-hint">Decide when repositories are cleaned up and which version of the work you download: as of the deadline, or the latest (head).</p>
 
           <label class="switch-row" for="field-auto-delete">
             <span>
