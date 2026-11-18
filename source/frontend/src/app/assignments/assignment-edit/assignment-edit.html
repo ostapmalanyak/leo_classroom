@@ -70,13 +70,35 @@
         <section class="card-surface edit-card" [class.edit-card--invalid]="deadlineError() !== null">
           <h2 class="edit-card__title">Deadline</h2>
 
-          <div class="segmented" role="group" aria-label="Deadline kind">
-            <button type="button" [class.is-active]="deadlineKind() === DeadlineKind.None"
-                    (click)="setDeadlineKind(DeadlineKind.None)">None</button>
-            <button type="button" [class.is-active]="deadlineKind() === DeadlineKind.Soft"
-                    (click)="setDeadlineKind(DeadlineKind.Soft)">Soft</button>
-            <button type="button" [class.is-active]="deadlineKind() === DeadlineKind.Hard"
-                    (click)="setDeadlineKind(DeadlineKind.Hard)">Hard</button>
+          <div class="deadline-cards" role="radiogroup" aria-label="Deadline kind">
+            <button type="button" class="deadline-card" role="radio"
+                    [attr.aria-checked]="deadlineKind() === DeadlineKind.None"
+                    [class.is-active]="deadlineKind() === DeadlineKind.None"
+                    (click)="setDeadlineKind(DeadlineKind.None)">
+              <span class="deadline-card__title">No deadline</span>
+              <span class="deadline-card__track deadline-card__track--none" aria-hidden="true"></span>
+              <span class="deadline-card__text">Work is accepted at any time.</span>
+            </button>
+
+            <button type="button" class="deadline-card" role="radio"
+                    [attr.aria-checked]="deadlineKind() === DeadlineKind.Soft"
+                    [class.is-active]="deadlineKind() === DeadlineKind.Soft"
+                    (click)="setDeadlineKind(DeadlineKind.Soft)">
+              <span class="deadline-card__title">Soft deadline</span>
+              <app-deadline-timeline variant="mini" [deadline]="previewDeadline()"
+                                     [kind]="DeadlineKind.Soft"></app-deadline-timeline>
+              <span class="deadline-card__text">Pushes after it still count, marked late.</span>
+            </button>
+
+            <button type="button" class="deadline-card" role="radio"
+                    [attr.aria-checked]="deadlineKind() === DeadlineKind.Hard"
+                    [class.is-active]="deadlineKind() === DeadlineKind.Hard"
+                    (click)="setDeadlineKind(DeadlineKind.Hard)">
+              <span class="deadline-card__title">Hard deadline</span>
+              <app-deadline-timeline variant="mini" [deadline]="previewDeadline()"
+                                     [kind]="DeadlineKind.Hard"></app-deadline-timeline>
+              <span class="deadline-card__text">Nothing can be pushed after it.</span>
+            </button>
           </div>
 
           @if (hasDeadline()) {

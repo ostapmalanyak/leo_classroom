@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { Duration, Instant, LocalDateTime, ZoneId } from '@js-joda/core';
 import { MatIcon } from '@angular/material/icon';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatProgressBar } from '@angular/material/progress-bar';
@@ -8,6 +9,7 @@ import {
   Assignment, AssignmentService, AssignmentWrite, DeadlineKind, DownloadSnapshotMode, StarterSourceKind
 } from '../../../core/services/assignment-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
+import { DeadlineTimeline } from '../../shared/deadline-timeline/deadline-timeline';
 import { MarkdownEditor } from '../../shared/markdown-editor/markdown-editor';
 
 /** How many issues the form has: the summary and the save button use it. */
@@ -23,7 +25,7 @@ const MAX_YEARS_AHEAD = 5;
  */
 @Component({
   selector: 'app-assignment-edit',
-  imports: [FormsModule, RouterLink, MatIcon, MatSlideToggle, MatProgressBar, MarkdownEditor],
+  imports: [FormsModule, RouterLink, MatIcon, MatSlideToggle, MatProgressBar, MarkdownEditor, DeadlineTimeline],
   templateUrl: './assignment-edit.html',
   styleUrl: './assignment-edit.scss'
 })
@@ -68,6 +70,24 @@ export class AssignmentEdit implements OnInit {
   protected readonly isEditMode = computed(() => this.id() !== undefined);
   protected readonly isCopyRepo = computed(() => this.starterSource() === StarterSourceKind.CopyRepo);
   protected readonly hasDeadline = computed(() => this.deadlineKind() !== DeadlineKind.None);
+  /** The picked date and time as an instant; null while either field is still empty. */
+  protected readonly deadline = computed<Instant | null>(() => {
+    const date = this.deadlineDate();
+    const time = this.deadlineTime();
+    if (date === '' || time === '') {
+      return null;
+    }
+    try {
+      return LocalDateTime.parse(`${date}T${time}:00`)
+                          .atZone(ZoneId.systemDefault())
+                          .toInstant();
+    } catch {
+      return null;
+    }
+  });
+  /** The mini timelines in the deadline cards need a date even before the teacher picked one. */
+  protected readonly previewDeadline = computed(
+    () => this.deadline() ?? Instant.now().plus(Duration.ofDays(7)));
 
   // ---- validation, recomputed on every change ----
 

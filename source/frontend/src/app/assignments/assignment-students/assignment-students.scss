@@ -2,76 +2,343 @@
   display: block;
 }
 
-// Same arrangement as the course page: the content is a centred column and the back
-// link stands outside it, in the gutter, on the level of the page title.
-.page-content {
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-inline-size: var(--container-max);
   margin-inline: auto;
-  max-width: 64rem;
-  min-width: 0;
-  position: relative;
-  width: 100%;
 }
 
-// The title row anchors the back link, so that it can be centred on the title
-// however tall the row happens to be (the action buttons are a full control
-// height, which makes the row taller than the title itself).
-.header {
-  align-items: center;
+.head {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  justify-content: space-between;
-  position: relative;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
 
-  h1 {
-    margin: 0;
+.head__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+
+  &:hover {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text-strong);
   }
 }
 
-.header-actions {
+.head__text {
+  flex: 1;
+  min-inline-size: 0;
+
+  h1 {
+    margin: 0;
+    font-size: var(--font-size-h2);
+  }
+}
+
+.head__sub {
   display: flex;
-  gap: var(--space-2);
-}
-
-.students-table {
-  width: 100%;
-}
-
-.empty {
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
 
-.late-badge {
-  display: inline-block;
-  padding-inline: var(--space-2);
-  border: var(--border-width) solid var(--color-danger-border);
-  border-radius: var(--radius);
-  background-color: var(--color-danger-bg);
-  color: var(--color-danger-text);
-  font-size: var(--font-size-sm);
+.head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
-td button {
-  margin-right: var(--space-2);
+.timeline-block {
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-card);
+  background-color: var(--color-bg-surface);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: var(--space-3);
+}
+
+.metric {
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-card);
+  background-color: var(--color-bg-surface);
+}
+
+.metric__label {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.metric__value {
+  margin: var(--space-1) 0 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--color-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric__of {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.metric--danger .metric__value {
+  color: var(--color-danger-strong);
+}
+
+.metric--warning .metric__value {
+  color: var(--color-warning-text);
 }
 
 .share {
-  align-items: center;
   display: flex;
-  gap: var(--space-3);
-  margin-block: var(--space-3) var(--space-4);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .share__label {
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
 
 .share__url {
-  background-color: var(--color-bg-input);
-  border: 0.0625rem solid var(--color-border);
-  border-radius: var(--radius-button);
-  color: var(--color-text);
   flex: 1;
-  min-width: 0;
-  padding: var(--space-2) var(--space-3);
+  min-inline-size: 12rem;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.toolbar__search {
+  flex: 1 1 14rem;
+  max-inline-size: 22rem;
+}
+
+.toolbar__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.25rem var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text-strong);
+  }
+
+  &.is-active {
+    border-color: var(--color-accent);
+    background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-bg-surface));
+    color: var(--color-text-strong);
+  }
+}
+
+.chip__count {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-subtle);
+}
+
+.toolbar__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* The table keeps its buttons on one line and scrolls sideways on narrow screens. */
+.table-wrap {
+  overflow-x: auto;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-card);
+  background-color: var(--color-bg-surface);
+}
+
+.table {
+  inline-size: 100%;
+  min-inline-size: 44rem;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.table th,
+.table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: start;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.table thead th {
+  font-weight: 500;
+  color: var(--color-text-muted);
+  border-block-end: var(--border-width) solid var(--color-border);
+}
+
+.table tbody tr + tr td {
+  border-block-start: var(--border-width) solid var(--color-border-subtle);
+}
+
+.table tbody tr:hover td {
+  background-color: var(--color-bg-hover);
+}
+
+.table__actions-col {
+  text-align: end;
+}
+
+.table__muted {
+  color: var(--color-text-subtle);
+}
+
+.table__late-cell {
+  color: var(--color-warning-text);
+}
+
+.student {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.student__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-bg-input);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.student__text {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.student__name {
+  color: var(--color-text);
+}
+
+.student__id {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+// The remind action sits next to the icon buttons, so it has to be just as compact.
+.actions__remind {
+  min-block-size: 2.25rem;
+  padding-inline: var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: var(--color-bg-input);
+  color: var(--color-text-muted);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text-strong);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-card);
+  background-color: var(--color-bg-surface);
+
+  h2 {
+    margin: 0;
+    font-size: 1.125rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--color-text-muted);
+  }
+
+  // The link stretches to the card: the row layout's flex rules do not apply in a column.
+  .share__url {
+    align-self: stretch;
+  }
+}
+
+@media (max-width: 48em) {
+  .head {
+    flex-wrap: wrap;
+  }
+
+  .head__actions {
+    inline-size: 100%;
+  }
+
+  .toolbar__sort {
+    margin-inline-start: 0;
+  }
 }
