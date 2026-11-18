@@ -15,6 +15,7 @@ import { relativeDue } from '../../../core/util/assignment-state';
 import { MatDialog } from '@angular/material/dialog';
 import { ActionCard } from './action-card/action-card';
 import { ChooseCourseDialog } from './choose-course-dialog/choose-course-dialog';
+import { MyRostersDialog } from './my-rosters-dialog/my-rosters-dialog';
 import { ClosingAssignment, ClosingSoonList } from './closing-soon/closing-soon';
 import { OverviewTile } from './overview-tile/overview-tile';
 
@@ -107,6 +108,17 @@ export class TeacherDashboard implements OnInit {
 
   public async ngOnInit(): Promise<void> {
     await this.load();
+  }
+
+  /** The teacher wants to see the rosters they created: they open in a popup. */
+  protected openMyRosters(): void {
+    this.dialog.open(MyRostersDialog, {
+      width: '30rem',
+      maxWidth: '92%',
+      ariaLabelledBy: 'my-rosters-title',
+      ariaModal: true,
+      autoFocus: true
+    });
   }
 
   /** The teacher wants a new assignment: first the course it belongs to. */
