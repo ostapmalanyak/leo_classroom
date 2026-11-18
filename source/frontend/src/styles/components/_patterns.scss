@@ -1371,7 +1371,7 @@ app-markdown-view .markdown-body {
   }
 
   code {
-    font-family: var(--font-family-mono);
+    font-family: var(--font-family-mono), monospace;
   }
 
   pre {
@@ -1407,7 +1407,7 @@ app-markdown-view .markdown-body {
   aspect-ratio: 1;
   background: var(--color-warning-bg);
   block-size: 2rem;
-  border: 1px solid var(--color-warning-border);
+  border: var(--border-width) solid var(--color-warning-border);
   border-radius: 50%;
   box-sizing: border-box;
   color: var(--color-warning-text);
@@ -1430,9 +1430,9 @@ app-markdown-view .markdown-body {
 
 .help__tip {
   background: var(--color-warning-bg);
-  border: 1px solid var(--color-warning-border);
+  border: var(--border-width) solid var(--color-warning-border);
   border-radius: 0.75rem;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 30%);
   box-sizing: border-box;
   color: var(--color-warning-text);
   display: none;
