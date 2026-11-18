@@ -20,8 +20,8 @@
         <input matInput [ngModel]="title()" (ngModelChange)="title.set($event)">
       </mat-form-field>
 
-      <app-markdown-editor label="Description" [(value)]="description"></app-markdown-editor>
-      <app-markdown-editor label="Hints / instructions" [(value)]="hints"></app-markdown-editor>
+      <app-markdown-editor label="Description" [value]="description()" (valueChange)="description.set($event)"></app-markdown-editor>
+      <app-markdown-editor label="Hints / instructions" [value]="hints()" (valueChange)="hints.set($event)"></app-markdown-editor>
     </mat-card-content>
   </mat-card>
 
@@ -32,10 +32,17 @@
         <mat-label>Deadline kind</mat-label>
         <mat-select [ngModel]="deadlineKind()" (ngModelChange)="handleDeadlineKindChanged($event)">
           @for (kind of deadlineKinds; track kind) {
-            <mat-option [value]="kind">{{ kind }}</mat-option>
+            <mat-option [value]="kind" [disabled]="kind === DeadlineKind.Hard && isFork()">{{ kind }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
+
+      @if (isFork()) {
+        <p class="field-note">
+          Hard deadlines are unavailable: with a forked starter repository the student owns their repository,
+          so write access cannot be taken away at the deadline.
+        </p>
+      }
 
       @if (deadlineKind() !== DeadlineKind.None) {
         <mat-form-field>
@@ -69,10 +76,24 @@
         <mat-label>Starter source</mat-label>
         <mat-select [ngModel]="starterSource()" (ngModelChange)="starterSource.set($event)">
           @for (source of starterSources; track source) {
-            <mat-option [value]="source">{{ source }}</mat-option>
+            <mat-option [value]="source"
+                        [disabled]="source === StarterSourceKind.ForkOwnRepo && deadlineKind() === DeadlineKind.Hard">
+              {{ source }}
+            </mat-option>
           }
         </mat-select>
       </mat-form-field>
+
+      @if (isFork()) {
+        <p class="field-note">
+          Forking makes the student the owner of their repository. A hard deadline cannot be enforced on it.
+        </p>
+      } @else if (deadlineKind() === DeadlineKind.Hard) {
+        <p class="field-note">
+          ForkOwnRepo is unavailable with a hard deadline: a fork belongs to the student, so the deadline could not
+          be enforced. Use CopyRepo instead, or switch to a soft deadline.
+        </p>
+      }
 
       @if (starterSource() === StarterSourceKind.ForkOwnRepo || starterSource() === StarterSourceKind.CopyRepo) {
         <mat-form-field class="full">
@@ -81,7 +102,7 @@
         </mat-form-field>
       }
 
-      <app-markdown-editor label="README" [(value)]="readme"></app-markdown-editor>
+      <app-markdown-editor label="README" [value]="readme()" (valueChange)="readme.set($event)"></app-markdown-editor>
     </mat-card-content>
   </mat-card>
 

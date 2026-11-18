@@ -58,6 +58,10 @@ export class AssignmentEdit implements OnInit {
   protected readonly autoDeleteOn: WritableSignal<string> = signal('');
   protected readonly snapshotMode: WritableSignal<DownloadSnapshotMode> = signal(DownloadSnapshotMode.Deadline);
 
+  protected isFork(): boolean {
+    return this.starterSource() === StarterSourceKind.ForkOwnRepo;
+  }
+
   protected isEditMode(): boolean {
     return this.id() !== undefined;
   }
@@ -107,6 +111,12 @@ export class AssignmentEdit implements OnInit {
     }
     if (this.deadlineKind() !== DeadlineKind.None && (this.deadlineDate() === '' || this.deadlineTime() === '')) {
       this.snackbar.show('Choose a deadline date and time');
+
+      return;
+    }
+    // an assignment saved before this rule existed can still load in this state
+    if (this.isFork() && this.deadlineKind() === DeadlineKind.Hard) {
+      this.snackbar.show('A forked repository is owned by the student, so it cannot have a hard deadline');
 
       return;
     }
