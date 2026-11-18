@@ -31,7 +31,7 @@
 
   <mat-dialog-actions align="end">
     <button mat-button type="button" mat-dialog-close>Cancel</button>
-    <button class="btn btn--primary" type="button" [disabled]="selected() === null" mat-dialog-close="create">
+    <button class="btn btn--primary" type="button" [disabled]="selected() === null" [mat-dialog-close]="selected()">
       Create Assignment<mat-icon aria-hidden="true">arrow_forward</mat-icon>
     </button>
   </mat-dialog-actions>
