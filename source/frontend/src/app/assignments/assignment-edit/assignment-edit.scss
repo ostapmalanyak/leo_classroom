@@ -1,48 +1,404 @@
-:host {
-  display: block;
+// The form is two columns: the steps on the left, the live summary on the right.
+.edit-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
-// Same arrangement as the course page: the content is a centred column and the back
-// link stands outside it, in the gutter, on the level of the page title.
-.page-content {
-  margin-inline: auto;
-  max-width: 64rem;
-  min-width: 0;
-  position: relative;
-  width: 100%;
-}
-
-// The title row anchors the back link, so that it can be centred on the title
-// however tall the row happens to be.
-.header {
-  margin-block-end: var(--space-4);
-  position: relative;
+.edit-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
 
   h1 {
+    font-size: var(--font-size-h1);
     margin: 0;
   }
 }
 
-.section {
-  margin-bottom: var(--space-5);
-}
-
-.full {
-  width: 100%;
-}
-
-mat-form-field {
-  margin-right: var(--space-4);
-}
-
-.field-note {
+.edit-head__sub {
   color: var(--color-text-muted);
-  font-size: 0.875rem;
-  margin-block: 0 var(--space-3);
-  max-width: 40rem;
+  font-size: var(--font-size-sm);
+  margin: 0.125rem 0 0;
 }
 
-mat-slide-toggle {
+.edit-head__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+// The stepper: a line of steps with a number or a check.
+.stepper {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stepper__item + .stepper__item::before {
+  background-color: var(--color-border);
+  block-size: var(--border-width);
+  content: '';
   display: block;
-  margin-block: var(--space-3);
+  inline-size: var(--space-5);
+}
+
+.stepper__button {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+
+  &:hover {
+    color: var(--color-text);
+  }
+
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
+  }
+}
+
+.stepper__mark {
+  align-items: center;
+  background-color: var(--color-bg-input);
+  border-radius: 50%;
+  display: inline-flex;
+  font-size: var(--font-size-sm);
+  height: 1.5rem;
+  justify-content: center;
+  width: 1.5rem;
+
+  mat-icon {
+    font-size: 1rem;
+    height: 1rem;
+    width: 1rem;
+  }
+}
+
+.stepper__item.is-current .stepper__button {
+  color: var(--color-text-strong);
+}
+
+.stepper__item.is-current .stepper__mark {
+  background-color: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.stepper__item.is-done .stepper__mark {
+  background-color: color-mix(in srgb, var(--color-success-border) 45%, var(--color-bg-input));
+  color: var(--color-success-text);
+}
+
+.edit-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr) 18rem;
+  align-items: start;
+
+  @media (max-width: 60rem) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.edit-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.edit-side {
+  position: sticky;
+  top: var(--space-4);
+}
+
+.edit-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.edit-card__title {
+  color: var(--color-text-strong);
+  font-size: 1.0625rem;
+  margin: 0;
+}
+
+.edit-card--invalid {
+  border-color: var(--color-danger-border);
+}
+
+// The fields of the form.
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field__label {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.field__foot {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+.field__counter {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-sm);
+  margin-inline-start: auto;
+}
+
+.field__error {
+  align-items: center;
+  color: var(--color-danger-strong);
+  display: flex;
+  font-size: var(--font-size-sm);
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+
+  mat-icon {
+    font-size: 1rem;
+    height: 1rem;
+    width: 1rem;
+  }
+}
+
+.field-row {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+.edit-hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+// Segmented controls (deadline kind, snapshot mode).
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+
+  button {
+    background-color: var(--color-bg-input);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-button);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--font-size-sm);
+    padding: var(--space-2) var(--space-3);
+
+    &.is-active {
+      border-color: var(--color-accent);
+      color: var(--color-text-strong);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    &:focus-visible {
+      outline: 0.125rem solid var(--color-accent);
+      outline-offset: 0.125rem;
+    }
+  }
+}
+
+// Quick picks under the deadline fields.
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  background-color: var(--color-bg-input);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  padding: var(--space-1) var(--space-3);
+
+  &:hover {
+    border-color: var(--color-input-border);
+    color: var(--color-text);
+  }
+
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
+  }
+}
+
+// The two starter cards.
+.starter-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  @media (max-width: 40rem) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.starter-wrap {
+  display: flex;
+  min-width: 0;
+
+  > .starter {
+    block-size: 100%;
+    inline-size: 100%;
+  }
+}
+
+.starter {
+  align-items: center;
+  background-color: var(--color-bg-input);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-card);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: var(--space-2);
+  justify-content: center;
+  padding: var(--space-4) var(--space-3);
+
+  &.is-active {
+    border-color: var(--color-accent);
+    color: var(--color-text-strong);
+  }
+
+  // Options the backend does not implement yet stay visible, so the set reads as complete.
+  &:disabled {
+    background-color: var(--color-bg-input);
+    border-color: var(--color-border);
+    border-style: dashed;
+    color: var(--color-text-subtle);
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
+  }
+}
+
+// The lifecycle switch.
+.switch-row {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+
+  strong {
+    display: block;
+    font-weight: var(--font-weight-medium);
+  }
+}
+
+.edit-nav {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+// The summary panel.
+.summary {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+
+  &__row {
+    border-block-end: var(--border-width) solid var(--color-border-subtle);
+    display: flex;
+    gap: var(--space-2);
+    justify-content: space-between;
+    padding-block: var(--space-2);
+  }
+
+  dt {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+  }
+
+  dd {
+    color: var(--color-text);
+    font-size: var(--font-size-sm);
+    margin: 0;
+    max-inline-size: 60%;
+    overflow: hidden;
+    text-align: end;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.is-invalid {
+      color: var(--color-danger-strong);
+    }
+  }
+}
+
+.summary__issues {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: var(--font-size-sm);
+  gap: var(--space-1);
+  margin: 0;
+
+  &.is-invalid {
+    color: var(--color-danger-strong);
+  }
+
+  mat-icon {
+    font-size: 1rem;
+    height: 1rem;
+    width: 1rem;
+  }
+}
+
+.summary__bar {
+  background-color: var(--color-bg-input);
+  border-radius: var(--radius-pill);
+  block-size: 0.25rem;
+  inline-size: 100%;
+  overflow: hidden;
+}
+
+.summary__fill {
+  background-color: var(--color-accent);
+  block-size: 100%;
+  display: block;
+  transition: inline-size var(--transition);
+
+  &.is-invalid {
+    background-color: var(--color-danger-strong);
+  }
 }

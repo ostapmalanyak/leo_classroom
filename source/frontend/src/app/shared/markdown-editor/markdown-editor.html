@@ -1,10 +1,23 @@
 <div class="markdown-editor">
-  <mat-form-field class="editor-input">
-    <mat-label>{{ label() }}</mat-label>
-    <textarea matInput rows="8" [ngModel]="value()" (ngModelChange)="value.set($event)"></textarea>
-  </mat-form-field>
-  <div class="editor-preview">
-    <span class="preview-label">Preview</span>
-    <app-markdown-view [source]="value()"></app-markdown-view>
+  <div class="markdown-editor__head">
+    <label class="markdown-editor__label" for="markdown-field">{{ label() }}</label>
+
+    <div class="markdown-editor__switch" role="group" [attr.aria-label]="label() + ' view'">
+      <button type="button" [class.is-active]="mode() === 'write'" (click)="show('write')">Write</button>
+      <button type="button" [class.is-active]="mode() === 'preview'" (click)="show('preview')">Preview</button>
+    </div>
   </div>
+
+  @if (mode() === 'write') {
+    <textarea id="markdown-field" class="input markdown-editor__field" rows="8" [placeholder]="placeholder()"
+              [ngModel]="value()" (ngModelChange)="value.set($event)"></textarea>
+  } @else {
+    <div class="markdown-editor__preview">
+      @if (value().trim() === '') {
+        <p class="markdown-editor__empty">Nothing to preview yet.</p>
+      } @else {
+        <app-markdown-view [source]="value()"></app-markdown-view>
+      }
+    </div>
+  }
 </div>

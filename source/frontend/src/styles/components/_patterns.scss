@@ -193,8 +193,9 @@
   padding-inline: var(--space-3);
 }
 
-.input--invalid {
-  background-color: var(--color-danger-bg);
+.input.input--invalid {
+  border-color: var(--color-danger-border);
+  background-color: color-mix(in srgb, var(--color-danger-bg) 30%, var(--color-bg-input));
 }
 
 .input-group {
