@@ -1,35 +1,111 @@
-import { Component, inject, input, InputSignal, OnDestroy, OnInit, signal, WritableSignal } from '@angular/core';
-import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
+import { Component, computed, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
+import { Instant } from '@js-joda/core';
 import { MatButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import {
-  AssignmentInfo, AssignmentService, FeedbackState, Submission, SubmissionStatus
+  AssignmentInfo, AssignmentService, DeadlineKind, FeedbackState, Submission, SubmissionStatus
 } from '../../../core/services/assignment-service';
+import { NowService } from '../../../core/services/now-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
+import { relativeDue } from '../../../core/util/assignment-state';
+import { DeadlineTimeline } from '../../shared/deadline-timeline/deadline-timeline';
 import { MarkdownView } from '../../shared/markdown-view/markdown-view';
 
-const POLL_INTERVAL_MS = 2000;
+/** What the student has to do next; only one of them is ever on screen. */
+type Step = 'accept' | 'clone' | 'push' | 'feedback';
 
+/**
+ * The student's page for one assignment. It answers a single question — what do I do next — and
+ * everything else (instructions, reminder of the deadline) sits behind that answer.
+ */
 @Component({
-  selector: 'app-student-assignment-detail',
-  imports: [MatCard, MatCardContent, MatCardTitle, MatButton, MatProgressBar, MarkdownView],
+  selector: 'app-assignment-detail',
+  imports: [MatButton, MatIcon, MatProgressBar, DeadlineTimeline, MarkdownView],
   templateUrl: './assignment-detail.html',
   styleUrl: './assignment-detail.scss'
 })
-export class StudentAssignmentDetail implements OnInit, OnDestroy {
+export class StudentAssignmentDetail implements OnInit {
   private readonly service = inject(AssignmentService);
   private readonly snackbar = inject(SnackbarService);
+  private readonly clock = inject(NowService);
 
   public readonly id: InputSignal<string> = input.required<string>();
 
-  protected readonly SubmissionStatus = SubmissionStatus;
-  protected readonly FeedbackState = FeedbackState;
-  protected readonly loading: WritableSignal<boolean> = signal(false);
+  protected readonly loading: WritableSignal<boolean> = signal(true);
   protected readonly working: WritableSignal<boolean> = signal(false);
+  protected readonly failed: WritableSignal<boolean> = signal(false);
   protected readonly info: WritableSignal<AssignmentInfo | null> = signal(null);
   protected readonly submission: WritableSignal<Submission | null> = signal(null);
+  protected readonly courseTitle: WritableSignal<string> = signal('');
+  protected readonly description: WritableSignal<string> = signal('');
+  protected readonly lastPushAt: WritableSignal<number | null> = signal(null);
+  protected readonly copied: WritableSignal<boolean> = signal(false);
+  protected readonly instructionsOpen: WritableSignal<boolean> = signal(false);
 
-  private pollTimer: ReturnType<typeof setTimeout> | null = null;
+  protected readonly DeadlineKind = DeadlineKind;
+  protected readonly SubmissionStatus = SubmissionStatus;
+
+  protected readonly title = computed(() => this.info()?.title ?? '');
+  protected readonly deadline = computed(() => this.info()?.deadline ?? null);
+  protected readonly deadlineKind = computed(() => this.info()?.deadlineKind ?? DeadlineKind.None);
+  protected readonly accepted = computed(() => this.info()?.accepted === true);
+
+  /** A hard deadline that has passed closes the repository: nothing can be pushed any more. */
+  protected readonly locked = computed(() => {
+    const deadline = this.deadline();
+
+    return this.deadlineKind() === DeadlineKind.Hard
+      && deadline !== null
+      && this.clock.now().isAfter(deadline);
+  });
+
+  protected readonly hasPushed = computed(() => this.lastPushAt() !== null);
+
+  protected readonly step = computed<Step>(() => {
+    const submission = this.submission();
+    if (!this.accepted() || submission === null) {
+      return 'accept';
+    }
+    if (submission.feedbackState !== FeedbackState.None) {
+      return 'feedback';
+    }
+
+    return this.hasPushed() ? 'push' : 'clone';
+  });
+
+  protected readonly pushLabel = computed(() => {
+    const pushed = this.lastPushAt();
+
+    return pushed === null ? '' : `Last push ${relativeDue(Instant.ofEpochMilli(pushed), this.clock.now())}`;
+  });
+
+  protected readonly cloneUrl = computed(() => this.submission()?.repoUrl ?? '');
+  protected readonly repoName = computed(() => {
+    const url = this.cloneUrl();
+    const name = url.split('/').pop() ?? '';
+
+    return name.endsWith('.git') ? name.slice(0, -4) : name;
+  });
+
+  protected readonly cloneCommands = computed(
+    () => `git clone ${this.cloneUrl()}\ncd ${this.repoName()}`);
+
+  /** The command line as the block shows it: a long URL keeps its head and tail. */
+  protected readonly cloneDisplay = computed(
+    () => `git clone ${this.shorten(this.cloneUrl())}\ncd ${this.repoName()}`);
+
+  /** A push that landed after a soft deadline still counts, and the row says so. */
+  protected readonly pushedLate = computed(() => {
+    const deadline = this.deadline();
+    const pushed = this.lastPushAt();
+
+    return this.deadlineKind() !== DeadlineKind.Hard
+      && deadline !== null
+      && pushed !== null
+      && Instant.ofEpochMilli(pushed).isAfter(deadline);
+  });
+  protected readonly pushCommands = 'git add . && git commit -m "Describe your change"\ngit push';
 
   public async ngOnInit(): Promise<void> {
     this.loading.set(true);
@@ -41,78 +117,83 @@ export class StudentAssignmentDetail implements OnInit, OnDestroy {
       return;
     }
     this.info.set(info);
+    await this.loadCourseTitle();
+
     if (info.accepted) {
       await this.refreshSubmission();
     }
   }
 
-  public ngOnDestroy(): void {
-    this.clearPoll();
-  }
-
   protected async handleAccept(): Promise<void> {
     this.working.set(true);
+    this.failed.set(false);
     const result = await this.service.accept(Number(this.id()));
     this.working.set(false);
-    if (result === 'conflict') {
-      await this.refreshSubmission();
 
-      return;
-    }
-    if (result === 'forbidden' || result === 'not-found' || result === null) {
-      this.snackbar.show('Could not accept the assignment');
+    if (result === 'forbidden' || result === 'not-found' || result === 'conflict' || result === null) {
+      this.failed.set(true);
 
       return;
     }
     this.submission.set(result);
-    this.schedulePollIfProvisioning(result);
+    this.info.update(current => (current === null ? current : { ...current, accepted: true }));
+    this.instructionsOpen.set(false);
   }
 
-  protected async handleRetry(): Promise<void> {
-    this.working.set(true);
-    const result = await this.service.retry(Number(this.id()));
-    this.working.set(false);
-    if (typeof result === 'string' || result === null) {
-      this.snackbar.show('Could not retry provisioning');
-
-      return;
+  protected openRepository(): void {
+    if (this.cloneUrl() !== '') {
+      window.open(this.cloneUrl(), '_blank', 'noopener');
     }
-    this.submission.set(result);
-    this.schedulePollIfProvisioning(result);
   }
 
-  protected async handleConfirmRead(): Promise<void> {
-    this.working.set(true);
-    const result = await this.service.confirmFeedbackRead(Number(this.id()));
-    this.working.set(false);
-    if (result !== 'ok') {
-      this.snackbar.show('Could not confirm the feedback');
-
-      return;
-    }
+  /** The feedback lives on the pull request in the repository, so that is where this leads. */
+  protected async viewFeedback(): Promise<void> {
+    this.openRepository();
+    await this.service.confirmFeedbackRead(Number(this.id()));
     await this.refreshSubmission();
   }
 
-  private async refreshSubmission(): Promise<void> {
-    const result = await this.service.getSubmission(Number(this.id()));
-    if (result === 'forbidden' || result === null) {
+  protected async copyBlock(text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+      this.copied.set(true);
+      setTimeout(() => this.copied.set(false), 2000);
+    } catch {
+      this.snackbar.show('Could not copy the commands');
+    }
+  }
+
+  protected toggleInstructions(): void {
+    this.instructionsOpen.update(open => !open);
+  }
+
+  private shorten(url: string): string {
+    const limit = 52;
+    if (url.length <= limit) {
+      return url;
+    }
+
+    return `${url.slice(0, 26)}…${url.slice(-20)}`;
+  }
+
+  private async loadCourseTitle(): Promise<void> {
+    const list = await this.service.listMine();
+    if (list === null) {
       return;
     }
-    this.submission.set(result);
-    this.schedulePollIfProvisioning(result);
-  }
-
-  private schedulePollIfProvisioning(submission: Submission): void {
-    this.clearPoll();
-    if (submission.status === SubmissionStatus.Provisioning) {
-      this.pollTimer = setTimeout(() => void this.refreshSubmission(), POLL_INTERVAL_MS);
+    const own = [...list.accepted, ...list.unaccepted].find(entry => entry.id === Number(this.id()));
+    if (own === undefined) {
+      return;
     }
+    this.courseTitle.set(own.courseTitle);
+    this.description.set(own.description ?? '');
+    this.lastPushAt.set(own.lastPushAt?.toEpochMilli() ?? null);
   }
 
-  private clearPoll(): void {
-    if (this.pollTimer !== null) {
-      clearTimeout(this.pollTimer);
-      this.pollTimer = null;
+  private async refreshSubmission(): Promise<void> {
+    const submission = await this.service.getSubmission(Number(this.id()));
+    if (submission !== 'forbidden' && submission !== null) {
+      this.submission.set(submission);
     }
   }
 }

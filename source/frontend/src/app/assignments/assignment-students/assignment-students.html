@@ -1,93 +1,151 @@
-<div class="page-content">
-  <div class="header">
-    <a class="back-link back-link--aside" [routerLink]="backRoute" aria-label="Back to course"
-       title="Back to course">
-      <mat-icon>arrow_back</mat-icon>
-      <span class="back-link__label">Back to course</span>
-    </a>
-
-    <h1>Submissions</h1>
-    <span class="header-actions">
-      <button mat-stroked-button (click)="handleDownloadAllClicked()">Download all</button>
-      <button mat-stroked-button (click)="handleEditClicked()">Edit assignment</button>
-    </span>
-  </div>
-
-  <div class="share">
-    <span class="share__label">Student link</span>
-    <input class="share__url" readonly [value]="studentUrl()" aria-label="Link to send to students"
-           (focus)="$any($event.target).select()">
-    <button mat-stroked-button (click)="copyLink()">Copy link</button>
-  </div>
-
+<div class="page">
   @if (loading()) {
-    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+    <mat-progress-bar mode="indeterminate" />
   }
 
-  <table mat-table [dataSource]="students()" class="students-table">
-    <ng-container matColumnDef="student">
-      <th mat-header-cell *matHeaderCellDef>Student</th>
-      <td mat-cell *matCellDef="let s">{{ s.lastName }} {{ s.firstName }} ({{ s.studentNumber }})</td>
-    </ng-container>
+  <header class="head">
+    <div class="head__text">
+      <h1>{{ title() }}</h1>
+      @if (courseTitle(); as course) {
+        <p class="head__course">{{ course }}</p>
+      }
+    </div>
 
-    <ng-container matColumnDef="status">
-      <th mat-header-cell *matHeaderCellDef>Status</th>
-      <td mat-cell *matCellDef="let s">{{ s.status }}</td>
-    </ng-container>
+    <div class="head__actions">
+      <button type="button" class="btn btn--secondary" (click)="copyLink()">
+        <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'link' }}</mat-icon>
+        {{ copied() ? 'Copied' : 'Copy student link' }}
+      </button>
 
-    <ng-container matColumnDef="late">
-      <th mat-header-cell *matHeaderCellDef>Late</th>
-      <td mat-cell *matCellDef="let s">
-        @if (s.late) {
-          <span class="late-badge" [title]="s.lateSince ? s.lateSince.toString() : ''">Late</span>
-        } @else {
-          —
-        }
-      </td>
-    </ng-container>
+      <button type="button" class="btn btn--icon" [matMenuTriggerFor]="moreMenu" aria-label="More actions">
+        <mat-icon aria-hidden="true">more_horiz</mat-icon>
+      </button>
+      <mat-menu #moreMenu="matMenu">
+        <button type="button" mat-menu-item (click)="handleDownloadAllClicked()">Download all</button>
+        <button type="button" mat-menu-item (click)="handleEditClicked()">Edit assignment</button>
+      </mat-menu>
+    </div>
+  </header>
 
-    <ng-container matColumnDef="lastCommit">
-      <th mat-header-cell *matHeaderCellDef>Last commit</th>
-      <td mat-cell *matCellDef="let s">{{ s.lastCommitAt ? s.lastCommitAt.toString() : '—' }}</td>
-    </ng-container>
+  @if (deadline(); as due) {
+    <section class="deadline-panel">
+      <app-deadline-timeline [deadline]="due" [kind]="deadlineKind()" />
+    </section>
+  }
 
-    <ng-container matColumnDef="feedback">
-      <th mat-header-cell *matHeaderCellDef>Feedback</th>
-      <td mat-cell *matCellDef="let s">
-        @switch (s.feedbackState) {
-          @case (FeedbackState.Unread) { <span>Sent (unread)</span> }
-          @case (FeedbackState.Read) {
-            <span>Read{{ s.feedbackReadAt ? ' · ' + s.feedbackReadAt.toString() : '' }}</span>
+  @if (nothingAccepted()) {
+    <section class="empty">
+      <mat-icon aria-hidden="true">group_off</mat-icon>
+      <p class="empty__text">No one has accepted yet</p>
+      <button type="button" class="btn btn--primary" (click)="copyLink()">
+        <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'link' }}</mat-icon>
+        {{ copied() ? 'Copied' : 'Copy student link' }}
+      </button>
+    </section>
+  } @else {
+    <p class="summary">
+      <span class="summary__count">{{ acceptedCount() }} of {{ totalCount() }}</span>
+      <span class="summary__label">accepted</span>
+      <span class="summary__dot" aria-hidden="true">·</span>
+      <span class="summary__review">{{ toReviewCount() }} to review</span>
+      @if (lateCount() > 0) {
+        <span class="summary__dot" aria-hidden="true">·</span>
+        <span class="summary__late">{{ lateCount() }} late</span>
+      }
+    </p>
+
+    <ul class="rows">
+      @for (row of acceptedRows(); track row.studentId) {
+        <li class="row">
+          <span class="row__avatar" aria-hidden="true">{{ row.initials }}</span>
+
+          <span class="row__text">
+            <span class="row__name">{{ row.name }}</span>
+            <span class="row__meta" [title]="row.pushedTitle">
+              @if (row.commits !== null) {
+                {{ row.commits }} {{ row.commits === 1 ? 'commit' : 'commits' }} ·
+              }
+              {{ row.pushedLabel }}
+            </span>
+          </span>
+
+          @if (row.badge; as badge) {
+            <span class="pill" [class]="'pill pill--' + badge.tone">
+              @if (badge.icon) {
+                <mat-icon aria-hidden="true">{{ badge.icon }}</mat-icon>
+              }
+              {{ badge.label }}
+            </span>
           }
-          @default { — }
-        }
-      </td>
-    </ng-container>
 
-    <ng-container matColumnDef="repo">
-      <th mat-header-cell *matHeaderCellDef>Repository</th>
-      <td mat-cell *matCellDef="let s">
-        @if (s.repoUrl) {
-          <a [href]="s.repoUrl" target="_blank" rel="noopener">Open</a>
+          @if (row.action; as action) {
+            <button type="button" class="btn btn--primary row__action" (click)="runAction(row)">
+              {{ action.label }}
+            </button>
+          }
+
+          <button type="button" class="btn btn--icon" [matMenuTriggerFor]="rowMenu"
+                  [attr.aria-label]="'More actions for ' + row.name">
+            <mat-icon aria-hidden="true">more_horiz</mat-icon>
+          </button>
+          <mat-menu #rowMenu="matMenu">
+            <button type="button" mat-menu-item [disabled]="row.repoUrl === null" (click)="openRepository(row)">
+              Open repository
+            </button>
+            <button type="button" mat-menu-item [disabled]="row.acceptanceId === null" (click)="viewAnalytics(row)">
+              Analytics
+            </button>
+          </mat-menu>
+        </li>
+      }
+    </ul>
+
+    <section class="pending">
+      @if (everyoneAccepted()) {
+        <p class="pending__done">Everyone has accepted the homework.</p>
+      } @else {
+        <button type="button" class="pending__toggle" (click)="togglePending()"
+                [attr.aria-expanded]="pendingOpen()">
+          <mat-icon aria-hidden="true">{{ pendingOpen() ? 'expand_more' : 'chevron_right' }}</mat-icon>
+
+          <span class="pending__stack" aria-hidden="true">
+            @for (row of pendingPreview(); track row.studentId) {
+              <span class="pending__avatar">{{ row.initials }}</span>
+            }
+            @if (pendingMore() > 0) {
+              <span class="pending__more">+{{ pendingMore() }}</span>
+            }
+          </span>
+
+          <span class="pending__text">{{ pendingRows().length }} haven't accepted yet</span>
+        </button>
+
+        @if (isHard() && deadlinePassed()) {
+          <span class="chip chip--danger">
+            <mat-icon aria-hidden="true">lock</mat-icon>
+            Locked
+          </span>
         } @else {
-          —
+          <button type="button" class="btn btn--secondary" (click)="remindAll()">Remind all</button>
         }
-      </td>
-    </ng-container>
 
-    <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef>Actions</th>
-      <td mat-cell *matCellDef="let s">
-        <button mat-stroked-button (click)="openFeedbackPr(s)">Feedback PR</button>
-        <button mat-stroked-button (click)="viewAnalytics(s)">Analytics</button>
-      </td>
-    </ng-container>
+        @if (pendingOpen()) {
+          <ul class="rows rows--pending">
+            @for (row of pendingRows(); track row.studentId) {
+              <li class="row">
+                <span class="row__avatar" aria-hidden="true">{{ row.initials }}</span>
 
-    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-    <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-  </table>
-
-  @if (!loading() && students().length === 0) {
-    <p class="empty">No acceptances yet.</p>
+                <span class="row__text">
+                  <span class="row__name">{{ row.name }}</span>
+                  @if (row.studentNumber; as number) {
+                    <span class="row__meta">{{ number }}</span>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      }
+    </section>
   }
 </div>

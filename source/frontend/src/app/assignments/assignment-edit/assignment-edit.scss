@@ -235,27 +235,6 @@
   gap: var(--space-2);
 }
 
-.chip {
-  background-color: var(--color-bg-input);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-pill);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font: inherit;
-  font-size: var(--font-size-sm);
-  padding: var(--space-1) var(--space-3);
-
-  &:hover {
-    border-color: var(--color-input-border);
-    color: var(--color-text);
-  }
-
-  &:focus-visible {
-    outline: 0.125rem solid var(--color-accent);
-    outline-offset: 0.125rem;
-  }
-}
-
 // The two starter cards.
 .starter-grid {
   display: grid;
@@ -402,3 +381,76 @@
     background-color: var(--color-danger-strong);
   }
 }
+
+// The deadline kind is a choice between three behaviours, so each option shows the shape it
+// produces: nothing, a bar that keeps running, or a bar that stops dead.
+.deadline-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: var(--space-3);
+}
+
+.deadline-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-card);
+  background-color: var(--color-bg-input);
+  color: var(--color-text-muted);
+  text-align: start;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--color-input-border);
+    background-color: var(--color-bg-hover);
+  }
+
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
+  }
+
+  &.is-active {
+    border-color: var(--color-accent);
+    background-color: color-mix(in srgb, var(--color-accent) 14%, var(--color-bg-surface));
+    color: var(--color-text);
+  }
+
+  /* A forked repository cannot work with a hard deadline, so that choice is closed. */
+  &.is-disabled,
+  &:disabled {
+    border-style: dashed;
+    border-color: var(--color-border);
+    background-color: var(--color-bg-body);
+    color: var(--color-text-subtle);
+    cursor: not-allowed;
+
+    &:hover {
+      border-color: var(--color-border);
+      background-color: var(--color-bg-body);
+    }
+  }
+}
+
+.deadline-card__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 600;
+  color: var(--color-text-strong);
+}
+
+.deadline-card__title mat-icon {
+  font-size: 1.125rem;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  color: var(--color-text-subtle);
+}
+
+.deadline-card__text {
+  font-size: var(--font-size-sm);
+}
+

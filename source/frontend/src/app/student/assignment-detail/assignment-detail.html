@@ -1,59 +1,129 @@
-@if (loading()) {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-}
-
-@if (info(); as info) {
-  <h1>{{ info.title }}</h1>
-
-  @if (info.deadline) {
-    <p class="deadline">Deadline ({{ info.deadlineKind }}): {{ info.deadline.toString() }}</p>
+<div class="page">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
   }
 
-  <mat-card class="section">
-    <mat-card-title>Instructions</mat-card-title>
-    <mat-card-content>
-      <app-markdown-view [source]="info.hintsInstructions"></app-markdown-view>
-    </mat-card-content>
-  </mat-card>
+  <header class="head">
+    @if (courseTitle(); as course) {
+      <p class="head__course">{{ course }}</p>
+    }
+    <h1>{{ title() }}</h1>
+    @if (description(); as text) {
+      <p class="head__description">{{ text }}</p>
+    }
+  </header>
 
-  @if (submission(); as submission) {
-    <mat-card class="section">
-      <mat-card-title>Your submission</mat-card-title>
-      <mat-card-content>
-        <p>Status: {{ submission.status }}</p>
+  @if (deadline(); as due) {
+    <app-deadline-timeline [deadline]="due" [kind]="deadlineKind()" />
+  }
 
-        @if (submission.late) {
-          <p class="late">
-            This submission is marked late{{ submission.lateSince ? ' since ' + submission.lateSince.toString() : '' }}.
-          </p>
-        }
-
-        @if (submission.feedbackState === FeedbackState.Unread) {
-          <div class="feedback-banner">
-            <span>Your teacher left feedback on your repository.</span>
-            <button mat-flat-button color="primary" [disabled]="working()" (click)="handleConfirmRead()">
-              I have read the feedback
+  @switch (step()) {
+    @case ('accept') {
+      <section class="next">
+        <div class="next__row">
+          @if (locked()) {
+            <span class="chip chip--danger">
+              <mat-icon aria-hidden="true">lock</mat-icon>
+              Closed
+            </span>
+          } @else {
+            <button type="button" mat-flat-button color="primary" (click)="handleAccept()"
+                    [disabled]="working()">
+              {{ working() ? 'Accepting…' : 'Accept assignment' }}
             </button>
-          </div>
+          }
+        </div>
+        @if (failed()) {
+          <p class="next__error" role="alert">Couldn't create your repository. Try again.</p>
         }
-        @if (submission.feedbackState === FeedbackState.Read) {
-          <p class="hint">Feedback read{{ submission.feedbackReadAt ? ' on ' + submission.feedbackReadAt.toString() : '' }}.</p>
-        }
+      </section>
+    }
 
-        @if (submission.status === SubmissionStatus.Provisioning) {
-          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-          <p class="hint">Preparing your repository…</p>
-        }
-        @if (submission.status === SubmissionStatus.Ready && submission.repoUrl) {
-          <p>Clone URL: <a [href]="submission.repoUrl" target="_blank" rel="noopener"><code>{{ submission.repoUrl }}</code></a></p>
-        }
-        @if (submission.status === SubmissionStatus.Failed) {
-          <p class="failed">Provisioning failed.</p>
-          <button mat-flat-button color="primary" [disabled]="working()" (click)="handleRetry()">Retry</button>
-        }
-      </mat-card-content>
-    </mat-card>
-  } @else {
-    <button mat-flat-button color="primary" [disabled]="working()" (click)="handleAccept()">Accept assignment</button>
+    @case ('clone') {
+      <section class="next">
+        <p class="next__label">Next: clone your repository</p>
+
+        <div class="code" [class.code--dim]="locked()">
+          <code class="code__text">{{ cloneDisplay() }}</code>
+          <button type="button" class="code__copy" (click)="copyBlock(cloneCommands())"
+                  [attr.aria-label]="copied() ? 'Copied' : 'Copy clone commands'">
+            <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
+          </button>
+        </div>
+
+        <div class="next__row">
+          @if (locked()) {
+            <span class="chip chip--danger">
+              <mat-icon aria-hidden="true">lock</mat-icon>
+              Closed
+            </span>
+          } @else {
+            <button type="button" mat-flat-button color="primary" (click)="openRepository()">
+              Open repository
+            </button>
+          }
+          <span class="next__hint">Then push to main when you're done</span>
+        </div>
+      </section>
+    }
+
+    @case ('push') {
+      <section class="next">
+        <p class="next__label">Next: push your work</p>
+
+        <div class="code" [class.code--dim]="locked()">
+          <code class="code__text">{{ pushCommands }}</code>
+          <button type="button" class="code__copy" (click)="copyBlock(pushCommands)"
+                  [attr.aria-label]="copied() ? 'Copied' : 'Copy push commands'">
+            <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
+          </button>
+        </div>
+
+        <div class="next__row">
+          @if (locked()) {
+            <span class="chip chip--danger">
+              <mat-icon aria-hidden="true">lock</mat-icon>
+              Closed
+            </span>
+          } @else {
+            <button type="button" mat-flat-button color="primary" (click)="openRepository()">
+              Open repository
+            </button>
+          }
+          <span class="next__hint">
+            @if (pushedLate()) {
+              <mat-icon class="next__late" aria-label="Pushed after the deadline">hourglass_bottom</mat-icon>
+            }
+            {{ pushLabel() }}
+          </span>
+        </div>
+      </section>
+    }
+
+    @case ('feedback') {
+      <section class="next">
+        <p class="next__label">Feedback is ready</p>
+
+        <div class="next__row">
+          <button type="button" mat-flat-button color="primary" (click)="viewFeedback()">
+            View feedback
+          </button>
+        </div>
+      </section>
+    }
   }
-}
+
+  @if (info()?.hintsInstructions; as instructions) {
+    <section class="instructions">
+      <button type="button" class="instructions__toggle" (click)="toggleInstructions()"
+              [attr.aria-expanded]="instructionsOpen()">
+        <mat-icon aria-hidden="true">{{ instructionsOpen() ? 'expand_more' : 'chevron_right' }}</mat-icon>
+        Hints
+      </button>
+
+      @if (instructionsOpen()) {
+        <app-markdown-view class="instructions__body" [source]="instructions" />
+      }
+    </section>
+  }
+</div>

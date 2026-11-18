@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { Duration, Instant, LocalDateTime, ZoneId } from '@js-joda/core';
 import { MatIcon } from '@angular/material/icon';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatProgressBar } from '@angular/material/progress-bar';
@@ -39,7 +40,7 @@ export class AssignmentEdit implements OnInit {
   protected readonly StarterSourceKind = StarterSourceKind;
   protected readonly DownloadSnapshotMode = DownloadSnapshotMode;
   protected readonly maxTitleLength = MAX_TITLE_LENGTH;
-  protected readonly steps = ['Basics', 'Deadline', 'Starter', 'Lifecycle'];
+  protected readonly steps = ['Basics', 'Starter', 'Deadline', 'Lifecycle'];
 
   protected readonly loading: WritableSignal<boolean> = signal(false);
   protected readonly saving: WritableSignal<boolean> = signal(false);
@@ -67,8 +68,32 @@ export class AssignmentEdit implements OnInit {
 
   protected readonly isEditMode = computed(() => this.id() !== undefined);
   protected readonly isCopyRepo = computed(() => this.starterSource() === StarterSourceKind.CopyRepo);
-  protected readonly hasDeadline = computed(() => this.deadlineKind() !== DeadlineKind.None);
+  protected readonly isForkRepo = computed(() => this.starterSource() === StarterSourceKind.ForkOwnRepo);
 
+  /** Both starter kinds that point at an existing repository need its address. */
+  protected readonly needsRepoUrl = computed(() => this.isCopyRepo() || this.isForkRepo());
+
+  /**
+   * A hard deadline closes the repository, so a fork that keeps receiving pushes from the
+   * student cannot work with one. The backend rejects that combination; the form prevents it.
+   */
+  protected readonly forkBlocksHardDeadline = this.isForkRepo;
+  protected readonly hasDeadline = computed(() => this.deadlineKind() !== DeadlineKind.None);
+  /** The picked date and time as an instant; null while either field is still empty. */
+  protected readonly deadline = computed<Instant | null>(() => {
+    const date = this.deadlineDate();
+    const time = this.deadlineTime();
+    if (date === '' || time === '') {
+      return null;
+    }
+    try {
+      return LocalDateTime.parse(`${date}T${time}:00`)
+                          .atZone(ZoneId.systemDefault())
+                          .toInstant();
+    } catch {
+      return null;
+    }
+  });
   // ---- validation, recomputed on every change ----
 
   protected readonly titleError = computed<string | null>(() => {
@@ -114,7 +139,7 @@ export class AssignmentEdit implements OnInit {
   });
 
   protected readonly repoError = computed<string | null>(() => {
-    if (!this.isCopyRepo()) {
+    if (!this.needsRepoUrl()) {
       return null;
     }
 
@@ -160,7 +185,7 @@ export class AssignmentEdit implements OnInit {
     const done = [
       this.titleError() === null,
       !this.hasDeadline() || this.deadlineError() === null,
-      !this.isCopyRepo() || this.repoError() === null,
+      !this.needsRepoUrl() || this.repoError() === null,
       true
     ].filter(Boolean).length;
 
@@ -179,8 +204,21 @@ export class AssignmentEdit implements OnInit {
     return `${this.messageDate(new Date(`${this.deadlineDate()}T00:00:00`))}, ${this.deadlineTime()}`;
   });
 
-  protected readonly starterSummary = computed(() =>
-    this.isCopyRepo() ? 'Copy repository' : 'Description only');
+  protected readonly starterSummary = computed(() => {
+    if (this.isForkRepo()) {
+      return 'Fork own repository';
+    }
+
+    return this.isCopyRepo() ? 'Copy repository' : 'Description only';
+  });
+
+  /** Picking a fork drops a hard deadline, because that pairing is not allowed. */
+  protected setStarterSource(kind: StarterSourceKind): void {
+    this.starterSource.set(kind);
+    if (kind === StarterSourceKind.ForkOwnRepo && this.deadlineKind() === DeadlineKind.Hard) {
+      this.setDeadlineKind(DeadlineKind.Soft);
+    }
+  }
 
   // ---- the page ----
 
@@ -224,10 +262,10 @@ export class AssignmentEdit implements OnInit {
       return this.titleError() === null;
     }
     if (step === 1) {
-      return this.deadlineError() === null;
+      return this.repoError() === null;
     }
     if (step === 2) {
-      return this.repoError() === null;
+      return this.deadlineError() === null;
     }
 
     return false;
@@ -276,7 +314,7 @@ export class AssignmentEdit implements OnInit {
     const issues = this.issues();
     if (issues.length > 0) {
       const first = issues[0];
-      this.step.set(first.field === 'title' ? 0 : first.field === 'url' ? 2 : 1);
+      this.step.set(first.field === 'title' ? 0 : first.field === 'url' ? 1 : 2);
       setTimeout(() => {
         const element = document.getElementById(`field-${first.field}`);
         element?.scrollIntoView({ block: 'center' });
@@ -316,7 +354,7 @@ export class AssignmentEdit implements OnInit {
       deadlineKind: this.deadlineKind(),
       hardDeadlineRevokesRead: this.hardRevokesRead(),
       starterSourceKind: this.starterSource(),
-      starterRepoUrl: this.isCopyRepo() ? this.emptyToNull(this.starterRepoUrl()) : null,
+      starterRepoUrl: this.needsRepoUrl() ? this.emptyToNull(this.starterRepoUrl()) : null,
       readmeMarkdown: this.isCopyRepo() ? this.emptyToNull(this.readme()) : null,
       autoDeleteEnabled: this.autoDeleteEnabled(),
       autoDeleteOn: this.emptyToNull(this.autoDeleteOn()),

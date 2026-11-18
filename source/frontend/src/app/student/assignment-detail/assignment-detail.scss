@@ -1,38 +1,187 @@
-.section {
-  margin-block: var(--space-5);
+:host {
+  display: block;
 }
 
-.deadline {
-  color: var(--color-text-muted);
-}
-
-.hint {
-  color: var(--color-text-muted);
-}
-
-.failed {
-  color: var(--color-danger-text);
-}
-
-.late {
-  color: var(--color-danger-text);
-}
-
-.feedback-banner {
+.page {
+  inline-size: 100%;
+  max-inline-size: 42rem;
+  margin-inline: auto;
+  padding-block: var(--space-5);
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-4);
+}
+
+.head__description {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.head__course {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.25rem, 2vw + 0.5rem, 1.6rem);
+  font-weight: 600;
+  color: var(--color-text-strong);
+  overflow-wrap: anywhere;
+}
+
+/* the one next step */
+.next {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-border);
+}
+
+.next__label {
+  margin: 0;
+  color: var(--color-text-strong);
+}
+
+.next__row {
+  display: flex;
   flex-wrap: wrap;
-  padding: var(--space-3) var(--space-4);
-  margin-block: var(--space-3);
+  gap: var(--space-3);
+  align-items: center;
+}
+
+/* the danger marker that replaces the primary action once a hard deadline has passed */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.125rem var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+}
+
+.chip--danger {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.chip mat-icon {
+  font-size: 1em;
+  inline-size: 1em;
+  block-size: 1em;
+}
+
+/* the hourglass next to a push that landed after the deadline */
+.next__late {
+  font-size: 1em;
+  inline-size: 1em;
+  block-size: 1em;
+  color: var(--color-warning-text);
+  vertical-align: -0.125em;
+  margin-inline-end: 0.25em;
+}
+
+.next__hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.next__error {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-danger-strong);
+}
+
+/* code block with its own copy button */
+.code {
+  position: relative;
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-3);
+  padding-inline-end: 2.5rem;
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
-  background-color: var(--color-bg-surface);
+  background-color: var(--color-bg-code);
 }
 
-code {
+.code--dim {
+  opacity: 0.55;
+}
+
+.code__text {
+  flex: 1 1 auto;
+  min-inline-size: 0;
   font-family: var(--font-family-mono);
-  background-color: var(--color-bg-code);
-  padding: var(--space-1);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.code__copy {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.code__copy:hover {
+  color: var(--color-text-strong);
+}
+
+.code__copy:focus-visible {
+  outline: 0.125rem solid var(--color-accent);
+  outline-offset: 0.125rem;
   border-radius: var(--radius);
+}
+
+.code__copy mat-icon {
+  font-size: 1.25rem;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+}
+
+/* instructions */
+.instructions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block-start: var(--space-3);
+  border-block-start: var(--border-width) solid var(--color-border);
+}
+
+.instructions__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-strong);
+  font: inherit;
+}
+
+.instructions__toggle mat-icon {
+  font-size: 1.125rem;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+}
+
+.instructions__body {
+  display: block;
 }

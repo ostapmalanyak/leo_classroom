@@ -8,7 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { forgejoOrigin } from '../../../core/auth/auth-config';
 import { Role } from '../../../core/auth/roles';
 import { SessionService } from '../../../core/auth/session-service';
-import { Assignment, AssignmentService } from '../../../core/services/assignment-service';
+import { Assignment, AssignmentService, FeedbackState } from '../../../core/services/assignment-service';
 import { CourseService } from '../../../core/services/course-service';
 import { NowService } from '../../../core/services/now-service';
 import { relativeDue } from '../../../core/util/assignment-state';
@@ -73,14 +73,11 @@ export class TeacherDashboard implements OnInit {
   protected readonly forgejoUrl = forgejoOrigin();
 
   /**
-   * The assignments that closed in the last week. A teacher has to look at those - the
-   * submissions have to be marked - while a deadline that is older than that is history.
+   * The assignments that closed in the last week and still hold work nobody has reviewed.
+   * Reviewing clears the flag, so a closed assignment leaves this count by itself.
    */
-  protected readonly recentlyMissed: Signal<number> = computed(() => {
-    const week = this.clock.now().minus(7, ChronoUnit.DAYS);
-
-    return this.pastDue().filter(entry => entry.deadline.isAfter(week)).length;
-  });
+  private readonly toReview = signal(0);
+  protected readonly recentlyMissed: Signal<number> = this.toReview.asReadonly();
 
   /** The past due assignments on the page; the rest waits behind the button. */
   protected readonly visiblePastDue = computed(() => this.pastDue().slice(0, this.pastDueLimit()));
@@ -186,6 +183,8 @@ export class TeacherDashboard implements OnInit {
     missed.sort((left, right) => right.deadline.compareTo(left.deadline));
     this.pastDue.set(missed);
 
+    void this.loadToReview(missed);
+
     this.activeCount.set(open.length);
     this.closingIn24h.set(open.filter(entry => entry.assignment.deadline !== null
       && now.until(entry.assignment.deadline, ChronoUnit.MINUTES) <= 24 * 60).length);
@@ -216,6 +215,24 @@ export class TeacherDashboard implements OnInit {
   }
 
   /** Fills the numbers of the past due assignments that are on the page. */
+  /** An assignment needs review while at least one student has pushed and nothing was reviewed yet. */
+  private async loadToReview(closed: TeacherPastDue[]): Promise<void> {
+    const week = this.clock.now().minus(7, ChronoUnit.DAYS);
+    const recent = closed.filter(entry => entry.deadline.isAfter(week));
+
+    const waiting = await Promise.all(recent.map(async entry => {
+      const submissions = await this.assignmentService.getStudents(entry.id);
+      if (submissions === null) {
+        return false;
+      }
+
+      return submissions.some(submission =>
+        submission.feedbackState === FeedbackState.None && submission.lastPushAt !== null);
+    }));
+
+    this.toReview.set(waiting.filter(Boolean).length);
+  }
+
   private async loadPastDueCounts(): Promise<void> {
     const counts = new Map(this.pastDueCounts());
     for (const entry of this.visiblePastDue()) {
