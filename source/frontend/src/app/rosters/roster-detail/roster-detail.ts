@@ -1,16 +1,16 @@
 import { Component, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
-import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
-import { MatFormField, MatHint, MatLabel } from '@angular/material/form-field';
+import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
-import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressBar } from '@angular/material/progress-bar';
-import { MatListModule } from '@angular/material/list';
+import { MatDialog } from '@angular/material/dialog';
 import { RosterKind, RosterOverview, RosterService } from '../../../core/services/roster-service';
 import { UserRole, UserService, UserSummary } from '../../../core/services/user-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
+import { DeleteRosterDialog } from '../delete-roster-dialog/delete-roster-dialog';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const MIN_SEARCH_LENGTH = 2;
@@ -19,18 +19,12 @@ const MIN_SEARCH_LENGTH = 2;
   selector: 'app-roster-detail',
   imports: [
     FormsModule,
-    MatCard,
-    MatCardContent,
-    MatCardTitle,
+    RouterLink,
     MatFormField,
-    MatHint,
     MatLabel,
     MatInput,
-    MatButton,
-    MatIconButton,
     MatIcon,
-    MatProgressBar,
-    MatListModule
+    MatProgressBar
   ],
   templateUrl: './roster-detail.html',
   styleUrl: './roster-detail.scss'
@@ -40,6 +34,7 @@ export class RosterDetail implements OnInit {
   private readonly userService = inject(UserService);
   private readonly snackbar = inject(SnackbarService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
 
   public readonly id: InputSignal<string> = input.required<string>();
 
@@ -81,6 +76,22 @@ export class RosterDetail implements OnInit {
     this.members.set(members);
   }
 
+  /** The initials of a student, for the small avatar in the lists. */
+  protected initials(user: UserSummary): string {
+    const first = user.firstName?.trim() ?? '';
+    const last = user.lastName?.trim() ?? '';
+    const letters = `${first.charAt(0)}${last.charAt(0)}`;
+
+    return letters.trim() === '' ? '?' : letters.toUpperCase();
+  }
+
+  /** The name of a student; the school id stands in when the name is not known. */
+  protected displayName(user: UserSummary): string {
+    const name = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
+
+    return name === '' ? user.studentId : name;
+  }
+
   protected isEditable(): boolean {
     return this.roster()?.kind === RosterKind.Custom;
   }
@@ -112,6 +123,19 @@ export class RosterDetail implements OnInit {
   protected async handleDeleteClicked(): Promise<void> {
     const current = this.roster();
     if (current === null) {
+      return;
+    }
+
+    // A roster cannot be undone, so the question is asked before it is gone.
+    const confirmed = this.dialog.open(DeleteRosterDialog, {
+      width: '24rem',
+      maxWidth: '92%',
+      ariaLabelledBy: 'delete-roster-title',
+      ariaModal: true,
+      data: { name: current.name }
+    });
+    const answer = await firstValueFrom(confirmed.afterClosed());
+    if (answer !== 'delete') {
       return;
     }
 

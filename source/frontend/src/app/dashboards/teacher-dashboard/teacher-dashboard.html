@@ -12,8 +12,8 @@
                          [route]="['/my-courses']" [primary]="true" />
         <app-action-card icon="assignment" label="Create assignment" description="Give students a new task"
                          (picked)="openChooseCourse()" />
-        <app-action-card icon="groups" label="Rosters" description="See your class lists"
-                         [route]="['/rosters']" />
+        <app-action-card icon="groups" label="My Rosters" description="Your class lists"
+                         (picked)="openMyRosters()" />
         <app-action-card icon="terminal" label="Teacher CLI" description="Download the command line tool"
                          [route]="['/cli']" />
       </div>

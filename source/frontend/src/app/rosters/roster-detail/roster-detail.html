@@ -3,73 +3,120 @@
 }
 
 @if (roster(); as roster) {
-  <h1>{{ roster.name }}</h1>
+  <a class="roster-back" routerLink="/rosters">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    <span>Rosters</span>
+  </a>
+
+  <header class="roster-head">
+    <span class="roster-head__icon" aria-hidden="true">
+      <mat-icon>groups</mat-icon>
+    </span>
+    <div class="roster-head__text">
+      <h1>{{ roster.name }}</h1>
+      <p class="roster-head__sub">Roster · {{ members().length }} students</p>
+    </div>
+  </header>
 
   @if (!isEditable()) {
-    <p class="auto-note">This roster is synced automatically and cannot be edited.</p>
-  } @else {
-    <mat-card class="section">
-      <mat-card-title>Rename</mat-card-title>
-      <mat-card-content>
-        <mat-form-field>
-          <mat-label>Name</mat-label>
-          <input matInput [ngModel]="name()" (ngModelChange)="name.set($event)">
-        </mat-form-field>
-        <button mat-flat-button color="primary" [disabled]="saving()" (click)="handleRenameClicked()">Save</button>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="section">
-      <mat-card-content>
-        <mat-form-field class="search-field">
-          <mat-label>Add a student</mat-label>
-          <input matInput placeholder="Name or username" [ngModel]="searchTerm()"
-                 (ngModelChange)="handleSearchChange($event)">
-          <mat-hint>Search everyone the school has, then add them to this roster</mat-hint>
-        </mat-form-field>
-        @if (searching()) {
-          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-        }
-
-        @if (searchResults().length > 0) {
-          <mat-list class="search-results">
-            @for (user of searchResults(); track user.id) {
-              <mat-list-item>
-                <span matListItemTitle>{{ user.firstName }} {{ user.lastName }} ({{ user.studentId }})</span>
-                <span matListItemLine>{{ user.class }}</span>
-                <button mat-icon-button matListItemMeta (click)="handleAddMember(user)" title="Add">
-                  <mat-icon>add</mat-icon>
-                </button>
-              </mat-list-item>
-            }
-          </mat-list>
-        }
-      </mat-card-content>
-    </mat-card>
-
-    <button mat-stroked-button color="warn" (click)="handleDeleteClicked()">Delete roster</button>
+    <p class="roster-note">This roster is synced automatically and cannot be edited.</p>
   }
 
-  <mat-card class="section">
-    <mat-card-title>Members</mat-card-title>
-    <mat-card-content>
-      @if (members().length === 0) {
-        <p class="empty">No members yet.</p>
-      } @else {
-        <mat-list>
-          @for (user of members(); track user.id) {
-            <mat-list-item>
-              <span matListItemTitle>{{ user.firstName }} {{ user.lastName }} ({{ user.studentId }})</span>
-              <span matListItemLine>{{ user.role }}@if (user.class) { · {{ user.class }} }</span>
-              @if (isEditable()) {
-                <button mat-icon-button matListItemMeta (click)="handleRemoveMember(user)" title="Remove">
-                  <mat-icon>remove</mat-icon>
-                </button>
-              }
-            </mat-list-item>
-          }
-        </mat-list>
+  <div class="roster-grid">
+    <div class="roster-grid__main">
+      @if (isEditable()) {
+        <section class="card-surface roster-card">
+          <h2 class="roster-card__title">Add students</h2>
+
+          <div class="roster-search">
+            <mat-icon class="roster-search__icon" aria-hidden="true">search</mat-icon>
+            <input class="input roster-search__field" type="search" placeholder="Search students"
+                   aria-label="Search students" [value]="searchTerm()"
+                   (input)="handleSearchChange($any($event.target).value)">
+            @if (searching()) {
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            }
+
+            @if (searchResults().length > 0) {
+              <ul class="roster-results">
+                @for (user of searchResults(); track user.id) {
+                  <li>
+                    <button class="roster-result" type="button" (click)="handleAddMember(user)">
+                      <span class="roster-avatar" aria-hidden="true">{{ initials(user) }}</span>
+                      <span class="roster-result__text">
+                        <strong>{{ displayName(user) }}</strong>
+                        <span>{{ user.class ?? user.studentId }}</span>
+                      </span>
+                      <span class="roster-result__add">+ Add</span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+
+          <p class="roster-hint">Search everyone at the school, then add them to this roster.</p>
+        </section>
       }
-    </mat-card-content>
-  </mat-card>
+
+      <section class="card-surface roster-card">
+        <div class="roster-card__head">
+          <h2 class="roster-card__title">Members</h2>
+          <span class="roster-count">{{ members().length }}</span>
+        </div>
+
+        @if (members().length === 0) {
+          <div class="roster-empty">
+            <mat-icon aria-hidden="true">person_add</mat-icon>
+            <p class="roster-empty__title">Add your first student</p>
+            <p class="roster-empty__text">Search above to build this roster.</p>
+          </div>
+        } @else {
+          <ul class="roster-members">
+            @for (user of members(); track user.id) {
+              <li class="roster-member">
+                <span class="roster-avatar" aria-hidden="true">{{ initials(user) }}</span>
+                <span class="roster-member__text">
+                  <strong>{{ displayName(user) }}</strong>
+                  <span>{{ user.class ?? user.studentId }}</span>
+                </span>
+                @if (isEditable()) {
+                  <button class="roster-member__remove" type="button" (click)="handleRemoveMember(user)">
+                    Remove
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    </div>
+
+    @if (isEditable()) {
+      <aside class="roster-grid__side">
+        <section class="card-surface roster-card">
+          <h2 class="roster-card__title">Roster name</h2>
+
+          <mat-form-field class="roster-name-field">
+            <mat-label>Name</mat-label>
+            <input matInput [ngModel]="name()" (ngModelChange)="name.set($event)">
+          </mat-form-field>
+
+          <button class="btn btn--primary roster-save" type="button" [disabled]="saving()" (click)="handleRenameClicked()">
+            Save
+          </button>
+        </section>
+
+        <section class="card-surface roster-card roster-card--danger">
+          <h2 class="roster-card__title">Danger zone</h2>
+          <p class="roster-danger__text">Deleting a roster can't be undone.</p>
+
+          <button class="btn roster-delete" type="button" (click)="handleDeleteClicked()">
+            <mat-icon aria-hidden="true">delete</mat-icon>
+            <span>Delete roster</span>
+          </button>
+        </section>
+      </aside>
+    }
+  </div>
 }
