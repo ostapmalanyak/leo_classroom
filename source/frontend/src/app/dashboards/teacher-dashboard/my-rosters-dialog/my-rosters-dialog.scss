@@ -1,0 +1,120 @@
+// The popup is a card of the app: flat, one radius, no shadow.
+.rosters-dialog {
+  background-color: var(--color-bg-surface);
+  border-radius: var(--course-card-radius);
+  padding: var(--space-5);
+}
+
+.rosters-dialog__head {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  margin-block-end: var(--space-4);
+}
+
+.rosters-dialog__icon {
+  align-items: center;
+  background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-bg-surface));
+  border-radius: 50%;
+  color: var(--color-accent);
+  display: inline-flex;
+  flex: none;
+  height: 2.5rem;
+  justify-content: center;
+  width: 2.5rem;
+
+  mat-icon {
+    font-size: 1.375rem;
+    height: 1.375rem;
+    width: 1.375rem;
+  }
+}
+
+.rosters-dialog__text {
+  flex: 1 1 auto;
+  min-width: 0;
+
+  h2 {
+    color: var(--color-text-strong);
+    font-size: var(--font-size-h2);
+    margin: 0;
+  }
+
+  p {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    margin: 0.125rem 0 0;
+  }
+}
+
+.rosters-dialog__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+}
+
+.rosters-dialog__roster {
+  align-items: center;
+  background-color: var(--color-bg-input);
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--color-text);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: var(--space-3);
+  inline-size: 100%;
+  padding: var(--space-3);
+  text-align: start;
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--color-bg-hover);
+  }
+
+  mat-icon {
+    color: var(--color-text-subtle);
+    flex: none;
+  }
+}
+
+.rosters-dialog__name {
+  flex: 1 1 auto;
+  font-weight: var(--font-weight-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rosters-dialog__meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  flex: none;
+}
+
+.rosters-dialog__empty {
+  color: var(--color-text-muted);
+  padding: var(--space-3) 0;
+}
+
+.rosters-dialog__create {
+  border-block-start: var(--border-width) solid var(--color-border-subtle);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-block-start: var(--space-4);
+
+  .input {
+    flex: 1 1 8rem;
+    inline-size: auto;
+    min-width: 0;
+    width: auto;
+  }
+
+  .btn {
+    flex: none;
+  }
+}

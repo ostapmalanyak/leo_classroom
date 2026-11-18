@@ -1,0 +1,40 @@
+<div class="rosters-dialog">
+  <header class="rosters-dialog__head">
+    <span class="rosters-dialog__icon" aria-hidden="true">
+      <mat-icon>groups</mat-icon>
+    </span>
+    <div class="rosters-dialog__text">
+      <h2 id="my-rosters-title">My Rosters</h2>
+      <p>The class lists you created. Open one to add students.</p>
+    </div>
+    <button mat-icon-button type="button" aria-label="Close dialog" (click)="close()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  } @else {
+    <ul class="rosters-dialog__list">
+      @for (roster of rosters(); track roster.id) {
+        <li>
+          <button class="rosters-dialog__roster" type="button" (click)="open(roster)">
+            <span class="rosters-dialog__name">{{ roster.name }}</span>
+            <span class="rosters-dialog__meta">{{ roster.memberCount }} students</span>
+            <mat-icon aria-hidden="true">chevron_right</mat-icon>
+          </button>
+        </li>
+      } @empty {
+        <li class="rosters-dialog__empty">You have not created a roster yet.</li>
+      }
+    </ul>
+
+    <div class="rosters-dialog__create">
+      <input class="input" type="text" placeholder="Name of the new roster" aria-label="Name of the new roster"
+             [value]="name()" (input)="name.set($any($event.target).value)">
+      <button class="btn btn--primary" type="button" [disabled]="creating()" (click)="create()">
+        {{ creating() ? 'Creating…' : 'Create roster' }}
+      </button>
+    </div>
+  }
+</div>
