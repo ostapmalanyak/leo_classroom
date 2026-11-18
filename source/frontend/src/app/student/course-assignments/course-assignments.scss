@@ -41,7 +41,8 @@
   align-items: center;
   color: var(--color-text-muted);
   display: inline-flex;
-  gap: var(--space-1);
+  // The arrow needs room to breathe next to the words, and it sits on their line.
+  gap: var(--space-2);
   height: var(--control-height);
   left: 0;
   min-height: var(--control-height);
@@ -57,8 +58,13 @@
   }
 
   mat-icon {
-    height: 1.25rem;
-    width: 1.25rem;
+    align-items: center;
+    display: inline-flex;
+    font-size: 1.125rem;
+    height: 1.125rem;
+    justify-content: center;
+    line-height: 1;
+    width: 1.125rem;
   }
 }
 
