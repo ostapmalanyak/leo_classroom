@@ -26,7 +26,7 @@ public sealed record AssignmentUpdateRequest(
 
     public sealed class Validator : AbstractValidator<AssignmentUpdateRequest>
     {
-        public Validator() => AssignmentRules.Apply(this);
+        public Validator(IClock clock) => AssignmentRules.Apply(this, clock);
     }
 }
 
@@ -53,10 +53,10 @@ public sealed record AssignmentCreateRequest(
 
     public sealed class Validator : AbstractValidator<AssignmentCreateRequest>
     {
-        public Validator()
+        public Validator(IClock clock)
         {
             RuleFor(r => r.CourseId).GreaterThan(0);
-            AssignmentRules.Apply(this);
+            AssignmentRules.Apply(this, clock);
         }
     }
 }
@@ -65,7 +65,7 @@ internal static class AssignmentRules
 {
     private const int MaxTitleLength = 200;
 
-    public static void Apply<T>(AbstractValidator<T> validator) where T : IAssignmentFields
+    public static void Apply<T>(AbstractValidator<T> validator, IClock clock) where T : IAssignmentFields
     {
         validator.RuleFor(r => r.Title).NotEmpty().MaximumLength(MaxTitleLength);
         validator.RuleFor(r => r.Deadline)
@@ -75,7 +75,7 @@ internal static class AssignmentRules
         // The form refuses a date that has already passed; the API refuses it too, so no
         // client can create an assignment that is born expired.
         validator.RuleFor(r => r.Deadline)
-                 .GreaterThan(SystemClock.Instance.GetCurrentInstant())
+                 .GreaterThan(clock.GetCurrentInstant())
                  .When(r => r.DeadlineKind != DeadlineKind.None && r.Deadline != null)
                  .WithMessage("The deadline has passed. Pick a date in the future.");
         // a hidden assignment may wait for an explicit publish (no date), but a date must still lie ahead

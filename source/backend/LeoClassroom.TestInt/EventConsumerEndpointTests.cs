@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using LeoClassroom.Persistence.Model;
@@ -95,6 +96,72 @@ public sealed class EventConsumerEndpointTests(WebApiTestFixture fixture) : WebA
         stored.LateSince.Should().Be(TestClock.GetCurrentInstant());
         stored.Analytics.PushCount.Should().Be(1);
         stored.Analytics.CommitCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task TeacherPush_LeavesTheSubmissionUntouched()
+    {
+        const string payload =
+            """{"sender":{"login":"IF000001"},"after":"def456","commits":[{}],"repository":{"name":"algo-a1-IF000050","owner":{"login":"algo-5"}}}""";
+
+        var response = await ApiClient.SendAsync(WebhookRequest(payload, "push"), TestCancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        Acceptance? stored = null;
+        await ModifyDatabaseContentAsync(async ctx =>
+            stored = await ctx.Acceptances.AsNoTracking()
+                              .SingleAsync(a => a.Id == _acceptanceId, TestCancellationToken));
+
+        stored!.LastPushAt.Should().BeNull();
+        stored.Late.Should().BeFalse();
+        stored.Analytics.PushCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task CommitSummary_AsOwningTeacher_ListsEverySubmission()
+    {
+        AuthenticateAsTeacher(OwnerIf);
+
+        var response = await ApiClient.GetAsync($"api/assignments/{_assignmentId}/commit-summary",
+                                                TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        CommitSummaryView[] summary =
+            (await response.Content.ReadFromJsonAsync<CommitSummaryView[]>(JsonOptions, TestCancellationToken))!;
+        // the test Forgejo has no commits in any repository
+        summary.Should().ContainSingle().Which.Should().Be(new CommitSummaryView(_acceptanceId, 0, 0));
+    }
+
+    [Fact]
+    public async Task CommitSummary_AsNonAssignedTeacher_IsForbidden()
+    {
+        AuthenticateAsTeacher(OtherTeacherIf);
+
+        var response = await ApiClient.GetAsync($"api/assignments/{_assignmentId}/commit-summary",
+                                                TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task CommitSummary_AsStudent_IsForbidden()
+    {
+        AuthenticateAsStudent(StudentIf);
+
+        var response = await ApiClient.GetAsync($"api/assignments/{_assignmentId}/commit-summary",
+                                                TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task CommitSummary_UnknownAssignment_Returns404()
+    {
+        AuthenticateAsTeacher(OwnerIf);
+
+        var response = await ApiClient.GetAsync("api/assignments/9999/commit-summary", TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]

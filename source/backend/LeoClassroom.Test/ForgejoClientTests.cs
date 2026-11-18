@@ -304,6 +304,42 @@ public sealed class ForgejoClientTests
         identity.Login.Should().Be("leo-classroom-bot");
     }
 
+    [Fact]
+    public async Task UnreachableForgejo_IsAnErrorNotAnException()
+    {
+        // a refused connection must take the same ForgejoError path as a failed response, so the endpoint answers
+        // 502 instead of an unhandled 500, and the client never sees the host or socket detail
+        var transport = new ForgejoTransportHandler(Substitute.For<ILogger<ForgejoTransportHandler>>())
+        {
+            InnerHandler = new ThrowingHandler()
+        };
+        var http = new HttpClient(transport) { BaseAddress = new Uri("http://forgejo.test/") };
+        var client = new ForgejoClient(
+            http,
+            Options.Create(new ForgejoSettings
+            {
+                BaseUrl = "http://forgejo.test",
+                AdminToken = "admin-token",
+                WebhookSecret = "webhook-secret",
+                WebhookTargetUrl = "http://backend/webhook"
+            }),
+            Substitute.For<ILogger<ForgejoClient>>());
+
+        var result = await client.GetUserAsync("IF000001");
+
+        ForgejoError error = result.ShouldBe<ForgejoError>();
+        error.StatusCode.Should().Be(502);
+        error.Reason.Should().Contain(ForgejoTransportHandler.UnreachableReason)
+             .And.NotContain("forgejo.test");
+    }
+
+    private sealed class ThrowingHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+                                                               CancellationToken cancellationToken) =>
+            throw new HttpRequestException("No such host is known. (forgejo.test:80)");
+    }
+
     private sealed class StubHandler(
         List<HttpRequestMessage> requests,
         List<string?> requestBodies,

@@ -67,6 +67,7 @@
 
 .navbar-link {
   align-items: center;
+
   // The underline is the marker of the current page, not a decoration of the text.
   border-bottom: 0.125rem solid transparent;
   color: var(--color-text-muted);
@@ -97,6 +98,7 @@
   align-items: center;
   display: flex;
   flex: 0 0 auto;
+
   // The three buttons of the right side get room between them, so the bar does not
   // look like one long row of icons.
   gap: var(--space-3);
@@ -219,6 +221,7 @@
 }
 
 .footer {
+  flex: 0 0 auto;
   border-top: var(--border-width) solid var(--color-border);
   background-color: var(--color-bg-nav);
   color: var(--color-text-muted);
@@ -276,10 +279,6 @@ button.icon-button {
   }
 }
 
-.footer {
-  flex: 0 0 auto;
-}
-
 @include mixins.breakpoint-md {
   .shell-content {
     padding-block: var(--space-4);
@@ -287,7 +286,7 @@ button.icon-button {
 }
 
 // On a phone the links live in the panel of the menu button.
-@media (max-width: 48rem) {
+@media (width <= 48rem) {
   .navbar__links {
     display: none;
   }

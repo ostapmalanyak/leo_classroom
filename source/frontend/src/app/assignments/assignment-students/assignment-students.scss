@@ -279,7 +279,7 @@ h1 {
   color: var(--color-text-muted);
 }
 
-@media (max-width: 40em) {
+@media (width <= 40em) {
   .head__actions {
     inline-size: 100%;
   }

@@ -20,6 +20,7 @@ public sealed class LateFlaggingConsumerTests
     public LateFlaggingConsumerTests()
     {
         _uow.AcceptanceRepository.Returns(_acceptanceRepo);
+        PushTestStudent.Register(_uow);
         _uow.AssignmentRepository.Returns(_assignmentRepo);
         _sut = new LateFlaggingConsumer(_uow, Substitute.For<ILogger<LateFlaggingConsumer>>());
     }
@@ -100,6 +101,17 @@ public sealed class LateFlaggingConsumerTests
 
         await _uow.DidNotReceive().SaveChangesAsync();
     }
+
+    [Fact]
+    public async Task TeacherPushAfterSoftDeadline_DoesNotFlagTheStudentLate()
+    {
+        Acceptance acceptance = Setup(DeadlineKind.Soft);
+
+        await _sut.ConsumeAsync(Push(Deadline.Plus(Duration.FromHours(1))) with { Actor = "IF000020" });
+
+        acceptance.Late.Should().BeFalse();
+        await _uow.DidNotReceive().SaveChangesAsync();
+    }
 }
 
 public sealed class CommitAnalyticsConsumerTests
@@ -110,6 +122,7 @@ public sealed class CommitAnalyticsConsumerTests
 
     public CommitAnalyticsConsumerTests()
     {
+        PushTestStudent.Register(_uow);
         _uow.AcceptanceRepository.Returns(_acceptanceRepo);
         _sut = new CommitAnalyticsConsumer(_uow, Substitute.For<ILogger<CommitAnalyticsConsumer>>());
     }
@@ -178,6 +191,21 @@ public sealed class CommitAnalyticsConsumerTests
 
         await _sut.ConsumeAsync(Push(Instant.FromUtc(2026, 6, 13, 9, 0), 1, "aaa"));
 
+        await _uow.DidNotReceive().SaveChangesAsync();
+    }
+
+    [Theory]
+    [InlineData("leo-classroom-bot")]
+    [InlineData("IF000020")]
+    public async Task PushBySomeoneOtherThanTheStudent_IsNotCounted(string pusher)
+    {
+        // the bot seeding the repository and a teacher pushing into it are not the student's activity
+        Acceptance acceptance = Setup();
+
+        await _sut.ConsumeAsync(Push(Instant.FromUtc(2026, 6, 13, 9, 0), 3, "aaa") with { Actor = pusher });
+
+        acceptance.Analytics.PushCount.Should().Be(0);
+        acceptance.Analytics.CommitCount.Should().Be(0);
         await _uow.DidNotReceive().SaveChangesAsync();
     }
 }

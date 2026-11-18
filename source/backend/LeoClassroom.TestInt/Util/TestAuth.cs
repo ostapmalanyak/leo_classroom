@@ -13,12 +13,17 @@ public sealed class TestAuthState
     public string? StudentId { get; private set; }
     public string[] Roles { get; private set; } = [];
     public string? Class { get; private set; }
+    public string? FirstName { get; private set; }
+    public string? LastName { get; private set; }
 
-    public void SetUser(string studentId, string[] roles, string? @class = null)
+    public void SetUser(string studentId, string[] roles, string? @class = null, string? firstName = null,
+                        string? lastName = null)
     {
         StudentId = studentId;
         Roles = roles;
         Class = @class;
+        FirstName = firstName;
+        LastName = lastName;
     }
 
     public void SetAnonymous()
@@ -26,6 +31,8 @@ public sealed class TestAuthState
         StudentId = null;
         Roles = [];
         Class = null;
+        FirstName = null;
+        LastName = null;
     }
 }
 
@@ -45,8 +52,8 @@ internal sealed class TestAuthHandler(
         var identity = new ClaimsIdentity(TestAuthState.Scheme, nameType: "preferred_username",
                                          roleType: ClaimTypes.Role);
         identity.AddClaim(new Claim("preferred_username", state.StudentId));
-        identity.AddClaim(new Claim("given_name", "Test"));
-        identity.AddClaim(new Claim("family_name", state.StudentId));
+        identity.AddClaim(new Claim("given_name", state.FirstName ?? "Test"));
+        identity.AddClaim(new Claim("family_name", state.LastName ?? state.StudentId));
         identity.AddClaim(new Claim("email", $"{state.StudentId}@school.at"));
         if (state.Class is not null)
         {
