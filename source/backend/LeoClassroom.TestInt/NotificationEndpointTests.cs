@@ -50,7 +50,7 @@ public sealed class NotificationEndpointTests(WebApiTestFixture fixture) : WebAp
 
     private AssignmentCreateRequest CreateRequest() => new(
         _courseId, "A1", null, null,
-        new LocalDateTime(2099, 6, 20, 23, 59).InZoneLeniently(Const.TimeZone).ToInstant(),
+        new LocalDateTime(2026, 6, 20, 23, 59).InZoneLeniently(Const.TimeZone).ToInstant(),
         DeadlineKind.Soft, false, StarterSourceKind.DescriptionOnly, null, null, false, null,
         DownloadSnapshotMode.Deadline);
 

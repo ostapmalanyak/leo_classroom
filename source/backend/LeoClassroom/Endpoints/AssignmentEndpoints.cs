@@ -65,9 +65,9 @@ public static class AssignmentEndpoints
 
     private static async ValueTask<CreateResult> CreateAssignmentAsync(
         [FromBody] AssignmentCreateRequest request, [FromServices] IAssignmentService service,
-        [FromServices] ITransactionProvider transaction)
+        [FromServices] ITransactionProvider transaction, [FromServices] IClock clock)
     {
-        if (new AssignmentCreateRequest.Validator().Check(request) is { } validationProblem)
+        if (new AssignmentCreateRequest.Validator(clock).Check(request) is { } validationProblem)
         {
             return validationProblem;
         }
@@ -108,9 +108,9 @@ public static class AssignmentEndpoints
     private static async ValueTask<Results<Ok<AssignmentDto>, ValidationProblem, NotFound, ProblemHttpResult>>
         UpdateAssignmentAsync([FromRoute] long id, [FromBody] AssignmentUpdateRequest request,
                               [FromServices] IAssignmentService service,
-                              [FromServices] ITransactionProvider transaction)
+                              [FromServices] ITransactionProvider transaction, [FromServices] IClock clock)
     {
-        if (new AssignmentUpdateRequest.Validator().Check(request) is { } validationProblem)
+        if (new AssignmentUpdateRequest.Validator(clock).Check(request) is { } validationProblem)
         {
             return validationProblem;
         }
