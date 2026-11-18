@@ -179,8 +179,16 @@ namespace LeoClassroom.Persistence.Migrations
                     b.Property<string>("HintsInstructions")
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsPublished")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<long>("OwnerId")
                         .HasColumnType("bigint");
+
+                    b.Property<Instant?>("PublishAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ReadmeMarkdown")
                         .HasColumnType("text");

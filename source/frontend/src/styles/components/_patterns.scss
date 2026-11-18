@@ -743,7 +743,7 @@ mat-card.mat-mdc-card {
 // A plain button gets the shape of a control. A button that carries the shared .btn class
 // is styled by .btn alone, so its variant (primary, secondary) is not overwritten here.
 button:not(.mat-mdc-button-base, .mat-mdc-menu-item, .mdc-switch, .tabs__item, .btn, .icon-button,
-    .avatar, .navbar-search) {
+    .avatar, .navbar-search, .help__button) {
   @include mixins.control-base;
 
   border-radius: var(--radius-button);
@@ -1392,4 +1392,61 @@ app-markdown-view .markdown-body {
   a {
     color: var(--color-link);
   }
+}
+
+// The "?" in the top right corner of a card (assignment form); its tip opens on hover, focus or tap. Uses the app's warning colours
+// so it matches the rest of the UI in both themes.
+.help {
+  inset-block-start: var(--space-3);
+  inset-inline-end: var(--space-4);
+  position: absolute;
+}
+
+.help__button {
+  align-items: center;
+  aspect-ratio: 1;
+  background: var(--color-warning-bg);
+  block-size: 2rem;
+  border: 1px solid var(--color-warning-border);
+  border-radius: 50%;
+  box-sizing: border-box;
+  color: var(--color-warning-text);
+  cursor: help;
+  display: inline-flex;
+  flex: none;
+  font: inherit;
+  font-size: 1.125rem;
+  font-weight: 600;
+  inline-size: 2rem;
+  justify-content: center;
+  min-inline-size: 0;
+  padding: 0;
+}
+
+.help__button:hover,
+.help__button:focus-visible {
+  border-color: var(--color-warning-text);
+}
+
+.help__tip {
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
+  box-sizing: border-box;
+  color: var(--color-warning-text);
+  display: none;
+  font-size: var(--font-size-sm);
+  inline-size: min(22rem, 80vw);
+  inset-block-start: calc(100% + var(--space-2));
+  inset-inline-end: 0;
+  line-height: 1.5;
+  padding: var(--space-3) var(--space-4);
+  position: absolute;
+  z-index: 10;
+}
+
+.help:hover .help__tip,
+.help:focus-within .help__tip {
+  display: block;
 }

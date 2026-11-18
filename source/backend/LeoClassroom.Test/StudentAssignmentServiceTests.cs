@@ -48,7 +48,7 @@ public sealed class StudentAssignmentServiceTests
     public async Task Accept_WhenAssignedAndNew_CreatesProvisioningForTheEndpointToQueueAfterCommit()
     {
         _assignmentRepo.GetByIdAsync(AssignmentId).Returns(new ValueTask<Assignment?>(AssignmentInCourse()));
-        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId).Returns(new ValueTask<bool>(true));
+        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId, Arg.Any<Instant>()).Returns(new ValueTask<bool>(true));
         _acceptanceRepo.ExistsAsync(AssignmentId, StudentLocalId).Returns(new ValueTask<bool>(false));
 
         var result = await _sut.AcceptAsync(AssignmentId);
@@ -65,7 +65,7 @@ public sealed class StudentAssignmentServiceTests
         Assignment assignment = AssignmentInCourse();
         assignment.StarterSourceKind = StarterSourceKind.ForkOwnRepo;
         _assignmentRepo.GetByIdAsync(AssignmentId).Returns(new ValueTask<Assignment?>(assignment));
-        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId).Returns(new ValueTask<bool>(true));
+        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId, Arg.Any<Instant>()).Returns(new ValueTask<bool>(true));
         _acceptanceRepo.ExistsAsync(AssignmentId, StudentLocalId).Returns(new ValueTask<bool>(false));
 
         var result = await _sut.AcceptAsync(AssignmentId);
@@ -75,10 +75,53 @@ public sealed class StudentAssignmentServiceTests
     }
 
     [Fact]
+    public async Task Accept_HiddenAssignment_ReturnsNotFound()
+    {
+        Assignment hidden = AssignmentInCourse();
+        hidden.IsPublished = false;
+        _assignmentRepo.GetByIdAsync(AssignmentId).Returns(new ValueTask<Assignment?>(hidden));
+        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId, Arg.Any<Instant>()).Returns(new ValueTask<bool>(true));
+
+        var result = await _sut.AcceptAsync(AssignmentId);
+
+        result.ShouldBe<NotFound>();
+        _acceptanceRepo.DidNotReceive().Add(Arg.Any<Acceptance>());
+    }
+
+    [Fact]
+    public async Task GetForStudent_ScheduledAssignment_IsVisibleOnceItsTimeHasPassed()
+    {
+        Assignment scheduled = AssignmentInCourse();
+        scheduled.IsPublished = false;
+        _assignmentRepo.GetByIdAsync(AssignmentId).Returns(new ValueTask<Assignment?>(scheduled));
+        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId, Arg.Any<Instant>())
+                       .Returns(new ValueTask<bool>(true));
+
+        scheduled.PublishAt = Instant.FromUtc(2026, 6, 13, 12, 1); // one minute after "now"
+        (await _sut.GetForStudentAsync(AssignmentId)).ShouldBe<NotFound>();
+
+        scheduled.PublishAt = Instant.FromUtc(2026, 6, 13, 12, 0); // exactly now
+        (await _sut.GetForStudentAsync(AssignmentId)).ShouldBe<StudentAssignmentView>();
+    }
+
+    [Fact]
+    public async Task GetForStudent_HiddenAssignment_ReturnsNotFound()
+    {
+        Assignment hidden = AssignmentInCourse();
+        hidden.IsPublished = false;
+        _assignmentRepo.GetByIdAsync(AssignmentId).Returns(new ValueTask<Assignment?>(hidden));
+        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId, Arg.Any<Instant>()).Returns(new ValueTask<bool>(true));
+
+        var result = await _sut.GetForStudentAsync(AssignmentId);
+
+        result.ShouldBe<NotFound>();
+    }
+
+    [Fact]
     public async Task Accept_NotInRoster_ReturnsForbidden()
     {
         _assignmentRepo.GetByIdAsync(AssignmentId).Returns(new ValueTask<Assignment?>(AssignmentInCourse()));
-        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId).Returns(new ValueTask<bool>(false));
+        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId, Arg.Any<Instant>()).Returns(new ValueTask<bool>(false));
 
         var result = await _sut.AcceptAsync(AssignmentId);
 
@@ -90,7 +133,7 @@ public sealed class StudentAssignmentServiceTests
     public async Task Accept_AlreadyAccepted_ReturnsAlreadyExists()
     {
         _assignmentRepo.GetByIdAsync(AssignmentId).Returns(new ValueTask<Assignment?>(AssignmentInCourse()));
-        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId).Returns(new ValueTask<bool>(true));
+        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId, Arg.Any<Instant>()).Returns(new ValueTask<bool>(true));
         _acceptanceRepo.ExistsAsync(AssignmentId, StudentLocalId).Returns(new ValueTask<bool>(true));
 
         var result = await _sut.AcceptAsync(AssignmentId);
@@ -139,7 +182,7 @@ public sealed class StudentAssignmentServiceTests
             new(1L, 7L, "Course", "A", null, null, DeadlineKind.None, true, SubmissionStatus.Ready, null, false, FeedbackState.None),
             new(2L, 7L, "Course", "B", null, null, DeadlineKind.None, false, null, null, false, FeedbackState.None)
         }.AsReadOnly();
-        _assignmentRepo.GetAssignedToStudentAsync(StudentLocalId)
+        _assignmentRepo.GetAssignedToStudentAsync(StudentLocalId, Arg.Any<Instant>())
                        .Returns(new ValueTask<IReadOnlyCollection<AssignedAssignment>>(all));
 
         StudentAssignmentList result = await _sut.ListAsync();

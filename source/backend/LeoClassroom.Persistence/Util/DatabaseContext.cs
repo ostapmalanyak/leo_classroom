@@ -107,6 +107,8 @@ public sealed class DatabaseContext(DbContextOptions<DatabaseContext> options) :
         assignment.Property(a => a.DeadlineKind).HasConversion(new EnumToStringConverter<DeadlineKind>());
         assignment.Property(a => a.StarterSourceKind).HasConversion(new EnumToStringConverter<StarterSourceKind>());
         assignment.Property(a => a.DownloadSnapshotMode).HasConversion(new EnumToStringConverter<DownloadSnapshotMode>());
+        // existing rows must stay visible to students
+        assignment.Property(a => a.IsPublished).HasDefaultValue(true);
         assignment.HasOne(a => a.Course)
                   .WithMany()
                   .HasForeignKey(a => a.CourseId)

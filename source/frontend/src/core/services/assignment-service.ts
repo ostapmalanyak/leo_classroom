@@ -53,6 +53,10 @@ export class AssignmentService extends BackendServiceBase {
     return this.write(this.http.put<unknown>(this.buildUrl(`${id}`), request));
   }
 
+  public async publish(id: number): Promise<ActionResult> {
+    return this.action(this.http.post(this.buildUrl(`${id}/publish`), {}));
+  }
+
   public async remove(id: number): Promise<ActionResult> {
     return this.action(this.http.delete(this.buildUrl(`${id}`)));
   }
@@ -256,6 +260,9 @@ export interface AssignmentWrite {
   autoDeleteEnabled: boolean;
   autoDeleteOn: string | null;
   downloadSnapshotMode: DownloadSnapshotMode;
+  /** False keeps the assignment hidden from students until it is published. */
+  isPublished: boolean;
+  publishAt: string | null;
 }
 
 const assignmentZod = z.object({
@@ -274,7 +281,9 @@ const assignmentZod = z.object({
   readmeMarkdown: z.string().nullable(),
   autoDeleteEnabled: z.boolean(),
   autoDeleteOn: InstantSchema.nullable(),
-  downloadSnapshotMode: z.enum(DownloadSnapshotMode)
+  downloadSnapshotMode: z.enum(DownloadSnapshotMode),
+  isPublished: z.boolean(),
+  publishAt: InstantSchema.nullable()
 });
 export type Assignment = z.infer<typeof assignmentZod>;
 

@@ -19,8 +19,9 @@ public interface IAssignmentRepository
     public ValueTask<IReadOnlyCollection<long>> GetIdsWithHardDeadlineAsync();
     public ValueTask<IReadOnlyCollection<StudentSubmission>?> GetStudentSubmissionsAsync(long id);
     public ValueTask<IReadOnlyCollection<long>> GetDueForAutoDeleteAsync(Instant now);
-    public ValueTask<IReadOnlyCollection<AssignedAssignment>> GetAssignedToStudentAsync(long studentId);
-    public ValueTask<bool> IsStudentAssignedAsync(long assignmentId, long studentId);
+    public ValueTask<IReadOnlyCollection<long>> GetDueForPublishAsync(Instant now);
+    public ValueTask<IReadOnlyCollection<AssignedAssignment>> GetAssignedToStudentAsync(long studentId, Instant now);
+    public ValueTask<bool> IsStudentAssignedAsync(long assignmentId, long studentId, Instant now);
     public ValueTask<IReadOnlyCollection<long>> GetIdsOwnedByAsync(long userId);
     public ValueTask<IReadOnlyCollection<long>> GetIdsByCoursesAsync(IReadOnlyCollection<long> courseIds);
     public ValueTask<int> DeleteByIdsAsync(IReadOnlyCollection<long> ids);
@@ -147,10 +148,21 @@ internal sealed class AssignmentRepository(DbSet<Assignment> assignments) : IAss
         return ids.AsReadOnly();
     }
 
-    public async ValueTask<IReadOnlyCollection<AssignedAssignment>> GetAssignedToStudentAsync(long studentId)
+    public async ValueTask<IReadOnlyCollection<long>> GetDueForPublishAsync(Instant now)
+    {
+        List<long> ids = await assignments.AsNoTracking()
+                                          .Where(a => !a.IsPublished && a.PublishAt != null && a.PublishAt <= now)
+                                          .Select(a => a.Id)
+                                          .ToListAsync();
+
+        return ids.AsReadOnly();
+    }
+
+    public async ValueTask<IReadOnlyCollection<AssignedAssignment>> GetAssignedToStudentAsync(long studentId, Instant now)
     {
         List<AssignedAssignment> rows = await assignments.AsNoTracking()
-            .Where(a => a.Course.Members.Any(m => m.Id == studentId))
+            .Where(a => (a.IsPublished || (a.PublishAt != null && a.PublishAt <= now))
+                        && a.Course.Members.Any(m => m.Id == studentId))
             .OrderBy(a => a.Course.Title).ThenBy(a => a.Title)
             .Select(a => new AssignedAssignment(a.Id, a.CourseId, a.Course.Title, a.Title, a.Description, a.Deadline,
                         a.DeadlineKind,
@@ -168,8 +180,9 @@ internal sealed class AssignmentRepository(DbSet<Assignment> assignments) : IAss
         return rows.AsReadOnly();
     }
 
-    public async ValueTask<bool> IsStudentAssignedAsync(long assignmentId, long studentId) =>
+    public async ValueTask<bool> IsStudentAssignedAsync(long assignmentId, long studentId, Instant now) =>
         await assignments.AsNoTracking()
                          .AnyAsync(a => a.Id == assignmentId
+                                        && (a.IsPublished || (a.PublishAt != null && a.PublishAt <= now))
                                         && a.Course.Members.Any(m => m.Id == studentId));
 }

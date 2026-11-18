@@ -11,6 +11,7 @@ import { ZodError } from 'zod';
 import { MatDialog } from '@angular/material/dialog';
 import { Assignment, AssignmentService } from '../../core/services/assignment-service';
 import { SessionService } from '../../core/auth/session-service';
+import { isHiddenNow } from '../../core/util/assignment-state';
 import { SearchPaletteService } from '../../core/services/search-palette-service';
 import { CourseOverview, CourseService } from '../../core/services/course-service';
 import { CourseManagementService } from '../../core/services/course-management-service';
@@ -175,7 +176,8 @@ export class MyCourses implements OnInit {
       title: course.title,
       avatarUrl: this.courseManagementService.avatarUrl(course.iconSeed ?? `legacy-${course.id}`),
       iconSeed: course.iconSeed ?? null,
-      open: assignments.filter(assignment => assignment.deadline === null || !assignment.deadline.isBefore(now)).length
+      open: assignments.filter(assignment => !isHiddenNow(assignment, now))
+                       .filter(assignment => assignment.deadline === null || !assignment.deadline.isBefore(now)).length
     };
   }
 }

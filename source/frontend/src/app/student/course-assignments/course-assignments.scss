@@ -150,6 +150,54 @@
   gap: var(--space-1);
 }
 
+// The time and kind of a deadline under an assignment title, e.g. "23:59 · hard deadline".
+.assignment-meta {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-sm);
+}
+
+// Hidden from students: a plain section like the others, closed until the teacher opens it.
+.hidden-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.hidden-head {
+  align-items: center;
+  border-bottom: var(--border-width) solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  padding-block-end: var(--space-2);
+  position: relative;
+}
+
+// The global rule gives every plain button the box of a control; this one is a heading you can click.
+.hidden-toggle {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: var(--color-text-strong);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 1rem;
+  font-weight: 600;
+  gap: var(--space-1);
+  min-block-size: 0;
+  padding: 0;
+}
+
+.hidden-head .help {
+  inset-block-start: 0;
+  inset-inline-end: 0;
+}
+
+.hidden-note {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
 // The Overview tab is a link into My Assignments, so it has to look like the other tab labels.
 .overview {
   align-items: flex-start;

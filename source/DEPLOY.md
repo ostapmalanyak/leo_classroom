@@ -288,6 +288,11 @@ podman compose exec -u git forgejo forgejo admin auth add-ldap \
   --username-attribute uid --email-attribute mail
 ```
 
+That registers students only. Teachers live under `LDAP_TEACHER_BASE_DN`, so repeat the command with
+`--name school-ldap-teachers` and `--user-search-base "$LDAP_TEACHER_BASE_DN"`; otherwise teachers cannot use
+git once the generated passwords stop. `FORGEJO_AUTH_SOURCE_ID` holds a single id, so check that
+`GitCredentialService` and `SetUserActiveAsync` accept accounts bound to the other source before relying on it.
+
 ### Option B — OIDC source (single sign-on, needs a second Keycloak client)
 
 Only if the Keycloak administrator gives you a confidential client for Forgejo. Its secret goes into the
@@ -312,6 +317,23 @@ Take the **id** into `.env` as `FORGEJO_AUTH_SOURCE_ID`, then
 `podman compose up -d --force-recreate backend`.
 
 Switching later is just a different id: existing accounts are re-bound by the next sync.
+
+## 7b. (Optional) Browser sign-in for git, no password and no school IT
+
+Forgejo is its own OAuth2 provider. `git-credential-oauth` opens the browser (already signed in through
+Keycloak), gets a token and hands it to git as the password. Needs only the Caddy rule for
+`/login/oauth/access_token` (already in the `Caddyfile`) and one OAuth app, created once with the bot's
+admin token:
+
+```sh
+curl -s -X POST "$PUBLIC_SCHEME://$FORGEJO_DOMAIN/api/v1/user/applications/oauth2" \
+  -H "Authorization: token $(cat secrets/Forgejo__AdminToken)" -H 'Content-Type: application/json' \
+  -d '{"name":"git-credential-oauth","redirect_uris":["http://127.0.0.1"],"confidential_client":false}'
+```
+
+Hand the returned `client_id` to students (see `cli/README.md`, "Sign in with the browser"). It is public.
+The generated password from the account page keeps working as a fallback. Untested end to end: if git
+rejects the token, check the redirect URI first (loopback port matching needs a current Forgejo).
 
 ## 8. The webhook registers itself
 

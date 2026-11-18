@@ -7,7 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { AssignmentService } from '../../../core/services/assignment-service';
 import { CourseService } from '../../../core/services/course-service';
 import { SessionService } from '../../../core/auth/session-service';
-import { relativeDue, dueUrgency, DueUrgency } from '../../../core/util/assignment-state';
+import { relativeDue, dueUrgency, DueUrgency, isHiddenNow } from '../../../core/util/assignment-state';
 
 /** An assignment that closes soon. */
 export interface ClosingAssignment {
@@ -86,7 +86,7 @@ export class NotificationBell implements OnInit {
       const courses = await this.courseService.getCourses();
       for (const course of courses ?? []) {
         const assignments = await firstValueFrom(this.assignmentService.listForCourse$(course.id));
-        for (const assignment of assignments) {
+        for (const assignment of assignments.filter(a => !isHiddenNow(a, Instant.now()))) {
           if (assignment.deadline === null) {
             continue;
           }

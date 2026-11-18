@@ -13,7 +13,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { Instant } from '@js-joda/core';
 import { CourseDetail } from '../../course-detail/course-detail';
 import { CourseIcon } from '../../shared/course-icon/course-icon';
-import { AssignmentService, SubmissionStatus } from '../../../core/services/assignment-service';
+import { AssignmentService, DeadlineKind, SubmissionStatus } from '../../../core/services/assignment-service';
 import {
   CourseParticipant, CourseService, CourseTeacherParticipant
 } from '../../../core/services/course-service';
@@ -28,6 +28,7 @@ import {
   assignmentViewOf,
   DueUrgency,
   dueUrgency,
+  isHiddenNow,
   relativeDue,
   studentAssignmentState,
   timestampLabel,
@@ -41,11 +42,16 @@ interface CourseAssignment {
   id: number;
   title: string;
   deadline: Instant | null;
+  deadlineKind: DeadlineKind;
   accepted: boolean | null;
   status: SubmissionStatus | null;
   /** Last push of the student's own repository; only a student knows this. */
   lastPushAt: Instant | null;
   late: boolean;
+  /** False while it is hidden from students; only a teacher ever sees such an assignment. */
+  published: boolean;
+  /** When a hidden assignment goes live by itself; null means the teacher publishes it. */
+  publishAt: Instant | null;
 }
 
 /** A student assignment with the state it is in, the same states the My Assignments page uses. */
@@ -71,9 +77,21 @@ interface AssignmentDateGroup {
   assignments: CourseAssignment[];
 }
 
+/** Hidden assignments that appear for students at the same moment. */
+interface HiddenGroup {
+  key: number;
+  appearsAt: Date;
+  assignments: CourseAssignment[];
+}
+
 interface AssignmentSections {
   dated: AssignmentDateGroup[];
   noDate: CourseAssignment[];
+  /** Hidden ones that appear by themselves, soonest first. */
+  hiddenScheduled: HiddenGroup[];
+  /** Hidden ones that stay hidden until the teacher publishes them. */
+  hiddenManual: CourseAssignment[];
+  hiddenCount: number;
 }
 
 @Component({
@@ -213,7 +231,24 @@ export class CourseAssignments implements OnInit {
     const byDate = new Map<string, AssignmentDateGroup>();
     const noDate: CourseAssignment[] = [];
 
+    const now = Instant.now();
+    const hiddenByMoment = new Map<number, HiddenGroup>();
+    const hiddenManual: CourseAssignment[] = [];
+
     for (const assignment of this.assignments()) {
+      if (isHiddenNow({ isPublished: assignment.published, publishAt: assignment.publishAt }, now)) {
+        if (assignment.publishAt === null) {
+          hiddenManual.push(assignment);
+        } else {
+          const minute = Math.floor(assignment.publishAt.epochSecond() / 60);
+          const group: HiddenGroup = hiddenByMoment.get(minute)
+            ?? { key: minute, appearsAt: this.formatDeadline(assignment.publishAt), assignments: [] };
+          group.assignments.push(assignment);
+          hiddenByMoment.set(minute, group);
+        }
+        continue;
+      }
+
       if (assignment.deadline === null) {
         noDate.push(assignment);
         continue;
@@ -233,7 +268,19 @@ export class CourseAssignments implements OnInit {
           : left.date.getTime() - right.date.getTime())
         .map(group => ({ ...group, assignments: group.assignments.sort(compare) }));
 
-    return { dated: toGroups(byDate), noDate: noDate.sort(compare) };
+    const hiddenScheduled = [...hiddenByMoment.values()]
+      .sort((left, right) => left.key - right.key)
+      .map(group => ({ ...group, assignments: group.assignments.sort(compare) }));
+    const hiddenCount = hiddenScheduled.reduce((sum, group) => sum + group.assignments.length, 0)
+      + hiddenManual.length;
+
+    return {
+      dated: toGroups(byDate),
+      noDate: noDate.sort(compare),
+      hiddenScheduled,
+      hiddenManual: hiddenManual.sort(compare),
+      hiddenCount
+    };
   });
 
   protected readonly students = computed(() => this.participants().filter(participant => participant.role === Role.Student));
@@ -363,10 +410,13 @@ export class CourseAssignments implements OnInit {
         id: assignment.id,
         title: assignment.title,
         deadline: assignment.deadline,
+        deadlineKind: assignment.deadlineKind,
         accepted: null,
         status: null,
         lastPushAt: null,
-        late: false
+        late: false,
+        published: assignment.isPublished,
+        publishAt: assignment.publishAt
       })));
 
       return;
@@ -385,12 +435,48 @@ export class CourseAssignments implements OnInit {
         id: assignment.id,
         title: assignment.title,
         deadline: assignment.deadline,
+        deadlineKind: assignment.deadlineKind,
         accepted: assignment.accepted,
         status: assignment.status,
         lastPushAt: assignment.lastPushAt,
-        late: assignment.late
+        late: assignment.late,
+        published: true,
+        publishAt: null
       }));
     this.assignments.set(assignments);
+  }
+
+  /** Whether the hidden section is open; it starts closed so it does not crowd the assignments. */
+  protected readonly hiddenOpen = signal(false);
+
+  protected toggleHidden(): void {
+    this.hiddenOpen.update(open => !open);
+  }
+
+  /** "hard deadline" or "soft deadline", so a card says what a late push does. */
+  protected deadlineKindLabel(kind: DeadlineKind): string {
+    return kind === DeadlineKind.Hard ? 'hard deadline' : 'soft deadline';
+  }
+
+  /** The link a teacher hands to students for an assignment, the same one the submissions page copies. */
+  protected async copyStudentLink(assignmentId: number): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/my-assignments/${assignmentId}`);
+      this.snackbar.show('Student link copied');
+    } catch {
+      this.snackbar.show('Could not copy the link');
+    }
+  }
+
+  protected async publish(assignmentId: number): Promise<void> {
+    const result = await this.assignmentService.publish(assignmentId);
+    if (result !== 'ok') {
+      this.snackbar.show('Could not publish the assignment');
+
+      return;
+    }
+    this.assignments.update(list => list.map(a => a.id === assignmentId ? { ...a, published: true, publishAt: null } : a));
+    this.snackbar.show('Assignment published');
   }
 
   protected async removeParticipant(participant: CourseParticipant): Promise<void> {

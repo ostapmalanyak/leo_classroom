@@ -11,7 +11,7 @@ import { SessionService } from '../../../core/auth/session-service';
 import { Assignment, AssignmentService, FeedbackState } from '../../../core/services/assignment-service';
 import { CourseService } from '../../../core/services/course-service';
 import { NowService } from '../../../core/services/now-service';
-import { relativeDue } from '../../../core/util/assignment-state';
+import { isHiddenNow, relativeDue } from '../../../core/util/assignment-state';
 import { MatDialog } from '@angular/material/dialog';
 import { ActionCard } from './action-card/action-card';
 import { ChooseCourseDialog } from './choose-course-dialog/choose-course-dialog';
@@ -163,7 +163,8 @@ export class TeacherDashboard implements OnInit {
 
     for (const course of courses) {
       const assignments = await firstValueFrom(this.assignmentService.listForCourse$(course.id));
-      for (const assignment of assignments) {
+      // hidden assignments are still being prepared, so they are neither open nor missed
+      for (const assignment of assignments.filter(a => !isHiddenNow(a, now))) {
         if (assignment.deadline !== null && assignment.deadline.isBefore(now)) {
           missed.push({
             id: assignment.id,

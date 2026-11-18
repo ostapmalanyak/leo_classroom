@@ -38,7 +38,10 @@
       @if (step() === 0) {
         <section class="card-surface edit-card">
           <h2 class="edit-card__title">Basics</h2>
-          <p class="edit-hint">Give the assignment a clear title. Students see the description and hints on their assignment page; Markdown is supported.</p>
+          <div class="help">
+            <button class="help__button" type="button" aria-label="Help: Basics" aria-describedby="help-basics">?</button>
+            <span class="help__tip" id="help-basics" role="tooltip">Give the assignment a clear title. Students see the description and hints on their assignment page; Markdown is supported.</span>
+          </div>
 
           <div class="field">
             <label class="field__label" for="field-title">Title</label>
@@ -67,7 +70,10 @@
       @if (step() === 1) {
         <section class="card-surface edit-card" [class.edit-card--invalid]="repoError() !== null">
           <h2 class="edit-card__title">Starter</h2>
-          <p class="edit-hint">Choose what each student starts with: just the description, a copy of a template repository, or a fork of your own repository that becomes theirs.</p>
+          <div class="help">
+            <button class="help__button" type="button" aria-label="Help: Starter" aria-describedby="help-starter">?</button>
+            <span class="help__tip" id="help-starter" role="tooltip">Choose what each student starts with: just the description, a copy of a template repository, or a fork of your own repository that becomes theirs.</span>
+          </div>
 
           <div class="starter-grid" role="group" aria-label="Starter source">
             <button class="starter" type="button" [class.is-active]="!isCopyRepo()"
@@ -122,7 +128,10 @@
       @if (step() === 2) {
         <section class="card-surface edit-card" [class.edit-card--invalid]="deadlineError() !== null">
           <h2 class="edit-card__title">Deadline</h2>
-          <p class="edit-hint">A soft deadline is informational only. A hard deadline takes away students' write access when it passes. Times are in your local time zone.</p>
+          <div class="help">
+            <button class="help__button" type="button" aria-label="Help: Deadline" aria-describedby="help-deadline">?</button>
+            <span class="help__tip" id="help-deadline" role="tooltip">A soft deadline is informational only. A hard deadline takes away students' write access when it passes. Times are in your local time zone.</span>
+          </div>
 
           <div class="deadline-cards" role="radiogroup" aria-label="Deadline kind">
             <button type="button" class="deadline-card" role="radio"
@@ -198,12 +207,62 @@
             <p class="edit-hint">Without a deadline the assignment never closes.</p>
           }
         </section>
+
+        <!-- A published assignment cannot be hidden again, so the choice only exists until it is published. -->
+        @if (!alreadyPublished()) {
+          <section class="card-surface edit-card" [class.edit-card--invalid]="publishError() !== null">
+            <h2 class="edit-card__title">Visibility</h2>
+            <div class="help">
+              <button class="help__button" type="button" aria-label="Help: Visibility" aria-describedby="help-visibility">?</button>
+              <span class="help__tip" id="help-visibility" role="tooltip">Hide the assignment while you prepare it. Students cannot see it, and are not emailed, until it is published.</span>
+            </div>
+
+            <div class="segmented" role="group" aria-label="When students see the assignment">
+              <button type="button" [class.is-active]="visibility() === 'now'"
+                      (click)="setVisibility('now')">Visible now</button>
+              <button type="button" [class.is-active]="visibility() === 'date'"
+                      (click)="setVisibility('date')">Appear on a date</button>
+              <button type="button" [class.is-active]="visibility() === 'manual'"
+                      (click)="setVisibility('manual')">I publish it</button>
+            </div>
+
+            @if (visibility() === 'date') {
+              <div class="field-row">
+                <div class="field">
+                  <label class="field__label" for="field-publish">Appears on</label>
+                  <input id="field-publish" class="input" type="date" [class.input--invalid]="publishError() !== null"
+                         [min]="minDate()" [max]="maxDate()" [value]="publishDate()"
+                         (input)="publishDate.set($any($event.target).value)">
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="field-publish-time">Time (local)</label>
+                  <input id="field-publish-time" class="input" type="time" [class.input--invalid]="publishError() !== null"
+                         [value]="publishTime()" (input)="publishTime.set($any($event.target).value)">
+                </div>
+              </div>
+
+              @if (publishError(); as error) {
+                <p class="field__error" role="alert">
+                  <mat-icon aria-hidden="true">error</mat-icon>
+                  <span>{{ error }}</span>
+                </p>
+              }
+              <p class="edit-hint">Students see it from exactly this time.</p>
+            } @else if (visibility() === 'manual') {
+              <p class="edit-hint">It stays hidden until you press Publish on the assignment page.</p>
+            }
+          </section>
+        }
       }
 
       @if (step() === 3) {
         <section class="card-surface edit-card">
           <h2 class="edit-card__title">Lifecycle</h2>
-          <p class="edit-hint">Decide when repositories are cleaned up and which version of the work you download: as of the deadline, or the latest (head).</p>
+          <div class="help">
+            <button class="help__button" type="button" aria-label="Help: Lifecycle" aria-describedby="help-lifecycle">?</button>
+            <span class="help__tip" id="help-lifecycle" role="tooltip">Decide when repositories are cleaned up and which version of the work you download: as of the deadline, or the latest (head).</span>
+          </div>
 
           <label class="switch-row" for="field-auto-delete">
             <span>
@@ -257,6 +316,10 @@
           <div class="summary__row">
             <dt>Deadline</dt>
             <dd [class.is-invalid]="deadlineError() !== null">{{ deadlineSummary() }}</dd>
+          </div>
+          <div class="summary__row">
+            <dt>Visibility</dt>
+            <dd [class.is-invalid]="publishError() !== null">{{ visibilitySummary() }}</dd>
           </div>
           <div class="summary__row">
             <dt>Starter</dt>

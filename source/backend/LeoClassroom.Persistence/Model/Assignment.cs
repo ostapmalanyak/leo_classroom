@@ -21,6 +21,13 @@ public class Assignment
     public bool AutoDeleteEnabled { get; set; }
     public Instant? AutoDeleteOn { get; set; }
     public DownloadSnapshotMode DownloadSnapshotMode { get; set; }
+    /// <summary>Students only see published assignments; teachers see all of them</summary>
+    public bool IsPublished { get; set; } = true;
+    /// <summary>When an unpublished assignment goes live by itself; null means only an explicit publish does</summary>
+    public Instant? PublishAt { get; set; }
+
+    /// <summary>Whether students may see it at <paramref name="now" />; the scheduled publish needs no job to take effect</summary>
+    public bool IsVisibleAt(Instant now) => IsPublished || (PublishAt is { } at && at <= now);
     public long OwnerId { get; set; }
     public User Owner { get; set; } = null!;
     public ICollection<User> CoTeachers { get; set; } = [];
