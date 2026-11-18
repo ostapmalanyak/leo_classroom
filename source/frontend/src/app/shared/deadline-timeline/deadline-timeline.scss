@@ -1,0 +1,135 @@
+:host {
+  display: block;
+
+  /* One size drives the whole picture: track thickness, and the marker at three times that. */
+  --timeline-size: 0.55em;
+  --timeline-marker: calc(var(--timeline-size) * 3);
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* the clean track: even thickness everywhere, rounded ends */
+.timeline__track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  block-size: var(--timeline-size);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-bg-input);
+}
+
+.timeline__elapsed,
+.timeline__remaining,
+.timeline__tail {
+  block-size: 100%;
+  flex: 0 0 auto;
+}
+
+.timeline__elapsed {
+  background-color: var(--color-accent);
+  border-radius: var(--radius-pill);
+}
+
+.timeline__remaining {
+  background-color: var(--color-bg-hover);
+  border-radius: var(--radius-pill);
+}
+
+/* the stretch after a soft deadline: it keeps going and fades into the card */
+.timeline__tail {
+  background-image: linear-gradient(
+    to right,
+    var(--color-warning-border),
+    color-mix(in srgb, var(--color-warning-border) 40%, transparent) 55%,
+    transparent
+  );
+  border-start-end-radius: var(--radius-pill);
+  border-end-end-radius: var(--radius-pill);
+  opacity: 0.85;
+}
+
+/* the marker cuts into the track with a ring in the card colour */
+.timeline__marker {
+  position: absolute;
+  inset-block-start: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--timeline-marker);
+  block-size: var(--timeline-marker);
+  margin-inline-start: calc(var(--timeline-marker) / -2);
+  translate: 0 -50%;
+  border-radius: 50%;
+  border: var(--border-width) solid var(--color-bg-surface);
+  background-color: var(--color-bg-surface);
+  color: var(--color-urgency-soon);
+}
+
+.timeline__marker mat-icon {
+  font-size: var(--timeline-size);
+  inline-size: var(--timeline-size);
+  block-size: var(--timeline-size);
+  line-height: 1;
+}
+
+.timeline--hard .timeline__marker {
+  color: var(--color-danger-strong);
+}
+
+/* passed: a soft deadline fills its tail, a hard one goes quiet */
+.timeline--passed:not(.timeline--hard) .timeline__tail {
+  background-image: linear-gradient(
+    to right,
+    var(--color-warning-text),
+    color-mix(in srgb, var(--color-warning-text) 45%, transparent) 60%,
+    transparent
+  );
+  opacity: 1;
+}
+
+.timeline--passed.timeline--hard .timeline__elapsed {
+  background-color: var(--color-bg-hover);
+}
+
+.timeline--passed.timeline--hard .timeline__marker {
+  color: var(--color-danger-strong);
+}
+
+/* label row */
+.timeline__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.timeline__meta-icon {
+  align-self: center;
+  font-size: 1.125rem;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  color: var(--color-urgency-soon);
+}
+
+.timeline--hard .timeline__meta-icon {
+  color: var(--color-danger-strong);
+}
+
+.timeline__left--open {
+  color: var(--color-urgency-soon);
+}
+
+.timeline__left--late {
+  color: var(--color-urgency-soon);
+}
+
+.timeline__left--closed {
+  color: var(--color-danger-strong);
+}
