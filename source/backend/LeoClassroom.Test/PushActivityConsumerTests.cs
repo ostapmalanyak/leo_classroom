@@ -15,6 +15,7 @@ public sealed class PushActivityConsumerTests
 
     public PushActivityConsumerTests()
     {
+        PushTestStudent.Register(_uow);
         _uow.AcceptanceRepository.Returns(_acceptanceRepo);
         _sut = new PushActivityConsumer(_uow, Substitute.For<ILogger<PushActivityConsumer>>());
     }
@@ -57,5 +58,22 @@ public sealed class PushActivityConsumerTests
             Instant.FromUtc(2026, 6, 13, 9, 0), null, "{}"));
 
         await _acceptanceRepo.DidNotReceive().GetTrackedByRepoAsync(Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task BotSeedingPush_DoesNotCountAsTheStudentsPush()
+    {
+        // otherwise every freshly seeded repository would show up as handed in and waiting for review
+        var acceptance = new Acceptance
+        {
+            Id = 5, AssignmentId = 1, StudentId = 50, RepoOwner = "course-7", RepoName = "course-a-IF1"
+        };
+        _acceptanceRepo.GetTrackedByRepoAsync("course-7", "course-a-IF1")
+                       .Returns(new ValueTask<Acceptance?>(acceptance));
+
+        await _sut.ConsumeAsync(Push("course-7", "course-a-IF1") with { Actor = "leo-classroom-bot" });
+
+        acceptance.LastPushAt.Should().BeNull();
+        await _uow.DidNotReceive().SaveChangesAsync();
     }
 }

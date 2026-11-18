@@ -46,6 +46,7 @@ public static class AssignmentEndpoints
             assignments.MapDelete("/{id:long:min(1)}/teachers/{userId:long:min(1)}", RemoveCoTeacherAsync);
             assignments.MapGet("/{id:long:min(1)}/students", GetStudentListAsync);
             assignments.MapGet("/{id:long:min(1)}/accept-link", GetAcceptLinkAsync);
+            assignments.MapGet("/{id:long:min(1)}/commit-summary", GetCommitSummaryAsync);
             assignments.MapGet("/acceptances/{acceptanceId:long:min(1)}/analytics", GetAnalyticsAsync);
             assignments.MapPost("/acceptances/{acceptanceId:long:min(1)}/feedback-pr", OpenFeedbackPrAsync);
         }
@@ -174,6 +175,14 @@ public static class AssignmentEndpoints
         return result.ToOk(assignment => new AcceptLinkDto(
                                assignment.Id,
                                $"{settings.Value.ClientOrigin.TrimEnd('/')}/my-assignments/{assignment.Id}"));
+    }
+
+    private static async ValueTask<Results<Ok<IReadOnlyCollection<CommitSummaryView>>, NotFound, ProblemHttpResult>>
+        GetCommitSummaryAsync([FromRoute] long id, [FromServices] ISubmissionReviewService review)
+    {
+        var result = await review.GetCommitSummaryAsync(id);
+
+        return result.ToOk();
     }
 
     private static async ValueTask<Results<Ok<CommitAnalyticsView>, NotFound, ProblemHttpResult>> GetAnalyticsAsync(
