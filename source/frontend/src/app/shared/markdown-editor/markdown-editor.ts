@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, input, InputSignal, model, ModelSignal, signal, WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatInput } from '@angular/material/input';
 import { MarkdownView } from '../markdown-view/markdown-view';
 
 /**
@@ -10,7 +9,7 @@ import { MarkdownView } from '../markdown-view/markdown-view';
 @Component({
   selector: 'app-markdown-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, MatInput, MarkdownView],
+  imports: [FormsModule, MarkdownView],
   templateUrl: './markdown-editor.html',
   styleUrl: './markdown-editor.scss'
 })

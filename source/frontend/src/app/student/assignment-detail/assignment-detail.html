@@ -1,135 +1,129 @@
-@if (loading()) {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-}
+<div class="page">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
 
-@if (info(); as info) {
-  <div class="detail">
-    <div class="detail__main">
-      <section class="card head-card">
-        <p class="head-card__course">{{ courseTitle() }}</p>
+  <header class="head">
+    @if (courseTitle(); as course) {
+      <p class="head__course">{{ course }}</p>
+    }
+    <h1>{{ title() }}</h1>
+    @if (description(); as text) {
+      <p class="head__description">{{ text }}</p>
+    }
+  </header>
 
-        <div class="head-card__title-row">
-          <h1>{{ info.title }}</h1>
-          <span class="pill pill--{{ status().tone }}">{{ status().label }}</span>
-        </div>
+  @if (deadline(); as due) {
+    <app-deadline-timeline [deadline]="due" [kind]="deadlineKind()" />
+  }
 
-        <ol class="stepper">
-          @for (step of steps; track step.key; let index = $index) {
-            <li class="stepper__item" [class.is-done]="isDone(index)" [class.is-current]="isCurrent(index)"
-                [attr.aria-current]="isCurrent(index) ? 'step' : null">
-              <span class="stepper__dot">
-                @if (isDone(index)) {
-                  <mat-icon aria-hidden="true">check</mat-icon>
-                } @else {
-                  {{ index + 1 }}
-                }
-              </span>
-              <span class="stepper__label">{{ step.label }}</span>
-            </li>
-          }
-        </ol>
-      </section>
-
-      @if (!info.accepted) {
-        <section class="card accept-card">
-          <button mat-flat-button color="primary" type="button" [disabled]="working()" (click)="handleAccept()">
-            {{ working() ? 'Creating your repository…' : 'Accept assignment' }}
-          </button>
-          <p class="accept-card__hint">Accepting creates a personal repository that only you and your teacher can see.</p>
-          @if (failed()) {
-            <p class="accept-card__error" role="alert">Couldn't create your repository. Try again.</p>
-          }
-        </section>
-      } @else {
-        <section class="card repo-card">
-          <h2 class="card__title">Your repository</h2>
-
-          <div class="field-row">
-            <input class="repo-card__url" readonly [value]="cloneUrl()" aria-label="Clone URL"
-                   (focus)="$any($event.target).select()">
-            <button mat-stroked-button type="button" (click)="copyUrl()">{{ copiedUrl() ? 'Copied' : 'Copy' }}</button>
-          </div>
-
-          <div class="code">
-            <pre class="code__block"><code>{{ commands() }}</code></pre>
-            <button mat-stroked-button type="button" class="code__copy" (click)="copyCommands()">
-              {{ copiedBlock() ? 'Copied' : 'Copy commands' }}
+  @switch (step()) {
+    @case ('accept') {
+      <section class="next">
+        <div class="next__row">
+          @if (locked()) {
+            <span class="chip chip--danger">
+              <mat-icon aria-hidden="true">lock</mat-icon>
+              Closed
+            </span>
+          } @else {
+            <button type="button" mat-flat-button color="primary" (click)="handleAccept()"
+                    [disabled]="working()">
+              {{ working() ? 'Accepting…' : 'Accept assignment' }}
             </button>
-          </div>
-
-          <div class="repo-card__actions">
-            <a mat-flat-button color="primary" [href]="cloneUrl()" target="_blank" rel="noopener">Open repository</a>
-            <a mat-stroked-button [href]="vsCodeUrl()">Open in VS Code</a>
-          </div>
-
-          @if (submission(); as submission) {
-            @if (submission.status === SubmissionStatus.Provisioning) {
-              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-              <p class="hint">Preparing your repository…</p>
-            }
-            @if (submission.status === SubmissionStatus.Failed) {
-              <p class="error" role="alert">Provisioning failed.</p>
-              <button mat-stroked-button type="button" [disabled]="working()" (click)="handleRetry()">Retry</button>
-            }
-            @if (submission.late) {
-              <p class="hint hint--late">
-                Handed in after the deadline{{ lateSinceLabel() ? ' · ' + lateSinceLabel() : '' }}.
-              </p>
-            }
           }
-        </section>
-      }
-
-      <section class="card">
-        <h2 class="card__title">Instructions</h2>
-        <app-markdown-view [source]="info.hintsInstructions"></app-markdown-view>
-      </section>
-    </div>
-
-    <aside class="detail__aside">
-      <section class="card">
-        <h2 class="card__title">Deadline</h2>
-        @if (info.deadline) {
-          <app-deadline-timeline [deadline]="info.deadline" [kind]="info.deadlineKind"></app-deadline-timeline>
-        } @else {
-          <p class="hint">No deadline.</p>
+        </div>
+        @if (failed()) {
+          <p class="next__error" role="alert">Couldn't create your repository. Try again.</p>
         }
       </section>
+    }
 
-      <section class="card">
-        <h2 class="card__title">Submission status</h2>
-        <dl class="status-list">
-          <div class="status-list__row">
-            <dt>Commits</dt>
-            <dd>—</dd>
-          </div>
-          <div class="status-list__row">
-            <dt>Last push</dt>
-            <dd>{{ lastPushRelative() }}</dd>
-          </div>
-          <div class="status-list__row">
-            <dt>Feedback</dt>
-            <dd>{{ feedback() }}</dd>
-          </div>
-          <div class="status-list__row">
-            <dt>Late</dt>
-            <dd>{{ submission()?.late ? 'Yes' : 'No' }}</dd>
-          </div>
-        </dl>
-      </section>
+    @case ('clone') {
+      <section class="next">
+        <p class="next__label">Next: clone your repository</p>
 
-      @if (submission()?.feedbackState === FeedbackState.Unread) {
-        <section class="card card--feedback">
-          <p>Your teacher left feedback on your repository.</p>
-          <button mat-stroked-button type="button" [disabled]="working()" (click)="handleConfirmRead()">
-            I have read the feedback
+        <div class="code" [class.code--dim]="locked()">
+          <code class="code__text">{{ cloneDisplay() }}</code>
+          <button type="button" class="code__copy" (click)="copyBlock(cloneCommands())"
+                  [attr.aria-label]="copied() ? 'Copied' : 'Copy clone commands'">
+            <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
           </button>
-        </section>
-      }
+        </div>
 
-      <p class="note">
-        Push your work to main. Your teacher opens a feedback pull request to review it.
-      </p>
-    </aside>
-  </div>
-}
+        <div class="next__row">
+          @if (locked()) {
+            <span class="chip chip--danger">
+              <mat-icon aria-hidden="true">lock</mat-icon>
+              Closed
+            </span>
+          } @else {
+            <button type="button" mat-flat-button color="primary" (click)="openRepository()">
+              Open repository
+            </button>
+          }
+          <span class="next__hint">Then push to main when you're done</span>
+        </div>
+      </section>
+    }
+
+    @case ('push') {
+      <section class="next">
+        <p class="next__label">Next: push your work</p>
+
+        <div class="code" [class.code--dim]="locked()">
+          <code class="code__text">{{ pushCommands }}</code>
+          <button type="button" class="code__copy" (click)="copyBlock(pushCommands)"
+                  [attr.aria-label]="copied() ? 'Copied' : 'Copy push commands'">
+            <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
+          </button>
+        </div>
+
+        <div class="next__row">
+          @if (locked()) {
+            <span class="chip chip--danger">
+              <mat-icon aria-hidden="true">lock</mat-icon>
+              Closed
+            </span>
+          } @else {
+            <button type="button" mat-flat-button color="primary" (click)="openRepository()">
+              Open repository
+            </button>
+          }
+          <span class="next__hint">
+            @if (pushedLate()) {
+              <mat-icon class="next__late" aria-label="Pushed after the deadline">hourglass_bottom</mat-icon>
+            }
+            {{ pushLabel() }}
+          </span>
+        </div>
+      </section>
+    }
+
+    @case ('feedback') {
+      <section class="next">
+        <p class="next__label">Feedback is ready</p>
+
+        <div class="next__row">
+          <button type="button" mat-flat-button color="primary" (click)="viewFeedback()">
+            View feedback
+          </button>
+        </div>
+      </section>
+    }
+  }
+
+  @if (info()?.hintsInstructions; as instructions) {
+    <section class="instructions">
+      <button type="button" class="instructions__toggle" (click)="toggleInstructions()"
+              [attr.aria-expanded]="instructionsOpen()">
+        <mat-icon aria-hidden="true">{{ instructionsOpen() ? 'expand_more' : 'chevron_right' }}</mat-icon>
+        Hints
+      </button>
+
+      @if (instructionsOpen()) {
+        <app-markdown-view class="instructions__body" [source]="instructions" />
+      }
+    </section>
+  }
+</div>

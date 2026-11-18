@@ -3,342 +3,293 @@
 }
 
 .page {
+  inline-size: 100%;
+  max-inline-size: 44rem;
+  margin-inline: auto;
+  padding-block: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  max-inline-size: var(--container-max);
-  margin-inline: auto;
+  gap: var(--space-5);
 }
 
+/* 1 — header */
 .head {
   display: flex;
-  align-items: flex-start;
+  flex-wrap: wrap;
   gap: var(--space-3);
-}
-
-.head__back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  inline-size: 2.25rem;
-  block-size: 2.25rem;
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-  color: var(--color-text-muted);
-
-  &:hover {
-    background-color: var(--color-bg-hover);
-    color: var(--color-text-strong);
-  }
+  align-items: flex-start;
+  justify-content: space-between;
 }
 
 .head__text {
-  flex: 1;
   min-inline-size: 0;
-
-  h1 {
-    margin: 0;
-    font-size: var(--font-size-h2);
-  }
+  flex: 1 1 16ch;
 }
 
-.head__sub {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-2);
+h1 {
+  margin: 0;
+  font-size: clamp(1.25rem, 2vw + 0.5rem, 1.6rem);
+  font-weight: 600;
+  color: var(--color-text-strong);
+  overflow-wrap: anywhere;
+}
+
+.head__course {
   margin: var(--space-1) 0 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
+  overflow-wrap: anywhere;
 }
 
 .head__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+  align-items: center;
 }
 
-.timeline-block {
+/* 2 — the deadline sits in its own quiet card */
+.deadline-panel {
   padding: var(--space-4);
-  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-card);
   background-color: var(--color-bg-surface);
 }
 
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
-  gap: var(--space-3);
-}
-
-.metric {
-  padding: var(--space-3) var(--space-4);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-card);
-  background-color: var(--color-bg-surface);
-}
-
-.metric__label {
+/* 3 — one sentence, with the accepted number carrying the weight */
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
   margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
 }
 
-.metric__value {
-  margin: var(--space-1) 0 0;
-  font-size: 1.75rem;
+.summary__count {
+  font-size: clamp(1.5rem, 3vw + 0.5rem, 2rem);
   font-weight: 600;
   color: var(--color-text-strong);
-  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
 }
 
-.metric__of {
-  font-size: 1rem;
-  font-weight: 400;
+.summary__label {
   color: var(--color-text-muted);
 }
 
-.metric--danger .metric__value {
-  color: var(--color-danger-strong);
+.summary__dot {
+  color: var(--color-text-subtle);
 }
 
-.metric--warning .metric__value {
+.summary__review {
   color: var(--color-warning-text);
 }
 
-.share {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
+.summary__late {
+  color: var(--color-warning-text);
 }
 
-.share__label {
+/* 4 — one row per student who accepted */
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-block-start: var(--border-width) solid var(--color-border);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  padding-block: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-border);
+}
+
+.row__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background-color: var(--color-bg-input);
+  color: var(--color-text-strong);
+  font-size: 0.75em;
+  font-weight: 600;
+}
+
+.row__text {
+  flex: 1 1 14ch;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.row__name {
+  color: var(--color-text-strong);
+  overflow-wrap: anywhere;
+}
+
+.row__meta {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
 
-.share__url {
-  flex: 1;
-  min-inline-size: 12rem;
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-sm);
+/* the badge shares the row's centre line with the button */
+.row .pill {
+  align-self: center;
 }
 
-.toolbar {
+.pill mat-icon {
+  font-size: 1em;
+  inline-size: 1em;
+  block-size: 1em;
+}
+
+.row__action {
+  margin-inline-start: auto;
+  white-space: nowrap;
+}
+
+/* 5 — the collapsed group of people who have not started */
+.pending {
   display: flex;
   flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  padding-block-start: var(--space-2);
+}
+
+.pending__toggle {
+  display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
 }
 
-.toolbar__search {
-  flex: 1 1 14rem;
-  max-inline-size: 22rem;
+.pending__toggle:hover {
+  color: var(--color-text-strong);
 }
 
-.toolbar__filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+.pending__toggle:focus-visible {
+  outline: 0.125rem solid var(--color-accent);
+  outline-offset: 0.125rem;
+  border-radius: var(--radius);
 }
 
+.pending__toggle mat-icon {
+  font-size: 1.125rem;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+}
+
+/* overlapping initials, so three people cost one line */
+.pending__stack {
+  display: inline-flex;
+  align-items: center;
+}
+
+.pending__avatar,
+.pending__more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  border-radius: 50%;
+  border: var(--border-width) solid var(--color-bg-body);
+  background-color: var(--color-bg-input);
+  color: var(--color-text);
+  font-size: 0.6875em;
+  font-weight: 600;
+}
+
+.pending__avatar + .pending__avatar,
+.pending__more {
+  margin-inline-start: -0.5rem;
+}
+
+.pending__more {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-muted);
+}
+
+.pending__text {
+  color: var(--color-text-muted);
+}
+
+.pending__done {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/* the expanded list uses the same rows as the accepted students, without a second top rule */
+.rows--pending {
+  flex: 1 0 100%;
+  margin-block-start: var(--space-2);
+  border-block-start: 0;
+}
+
+/* the "closed for good" marker; the pill tokens already carry the danger tones */
 .chip {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 0.25rem var(--space-3);
-  border: var(--border-width) solid var(--color-border);
+  padding: 0.125rem var(--space-3);
   border-radius: var(--radius-pill);
-  background-color: var(--color-bg-surface);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-
-  &:hover {
-    background-color: var(--color-bg-hover);
-    color: var(--color-text-strong);
-  }
-
-  &.is-active {
-    border-color: var(--color-accent);
-    background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-bg-surface));
-    color: var(--color-text-strong);
-  }
-}
-
-.chip__count {
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-subtle);
-}
-
-.toolbar__sort {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-inline-start: auto;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-/* The table keeps its buttons on one line and scrolls sideways on narrow screens. */
-.table-wrap {
-  overflow-x: auto;
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-card);
-  background-color: var(--color-bg-surface);
-}
-
-.table {
-  inline-size: 100%;
-  min-inline-size: 44rem;
-  border-collapse: collapse;
   font-size: var(--font-size-sm);
 }
 
-.table th,
-.table td {
-  padding: var(--space-3) var(--space-4);
-  text-align: start;
-  vertical-align: middle;
-  white-space: nowrap;
+.chip--danger {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
-.table thead th {
-  font-weight: 500;
-  color: var(--color-text-muted);
-  border-block-end: var(--border-width) solid var(--color-border);
+.chip mat-icon {
+  font-size: 1em;
+  inline-size: 1em;
+  block-size: 1em;
 }
 
-.table tbody tr + tr td {
-  border-block-start: var(--border-width) solid var(--color-border-subtle);
-}
-
-.table tbody tr:hover td {
-  background-color: var(--color-bg-hover);
-}
-
-.table__actions-col {
-  text-align: end;
-}
-
-.table__muted {
-  color: var(--color-text-subtle);
-}
-
-.table__late-cell {
-  color: var(--color-warning-text);
-}
-
-.student {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.student__avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  inline-size: 2rem;
-  block-size: 2rem;
-  border-radius: var(--radius-pill);
-  background-color: var(--color-bg-input);
-  color: var(--color-text);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-}
-
-.student__text {
-  display: flex;
-  flex-direction: column;
-  min-inline-size: 0;
-}
-
-.student__name {
-  color: var(--color-text);
-}
-
-.student__id {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-subtle);
-  font-variant-numeric: tabular-nums;
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-1);
-}
-
-// The remind action sits next to the icon buttons, so it has to be just as compact.
-.actions__remind {
-  min-block-size: 2.25rem;
-  padding-inline: var(--space-3);
-  font-size: var(--font-size-sm);
-}
-
-.icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: 2.25rem;
-  block-size: 2.25rem;
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-  background-color: var(--color-bg-input);
-  color: var(--color-text-muted);
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    background-color: var(--color-bg-hover);
-    color: var(--color-text-strong);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
-
+/* empty state */
 .empty {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-5);
-  border: var(--border-width) solid var(--color-border);
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
   border-radius: var(--radius-card);
   background-color: var(--color-bg-surface);
-
-  h2 {
-    margin: 0;
-    font-size: 1.125rem;
-  }
-
-  p {
-    margin: 0;
-    color: var(--color-text-muted);
-  }
-
-  // The link stretches to the card: the row layout's flex rules do not apply in a column.
-  .share__url {
-    align-self: stretch;
-  }
+  text-align: center;
 }
 
-@media (max-width: 48em) {
-  .head {
-    flex-wrap: wrap;
-  }
+.empty mat-icon {
+  color: var(--color-text-subtle);
+}
 
+.empty__text {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 40em) {
   .head__actions {
     inline-size: 100%;
   }
 
-  .toolbar__sort {
+  .row__action {
     margin-inline-start: 0;
+    flex: 1 1 100%;
+  }
+
+  .pending {
+    align-items: flex-start;
   }
 }

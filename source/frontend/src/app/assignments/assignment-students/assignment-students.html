@@ -1,163 +1,151 @@
 <div class="page">
-  <header class="head">
-    <a class="head__back" [routerLink]="backRoute" aria-label="Back to the course" title="Back to the course">
-      <mat-icon>arrow_back</mat-icon>
-    </a>
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
 
+  <header class="head">
     <div class="head__text">
-      <h1>{{ title() || 'Submissions' }}</h1>
-      @if (courseTitle() || deadline()) {
-        <p class="head__sub">
-          @if (courseTitle()) {
-            <span>{{ courseTitle() }}</span>
-          }
-          @if (deadline()) {
-            <span>·</span>
-            <span>{{ deadlineLabel() }}</span>
-          }
-        </p>
+      <h1>{{ title() }}</h1>
+      @if (courseTitle(); as course) {
+        <p class="head__course">{{ course }}</p>
       }
     </div>
 
     <div class="head__actions">
-      <button mat-stroked-button type="button" (click)="handleDownloadAllClicked()">Download all</button>
-      <button mat-stroked-button type="button" (click)="handleEditClicked()">Edit assignment</button>
+      <button type="button" class="btn btn--secondary" (click)="copyLink()">
+        <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'link' }}</mat-icon>
+        {{ copied() ? 'Copied' : 'Copy student link' }}
+      </button>
+
+      <button type="button" class="btn btn--icon" [matMenuTriggerFor]="moreMenu" aria-label="More actions">
+        <mat-icon aria-hidden="true">more_horiz</mat-icon>
+      </button>
+      <mat-menu #moreMenu="matMenu">
+        <button type="button" mat-menu-item (click)="handleDownloadAllClicked()">Download all</button>
+        <button type="button" mat-menu-item (click)="handleEditClicked()">Edit assignment</button>
+      </mat-menu>
     </div>
   </header>
 
-  @if (loading()) {
-    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-  }
-
-  @if (deadline()) {
-    <section class="timeline-block">
-      <app-deadline-timeline [deadline]="deadline()" [kind]="deadlineKind()"></app-deadline-timeline>
+  @if (deadline(); as due) {
+    <section class="deadline-panel">
+      <app-deadline-timeline [deadline]="due" [kind]="deadlineKind()" />
     </section>
   }
 
-  <section class="metrics" aria-label="Submission summary">
-    <article class="metric">
-      <p class="metric__label">Accepted</p>
-      <p class="metric__value">{{ acceptedCount() }}<span class="metric__of">/ {{ totalCount() }}</span></p>
-    </article>
-    <article class="metric">
-      <p class="metric__label">Pushed work</p>
-      <p class="metric__value">{{ pushedCount() }}</p>
-    </article>
-    @if (showLate()) {
-      <article class="metric metric--danger">
-        <p class="metric__label">Late</p>
-        <p class="metric__value">{{ lateCount() }}</p>
-      </article>
-    }
-    <article class="metric metric--warning">
-      <p class="metric__label">Needs feedback</p>
-      <p class="metric__value">{{ needsFeedbackCount() }}</p>
-    </article>
-  </section>
-
-  <section class="share">
-    <span class="share__label">Student link</span>
-    <input class="share__url" readonly [value]="studentUrl()" aria-label="Link to send to students"
-           (focus)="$any($event.target).select()">
-    <button mat-stroked-button type="button" (click)="copyLink()">{{ copied() ? 'Copied' : 'Copy link' }}</button>
-  </section>
-
-  <div class="toolbar">
-    <input class="toolbar__search" type="search" placeholder="Search by name or ID"
-           aria-label="Search by name or student ID" [value]="search()" (input)="setSearch($event)">
-
-    <div class="toolbar__filters" role="group" aria-label="Filter submissions">
-      @for (filter of filters(); track filter.key) {
-        <button class="chip" type="button" [class.is-active]="selected() === filter.key"
-                [attr.aria-pressed]="selected() === filter.key" (click)="setFilter(filter.key)">
-          {{ filter.label }} <span class="chip__count">{{ filter.count }}</span>
-        </button>
-      }
-    </div>
-
-    <label class="toolbar__sort">
-      <span>Sort</span>
-      <select [value]="sort()" (change)="setSort($event)">
-        <option value="last-commit">Last commit</option>
-        <option value="name">Name</option>
-        <option value="status">Status</option>
-      </select>
-    </label>
-  </div>
-
-  @if (!loading() && visibleRows().length === 0) {
-    <div class="empty">
-      <h2>No submissions yet</h2>
-      <p>Send students this link so they can accept the assignment:</p>
-      <input class="share__url" readonly [value]="studentUrl()" aria-label="Link to send to students"
-             (focus)="$any($event.target).select()">
-      <button mat-stroked-button type="button" (click)="copyLink()">{{ copied() ? 'Copied' : 'Copy link' }}</button>
-    </div>
+  @if (nothingAccepted()) {
+    <section class="empty">
+      <mat-icon aria-hidden="true">group_off</mat-icon>
+      <p class="empty__text">No one has accepted yet</p>
+      <button type="button" class="btn btn--primary" (click)="copyLink()">
+        <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'link' }}</mat-icon>
+        {{ copied() ? 'Copied' : 'Copy student link' }}
+      </button>
+    </section>
   } @else {
-    <div class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr>
-            <th scope="col">Student</th>
-            <th scope="col">Status</th>
-            <th scope="col">Commits</th>
-            <th scope="col">Last commit</th>
-            <th scope="col">Feedback</th>
-            <th scope="col" class="table__actions-col">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (row of visibleRows(); track row.studentId) {
-            <tr [class.row--late]="row.late">
-              <td>
-                <div class="student">
-                  <span class="student__avatar" aria-hidden="true">{{ row.initials }}</span>
-                  <span class="student__text">
-                    <span class="student__name">{{ row.name }}</span>
-                    <span class="student__id">{{ row.studentNumber ?? '—' }}</span>
-                  </span>
-                </div>
-              </td>
-              <td>
-                <span class="pill pill--{{ row.statusTone }}">{{ row.statusLabel }}</span>
-              </td>
-              <td class="table__muted">—</td>
-              <td [class.table__late-cell]="row.late">
-                <span [title]="row.lastCommitTitle">{{ row.lastCommitLabel }}</span>
-              </td>
-              <td>
-                @if (row.feedbackTone === 'none') {
-                  <span class="table__muted">—</span>
-                } @else {
-                  <span class="pill pill--{{ row.feedbackTone }}">{{ row.feedbackLabel }}</span>
-                }
-              </td>
-              <td>
-                <div class="actions">
-                  @if (!row.accepted) {
-                    <button class="btn btn--secondary actions__remind" type="button" (click)="remind(row)">Remind</button>
-                  } @else {
-                    <button class="icon-button" type="button" aria-label="Open repository"
-                            matTooltip="Open repository" [disabled]="row.repoUrl === null"
-                            (click)="openRepository(row)">
-                      <mat-icon>open_in_new</mat-icon>
-                    </button>
-                    <button class="icon-button" type="button" aria-label="Open feedback pull request"
-                            matTooltip="Feedback pull request" (click)="openFeedbackPr(row)">
-                      <mat-icon>rate_review</mat-icon>
-                    </button>
-                    <button class="icon-button" type="button" aria-label="Open analytics"
-                            matTooltip="Analytics" (click)="viewAnalytics(row)">
-                      <mat-icon>insights</mat-icon>
-                    </button>
-                  }
-                </div>
-              </td>
-            </tr>
+    <p class="summary">
+      <span class="summary__count">{{ acceptedCount() }} of {{ totalCount() }}</span>
+      <span class="summary__label">accepted</span>
+      <span class="summary__dot" aria-hidden="true">·</span>
+      <span class="summary__review">{{ toReviewCount() }} to review</span>
+      @if (lateCount() > 0) {
+        <span class="summary__dot" aria-hidden="true">·</span>
+        <span class="summary__late">{{ lateCount() }} late</span>
+      }
+    </p>
+
+    <ul class="rows">
+      @for (row of acceptedRows(); track row.studentId) {
+        <li class="row">
+          <span class="row__avatar" aria-hidden="true">{{ row.initials }}</span>
+
+          <span class="row__text">
+            <span class="row__name">{{ row.name }}</span>
+            <span class="row__meta" [title]="row.pushedTitle">
+              @if (row.commits !== null) {
+                {{ row.commits }} {{ row.commits === 1 ? 'commit' : 'commits' }} ·
+              }
+              {{ row.pushedLabel }}
+            </span>
+          </span>
+
+          @if (row.badge; as badge) {
+            <span class="pill" [class]="'pill pill--' + badge.tone">
+              @if (badge.icon) {
+                <mat-icon aria-hidden="true">{{ badge.icon }}</mat-icon>
+              }
+              {{ badge.label }}
+            </span>
           }
-        </tbody>
-      </table>
-    </div>
+
+          @if (row.action; as action) {
+            <button type="button" class="btn btn--primary row__action" (click)="runAction(row)">
+              {{ action.label }}
+            </button>
+          }
+
+          <button type="button" class="btn btn--icon" [matMenuTriggerFor]="rowMenu"
+                  [attr.aria-label]="'More actions for ' + row.name">
+            <mat-icon aria-hidden="true">more_horiz</mat-icon>
+          </button>
+          <mat-menu #rowMenu="matMenu">
+            <button type="button" mat-menu-item [disabled]="row.repoUrl === null" (click)="openRepository(row)">
+              Open repository
+            </button>
+            <button type="button" mat-menu-item [disabled]="row.acceptanceId === null" (click)="viewAnalytics(row)">
+              Analytics
+            </button>
+          </mat-menu>
+        </li>
+      }
+    </ul>
+
+    <section class="pending">
+      @if (everyoneAccepted()) {
+        <p class="pending__done">Everyone has accepted the homework.</p>
+      } @else {
+        <button type="button" class="pending__toggle" (click)="togglePending()"
+                [attr.aria-expanded]="pendingOpen()">
+          <mat-icon aria-hidden="true">{{ pendingOpen() ? 'expand_more' : 'chevron_right' }}</mat-icon>
+
+          <span class="pending__stack" aria-hidden="true">
+            @for (row of pendingPreview(); track row.studentId) {
+              <span class="pending__avatar">{{ row.initials }}</span>
+            }
+            @if (pendingMore() > 0) {
+              <span class="pending__more">+{{ pendingMore() }}</span>
+            }
+          </span>
+
+          <span class="pending__text">{{ pendingRows().length }} haven't accepted yet</span>
+        </button>
+
+        @if (isHard() && deadlinePassed()) {
+          <span class="chip chip--danger">
+            <mat-icon aria-hidden="true">lock</mat-icon>
+            Locked
+          </span>
+        } @else {
+          <button type="button" class="btn btn--secondary" (click)="remindAll()">Remind all</button>
+        }
+
+        @if (pendingOpen()) {
+          <ul class="rows rows--pending">
+            @for (row of pendingRows(); track row.studentId) {
+              <li class="row">
+                <span class="row__avatar" aria-hidden="true">{{ row.initials }}</span>
+
+                <span class="row__text">
+                  <span class="row__name">{{ row.name }}</span>
+                  @if (row.studentNumber; as number) {
+                    <span class="row__meta">{{ number }}</span>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      }
+    </section>
   }
 </div>

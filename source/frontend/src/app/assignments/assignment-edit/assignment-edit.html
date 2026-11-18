@@ -7,9 +7,6 @@
 
     <div class="edit-head__actions">
       <a class="btn btn--secondary" [routerLink]="backRoute">Cancel</a>
-      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="handleSaveClicked()">
-        {{ saving() ? 'Saving…' : 'Save' }}
-      </button>
     </div>
   </header>
 
@@ -67,6 +64,60 @@
       }
 
       @if (step() === 1) {
+        <section class="card-surface edit-card" [class.edit-card--invalid]="repoError() !== null">
+          <h2 class="edit-card__title">Starter</h2>
+
+          <div class="starter-grid" role="group" aria-label="Starter source">
+            <button class="starter" type="button" [class.is-active]="!isCopyRepo()"
+                    (click)="setStarterSource(StarterSourceKind.DescriptionOnly)">
+              <mat-icon aria-hidden="true">description</mat-icon>
+              <span>Description only</span>
+            </button>
+            <button class="starter" type="button" [class.is-active]="isCopyRepo()"
+                    (click)="setStarterSource(StarterSourceKind.CopyRepo)">
+              <mat-icon aria-hidden="true">content_copy</mat-icon>
+              <span>Copy repository</span>
+            </button>
+            <!-- Not wired to the backend yet; the wrapper carries the tooltip because a disabled button gets no hover events. -->
+            <span class="starter-wrap" title="Not Available yet">
+              <button class="starter" type="button" disabled aria-label="Archive, not available yet">
+                <mat-icon aria-hidden="true">inventory_2</mat-icon>
+                <span>Archive</span>
+              </button>
+            </span>
+            <button class="starter" type="button" [class.is-active]="isForkRepo()"
+                    (click)="setStarterSource(StarterSourceKind.ForkOwnRepo)">
+              <mat-icon aria-hidden="true">fork_right</mat-icon>
+              <span>Fork own repository</span>
+            </button>
+          </div>
+
+          @if (needsRepoUrl()) {
+            <div class="field">
+              <label class="field__label" for="field-url">
+                {{ isForkRepo() ? 'Link to your repository' : 'Repository URL' }}
+              </label>
+              <input id="field-url" class="input" type="url" [class.input--invalid]="repoError() !== null"
+                     placeholder="https://forgejo.example/owner/template" [value]="starterRepoUrl()"
+                     (input)="starterRepoUrl.set($any($event.target).value)">
+              @if (repoError(); as error) {
+                <p class="field__error" role="alert">
+                  <mat-icon aria-hidden="true">error</mat-icon>
+                  <span>{{ error }}</span>
+                </p>
+              }
+            </div>
+
+            @if (isCopyRepo()) {
+              <app-markdown-editor label="README" [value]="readme()" (valueChange)="readme.set($event)" />
+            }
+          } @else {
+            <p class="edit-hint">Repository URL appears when you copy or fork a repository.</p>
+          }
+        </section>
+      }
+
+      @if (step() === 2) {
         <section class="card-surface edit-card" [class.edit-card--invalid]="deadlineError() !== null">
           <h2 class="edit-card__title">Deadline</h2>
 
@@ -76,7 +127,6 @@
                     [class.is-active]="deadlineKind() === DeadlineKind.None"
                     (click)="setDeadlineKind(DeadlineKind.None)">
               <span class="deadline-card__title">No deadline</span>
-              <span class="deadline-card__track deadline-card__track--none" aria-hidden="true"></span>
               <span class="deadline-card__text">Work is accepted at any time.</span>
             </button>
 
@@ -84,22 +134,34 @@
                     [attr.aria-checked]="deadlineKind() === DeadlineKind.Soft"
                     [class.is-active]="deadlineKind() === DeadlineKind.Soft"
                     (click)="setDeadlineKind(DeadlineKind.Soft)">
-              <span class="deadline-card__title">Soft deadline</span>
-              <app-deadline-timeline variant="mini" [deadline]="previewDeadline()"
-                                     [kind]="DeadlineKind.Soft"></app-deadline-timeline>
+              <span class="deadline-card__title">
+                <mat-icon aria-hidden="true">hourglass_bottom</mat-icon>
+                Soft deadline
+              </span>
               <span class="deadline-card__text">Pushes after it still count, marked late.</span>
             </button>
 
             <button type="button" class="deadline-card" role="radio"
                     [attr.aria-checked]="deadlineKind() === DeadlineKind.Hard"
                     [class.is-active]="deadlineKind() === DeadlineKind.Hard"
+                    [class.is-disabled]="forkBlocksHardDeadline()"
+                    [disabled]="forkBlocksHardDeadline()"
+                    [attr.aria-disabled]="forkBlocksHardDeadline()"
                     (click)="setDeadlineKind(DeadlineKind.Hard)">
-              <span class="deadline-card__title">Hard deadline</span>
-              <app-deadline-timeline variant="mini" [deadline]="previewDeadline()"
-                                     [kind]="DeadlineKind.Hard"></app-deadline-timeline>
+              <span class="deadline-card__title">
+                <mat-icon aria-hidden="true">lock</mat-icon>
+                Hard deadline
+              </span>
               <span class="deadline-card__text">Nothing can be pushed after it.</span>
             </button>
           </div>
+
+          @if (forkBlocksHardDeadline()) {
+            <p class="edit-hint">
+              Not available with a forked repository: a hard deadline blocks every push, so the
+              fork would never receive your work.
+            </p>
+          }
 
           @if (hasDeadline()) {
             <div class="field-row">
@@ -125,63 +187,12 @@
             }
 
             <div class="chips">
-              <button class="chip" type="button" (click)="quickPick(0, true)">Tomorrow 23:59</button>
-              <button class="chip" type="button" (click)="quickPick(7, false)">In 1 week</button>
-              <button class="chip" type="button" (click)="quickPick(14, false)">In 2 weeks</button>
+              <button class="btn btn--secondary" type="button" (click)="quickPick(0, true)">Tomorrow 23:59</button>
+              <button class="btn btn--secondary" type="button" (click)="quickPick(7, false)">In 1 week</button>
+              <button class="btn btn--secondary" type="button" (click)="quickPick(14, false)">In 2 weeks</button>
             </div>
           } @else {
             <p class="edit-hint">Without a deadline the assignment never closes.</p>
-          }
-        </section>
-      }
-
-      @if (step() === 2) {
-        <section class="card-surface edit-card" [class.edit-card--invalid]="repoError() !== null">
-          <h2 class="edit-card__title">Starter</h2>
-
-          <div class="starter-grid" role="group" aria-label="Starter source">
-            <button class="starter" type="button" [class.is-active]="!isCopyRepo()"
-                    (click)="starterSource.set(StarterSourceKind.DescriptionOnly)">
-              <mat-icon aria-hidden="true">description</mat-icon>
-              <span>Description only</span>
-            </button>
-            <button class="starter" type="button" [class.is-active]="isCopyRepo()"
-                    (click)="starterSource.set(StarterSourceKind.CopyRepo)">
-              <mat-icon aria-hidden="true">content_copy</mat-icon>
-              <span>Copy repository</span>
-            </button>
-            <!-- Not wired to the backend yet; the wrapper carries the tooltip because a disabled button gets no hover events. -->
-            <span class="starter-wrap" title="Not Available yet">
-              <button class="starter" type="button" disabled aria-label="Archive, not available yet">
-                <mat-icon aria-hidden="true">inventory_2</mat-icon>
-                <span>Archive</span>
-              </button>
-            </span>
-            <span class="starter-wrap" title="Not Available yet">
-              <button class="starter" type="button" disabled aria-label="Fork own repository, not available yet">
-                <mat-icon aria-hidden="true">fork_right</mat-icon>
-                <span>Fork own repository</span>
-              </button>
-            </span>
-          </div>
-
-          @if (isCopyRepo()) {
-            <div class="field">
-              <label class="field__label" for="field-url">Repository URL</label>
-              <input id="field-url" class="input" type="url" [class.input--invalid]="repoError() !== null"
-                     placeholder="https://forgejo.example/owner/template" [value]="starterRepoUrl()"
-                     (input)="starterRepoUrl.set($any($event.target).value)">
-              @if (repoError(); as error) {
-                <p class="field__error" role="alert">
-                  <mat-icon aria-hidden="true">error</mat-icon>
-                  <span>{{ error }}</span>
-                </p>
-              }
-            </div>
-
-            <app-markdown-editor label="README" [value]="readme()" (valueChange)="readme.set($event)" />
-          } @else {
-            <p class="edit-hint">Repository URL and README appear only when you copy a repo.</p>
           }
         </section>
       }
@@ -221,6 +232,10 @@
         </button>
         @if (step() < steps.length - 1) {
           <button class="btn btn--secondary" type="button" (click)="goTo(step() + 1)">Next</button>
+        } @else {
+          <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="handleSaveClicked()">
+            {{ saving() ? 'Saving…' : 'Save' }}
+          </button>
         }
       </div>
     </div>

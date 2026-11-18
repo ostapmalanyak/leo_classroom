@@ -1,5 +1,5 @@
-import { Component, computed, inject, input, InputSignal, OnDestroy, OnInit, signal, WritableSignal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, computed, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
+import { Instant } from '@js-joda/core';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressBar } from '@angular/material/progress-bar';
@@ -8,124 +8,104 @@ import {
 } from '../../../core/services/assignment-service';
 import { NowService } from '../../../core/services/now-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
-import { timestampLabel } from '../../../core/util/assignment-state';
+import { relativeDue } from '../../../core/util/assignment-state';
 import { DeadlineTimeline } from '../../shared/deadline-timeline/deadline-timeline';
 import { MarkdownView } from '../../shared/markdown-view/markdown-view';
 
-const POLL_INTERVAL_MS = 2000;
-const COPY_RESET_MS = 2000;
+/** What the student has to do next; only one of them is ever on screen. */
+type Step = 'accept' | 'clone' | 'push' | 'feedback';
 
-type Step = 'accept' | 'clone' | 'push' | 'review';
-
+/**
+ * The student's page for one assignment. It answers a single question — what do I do next — and
+ * everything else (instructions, reminder of the deadline) sits behind that answer.
+ */
 @Component({
-  selector: 'app-student-assignment-detail',
-  imports: [RouterLink, MatButton, MatIcon, MatProgressBar, MarkdownView, DeadlineTimeline],
+  selector: 'app-assignment-detail',
+  imports: [MatButton, MatIcon, MatProgressBar, DeadlineTimeline, MarkdownView],
   templateUrl: './assignment-detail.html',
   styleUrl: './assignment-detail.scss'
 })
-export class StudentAssignmentDetail implements OnInit, OnDestroy {
+export class StudentAssignmentDetail implements OnInit {
   private readonly service = inject(AssignmentService);
   private readonly snackbar = inject(SnackbarService);
   private readonly clock = inject(NowService);
 
   public readonly id: InputSignal<string> = input.required<string>();
 
-  protected readonly DeadlineKind = DeadlineKind;
-  protected readonly FeedbackState = FeedbackState;
-  protected readonly SubmissionStatus = SubmissionStatus;
-  protected readonly steps: readonly { key: Step; label: string }[] = [
-    { key: 'accept', label: 'Accept' },
-    { key: 'clone', label: 'Clone' },
-    { key: 'push', label: 'Push' },
-    { key: 'review', label: 'Review' }
-  ];
-
-  protected readonly loading: WritableSignal<boolean> = signal(false);
+  protected readonly loading: WritableSignal<boolean> = signal(true);
   protected readonly working: WritableSignal<boolean> = signal(false);
   protected readonly failed: WritableSignal<boolean> = signal(false);
   protected readonly info: WritableSignal<AssignmentInfo | null> = signal(null);
   protected readonly submission: WritableSignal<Submission | null> = signal(null);
-  protected readonly copiedUrl: WritableSignal<boolean> = signal(false);
-  protected readonly copiedBlock: WritableSignal<boolean> = signal(false);
-  /** The detail endpoints do not carry the course, but the student's own list does. */
   protected readonly courseTitle: WritableSignal<string> = signal('');
+  protected readonly description: WritableSignal<string> = signal('');
+  protected readonly lastPushAt: WritableSignal<number | null> = signal(null);
+  protected readonly copied: WritableSignal<boolean> = signal(false);
+  protected readonly instructionsOpen: WritableSignal<boolean> = signal(false);
 
-  private pollTimer: ReturnType<typeof setTimeout> | null = null;
+  protected readonly DeadlineKind = DeadlineKind;
+  protected readonly SubmissionStatus = SubmissionStatus;
+
+  protected readonly title = computed(() => this.info()?.title ?? '');
+  protected readonly deadline = computed(() => this.info()?.deadline ?? null);
+  protected readonly deadlineKind = computed(() => this.info()?.deadlineKind ?? DeadlineKind.None);
+  protected readonly accepted = computed(() => this.info()?.accepted === true);
+
+  /** A hard deadline that has passed closes the repository: nothing can be pushed any more. */
+  protected readonly locked = computed(() => {
+    const deadline = this.deadline();
+
+    return this.deadlineKind() === DeadlineKind.Hard
+      && deadline !== null
+      && this.clock.now().isAfter(deadline);
+  });
+
+  protected readonly hasPushed = computed(() => this.lastPushAt() !== null);
+
+  protected readonly step = computed<Step>(() => {
+    const submission = this.submission();
+    if (!this.accepted() || submission === null) {
+      return 'accept';
+    }
+    if (submission.feedbackState !== FeedbackState.None) {
+      return 'feedback';
+    }
+
+    return this.hasPushed() ? 'push' : 'clone';
+  });
+
+  protected readonly pushLabel = computed(() => {
+    const pushed = this.lastPushAt();
+
+    return pushed === null ? '' : `Last push ${relativeDue(Instant.ofEpochMilli(pushed), this.clock.now())}`;
+  });
 
   protected readonly cloneUrl = computed(() => this.submission()?.repoUrl ?? '');
-  protected readonly repositoryName = computed(() => {
-    const url = this.cloneUrl().replace(/\.git$/, '');
-    const name = url.split('/').filter(part => part !== '').pop();
+  protected readonly repoName = computed(() => {
+    const url = this.cloneUrl();
+    const name = url.split('/').pop() ?? '';
 
-    return name ?? '';
-  });
-  protected readonly commands = computed(() =>
-    [
-      `git clone ${this.cloneUrl()}`,
-      `cd ${this.repositoryName()}`,
-      'git add . && git commit -m "Add my work"',
-      'git push'
-    ].join('\n'));
-  protected readonly vsCodeUrl = computed(() =>
-    `vscode://vscode.git/clone?url=${encodeURIComponent(this.cloneUrl())}`);
-
-  /** The step the student is on, derived from what actually happened, not from a stored flag. */
-  protected readonly currentStep = computed(() => {
-    const submission = this.submission();
-    if (submission === null || this.info()?.accepted !== true) {
-      return 0;
-    }
-    if (submission.feedbackState !== FeedbackState.None) {
-      return 3;
-    }
-    if (submission.late) {
-      return 2;
-    }
-    const deadline = this.info()?.deadline ?? null;
-
-    return deadline !== null && this.clock.now().isAfter(deadline) ? 2 : 1;
+    return name.endsWith('.git') ? name.slice(0, -4) : name;
   });
 
-  // The raw instant would read "2026-11-12T20:40:00Z" in the template.
-  protected readonly lateSinceLabel = computed(() => {
-    const since = this.submission()?.lateSince ?? null;
+  protected readonly cloneCommands = computed(
+    () => `git clone ${this.cloneUrl()}\ncd ${this.repoName()}`);
 
-    return since === null ? '' : timestampLabel(since);
+  /** The command line as the block shows it: a long URL keeps its head and tail. */
+  protected readonly cloneDisplay = computed(
+    () => `git clone ${this.shorten(this.cloneUrl())}\ncd ${this.repoName()}`);
+
+  /** A push that landed after a soft deadline still counts, and the row says so. */
+  protected readonly pushedLate = computed(() => {
+    const deadline = this.deadline();
+    const pushed = this.lastPushAt();
+
+    return this.deadlineKind() !== DeadlineKind.Hard
+      && deadline !== null
+      && pushed !== null
+      && Instant.ofEpochMilli(pushed).isAfter(deadline);
   });
-
-  protected readonly status = computed(() => {
-    const submission = this.submission();
-    if (this.info()?.accepted !== true || submission === null) {
-      return { label: 'Not accepted', tone: 'neutral' };
-    }
-    if (submission.status === SubmissionStatus.Failed) {
-      return { label: 'Setup failed', tone: 'danger' };
-    }
-    if (submission.status === SubmissionStatus.Provisioning) {
-      return { label: 'Setting up', tone: 'info' };
-    }
-    if (submission.feedbackState !== FeedbackState.None) {
-      return { label: 'Reviewed', tone: 'success' };
-    }
-    if (submission.late) {
-      return { label: 'Submitted late', tone: 'late' };
-    }
-    return { label: 'Ready to start', tone: 'success' };
-  });
-
-  /** The submission payload carries no push timestamp, so the row stays an em dash. */
-  protected readonly lastPushRelative = computed(() => '—');
-
-  protected readonly feedback = computed(() => {
-    switch (this.submission()?.feedbackState ?? FeedbackState.None) {
-      case FeedbackState.Unread:
-        return 'Feedback waiting';
-      case FeedbackState.Read:
-        return 'Feedback read';
-      default:
-        return 'Not available';
-    }
-  });
+  protected readonly pushCommands = 'git add . && git commit -m "Describe your change"\ngit push';
 
   public async ngOnInit(): Promise<void> {
     this.loading.set(true);
@@ -138,21 +118,10 @@ export class StudentAssignmentDetail implements OnInit, OnDestroy {
     }
     this.info.set(info);
     await this.loadCourseTitle();
+
     if (info.accepted) {
       await this.refreshSubmission();
     }
-  }
-
-  public ngOnDestroy(): void {
-    this.clearPoll();
-  }
-
-  protected isDone(index: number): boolean {
-    return index < this.currentStep();
-  }
-
-  protected isCurrent(index: number): boolean {
-    return index === this.currentStep();
   }
 
   protected async handleAccept(): Promise<void> {
@@ -160,57 +129,51 @@ export class StudentAssignmentDetail implements OnInit, OnDestroy {
     this.failed.set(false);
     const result = await this.service.accept(Number(this.id()));
     this.working.set(false);
-    if (result === 'conflict') {
-      await this.refreshSubmission();
 
-      return;
-    }
-    if (result === 'forbidden' || result === 'not-found' || result === null) {
+    if (result === 'forbidden' || result === 'not-found' || result === 'conflict' || result === null) {
       this.failed.set(true);
 
       return;
     }
     this.submission.set(result);
-    this.schedulePollIfProvisioning(result);
+    this.info.update(current => (current === null ? current : { ...current, accepted: true }));
+    this.instructionsOpen.set(false);
   }
 
-  protected async handleRetry(): Promise<void> {
-    this.working.set(true);
-    const result = await this.service.retry(Number(this.id()));
-    this.working.set(false);
-    if (typeof result === 'string' || result === null) {
-      this.snackbar.show('Could not retry provisioning');
-
-      return;
+  protected openRepository(): void {
+    if (this.cloneUrl() !== '') {
+      window.open(this.cloneUrl(), '_blank', 'noopener');
     }
-    this.submission.set(result);
-    this.schedulePollIfProvisioning(result);
   }
 
-  protected async handleConfirmRead(): Promise<void> {
-    this.working.set(true);
-    const result = await this.service.confirmFeedbackRead(Number(this.id()));
-    this.working.set(false);
-    if (result !== 'ok') {
-      this.snackbar.show('Could not confirm the feedback');
-
-      return;
-    }
+  /** The feedback lives on the pull request in the repository, so that is where this leads. */
+  protected async viewFeedback(): Promise<void> {
+    this.openRepository();
+    await this.service.confirmFeedbackRead(Number(this.id()));
     await this.refreshSubmission();
   }
 
-  protected async copyUrl(): Promise<void> {
-    this.copiedUrl.set(await this.copyToClipboard(this.cloneUrl()));
-    if (this.copiedUrl()) {
-      setTimeout(() => this.copiedUrl.set(false), COPY_RESET_MS);
+  protected async copyBlock(text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+      this.copied.set(true);
+      setTimeout(() => this.copied.set(false), 2000);
+    } catch {
+      this.snackbar.show('Could not copy the commands');
     }
   }
 
-  protected async copyCommands(): Promise<void> {
-    this.copiedBlock.set(await this.copyToClipboard(this.commands()));
-    if (this.copiedBlock()) {
-      setTimeout(() => this.copiedBlock.set(false), COPY_RESET_MS);
+  protected toggleInstructions(): void {
+    this.instructionsOpen.update(open => !open);
+  }
+
+  private shorten(url: string): string {
+    const limit = 52;
+    if (url.length <= limit) {
+      return url;
     }
+
+    return `${url.slice(0, 26)}…${url.slice(-20)}`;
   }
 
   private async loadCourseTitle(): Promise<void> {
@@ -218,44 +181,19 @@ export class StudentAssignmentDetail implements OnInit, OnDestroy {
     if (list === null) {
       return;
     }
-    const match = [...list.accepted, ...list.unaccepted].find(item => item.id === Number(this.id()));
-    if (match !== undefined) {
-      this.courseTitle.set(match.courseTitle);
+    const own = [...list.accepted, ...list.unaccepted].find(entry => entry.id === Number(this.id()));
+    if (own === undefined) {
+      return;
     }
+    this.courseTitle.set(own.courseTitle);
+    this.description.set(own.description ?? '');
+    this.lastPushAt.set(own.lastPushAt?.toEpochMilli() ?? null);
   }
 
   private async refreshSubmission(): Promise<void> {
-    const result = await this.service.getSubmission(Number(this.id()));
-    if (result === 'forbidden' || result === null) {
-      return;
-    }
-    this.submission.set(result);
-    this.schedulePollIfProvisioning(result);
-  }
-
-  private schedulePollIfProvisioning(submission: Submission): void {
-    this.clearPoll();
-    if (submission.status === SubmissionStatus.Provisioning) {
-      this.pollTimer = setTimeout(() => void this.refreshSubmission(), POLL_INTERVAL_MS);
-    }
-  }
-
-  private clearPoll(): void {
-    if (this.pollTimer !== null) {
-      clearTimeout(this.pollTimer);
-      this.pollTimer = null;
-    }
-  }
-
-  private async copyToClipboard(text: string): Promise<boolean> {
-    try {
-      await navigator.clipboard.writeText(text);
-
-      return true;
-    } catch {
-      this.snackbar.show('Could not copy — select the text and copy it manually');
-
-      return false;
+    const submission = await this.service.getSubmission(Number(this.id()));
+    if (submission !== 'forbidden' && submission !== null) {
+      this.submission.set(submission);
     }
   }
 }
