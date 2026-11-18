@@ -18,16 +18,15 @@
       </div>
 
       <div class="navbar__actions">
-        <button class="icon-button" type="button" [matTooltip]="'Search (' + searchShortcut() + ')'"
+        <button class="navbar-search" type="button" [matTooltip]="'Search (' + searchShortcut() + ')'"
                 [attr.aria-label]="'Search (' + searchShortcut() + ')'" (click)="openSearch()">
-          <mat-icon aria-hidden="true">search</mat-icon>
+          Search
         </button>
 
         <app-notification-bell />
 
         <button class="avatar" type="button" [matMenuTriggerFor]="userMenu"
-                [class.is-open]="avatarMenuOpen()" [attr.aria-label]="'Account of ' + (session.identity()?.displayName ?? '')"
-                (click)="avatarMenuOpen.set(true)" (closed)="avatarMenuOpen.set(false)">
+                [attr.aria-label]="'Account of ' + (session.identity()?.displayName ?? '')">
           {{ initials() }}
         </button>
 
@@ -40,6 +39,10 @@
 
     @if (menuOpen()) {
       <div class="navbar__panel">
+        <!-- On a phone the search moves into the panel with the links. -->
+        <button class="navbar-link navbar-link--panel navbar-search--panel" type="button" (click)="openSearch()">
+          Search
+        </button>
         @for (entry of entries(); track entry.route) {
           <a class="navbar-link navbar-link--panel"
              [routerLink]="entry.route"

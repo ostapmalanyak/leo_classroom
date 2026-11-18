@@ -285,6 +285,8 @@
   display: block;
   font-size: 1.0625rem;
   line-height: 1.4;
+  // A long title wraps inside its column instead of running into the time that is left.
+  overflow-wrap: anywhere;
 }
 
 // The remaining time and the push note share one look. The colour of the remaining time
@@ -296,6 +298,29 @@
   font-weight: var(--font-weight-semibold);
   line-height: 1.2;
   white-space: nowrap;
+}
+
+// On a phone the title gets the whole width of the card and the time and the action
+// sit below it, so a long name can never reach them.
+@media (max-width: 40rem) {
+  .assignment-card mat-card-content {
+    align-items: center;
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .assignment-heading {
+    grid-column: 1 / -1;
+  }
+
+  .assignment-due {
+    grid-column: 1;
+  }
+
+  .assignment-details {
+    grid-column: 2;
+  }
 }
 
 .assignment-pushed {
@@ -709,7 +734,8 @@ mat-card.mat-mdc-card {
 // so neither may receive the generic control box.
 // A plain button gets the shape of a control. A button that carries the shared .btn class
 // is styled by .btn alone, so its variant (primary, secondary) is not overwritten here.
-button:not(.mat-mdc-button-base, .mat-mdc-menu-item, .mdc-switch, .tabs__item, .btn, .icon-button) {
+button:not(.mat-mdc-button-base, .mat-mdc-menu-item, .mdc-switch, .tabs__item, .btn, .icon-button,
+    .avatar, .navbar-search) {
   @include mixins.control-base;
 
   border-radius: var(--radius-button);
@@ -882,6 +908,13 @@ h2[mat-dialog-title] {
   align-items: center;
   display: flex;
   line-height: 1.2;
+}
+
+// The menu of the bell: wide enough for the title of the assignment, the course and the
+// time that is left.
+.mat-mdc-menu-panel.notification-menu {
+  min-width: 22rem;
+  max-width: 28rem;
 }
 
 // The menu of the avatar: a header with the name and the role, then the entries.

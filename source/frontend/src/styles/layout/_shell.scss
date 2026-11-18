@@ -90,7 +90,9 @@
   align-items: center;
   display: flex;
   flex: 0 0 auto;
-  gap: var(--space-1);
+  // The three buttons of the right side get room between them, so the bar does not
+  // look like one long row of icons.
+  gap: var(--space-3);
   margin-inline-start: auto;
 }
 
@@ -126,34 +128,35 @@
 }
 
 // The avatar is a round button with the initials of the signed in user.
+// The avatar is a clean circle with the initials of the user in it.
 .avatar {
   align-items: center;
-  background-color: var(--color-bg-input);
-  border: var(--border-width) solid var(--color-border);
+  background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-bg-surface));
+  border: 0;
   border-radius: 50%;
-  color: var(--color-text-strong);
+  color: var(--color-accent);
   cursor: pointer;
   display: inline-flex;
-  font-size: 0.75rem;
-  font-weight: var(--font-weight-semibold);
-  height: 2.125rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  height: 2rem;
   justify-content: center;
   padding: 0;
-  width: 2.125rem;
+  width: 2rem;
 
   &:hover {
-    background-color: var(--color-bg-hover);
+    background-color: color-mix(in srgb, var(--color-accent) 26%, var(--color-bg-surface));
   }
 
+  // The ring belongs to the keyboard: a mouse click leaves no ring behind.
   &:focus-visible {
     outline: 0.125rem solid var(--color-accent);
     outline-offset: 0.125rem;
   }
 
-  // While its menu is open the avatar wears the accent, so it is clear what is open.
-  &.is-open {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 0.0625rem var(--color-accent);
+  // While its menu is open the avatar wears a thin ring.
+  &[aria-expanded='true'] {
+    box-shadow: 0 0 0 0.125rem var(--color-accent);
   }
 }
 
@@ -226,6 +229,31 @@ button.icon-button {
   min-height: 2.125rem;
 }
 
+// The search in the bar is a word, like the links, with the quiet surface of a button
+// behind it so it does not read as a page.
+.navbar-search {
+  background-color: var(--color-bg-surface);
+  border: 0;
+  border-radius: 0.5rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  padding: 0.375rem 0.75rem;
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text);
+  }
+
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
+  }
+}
+
 .shell-content {
   background-color: var(--color-bg-body);
   padding-block: var(--space-5);
@@ -245,6 +273,11 @@ button.icon-button {
 
   .navbar__burger {
     display: inline-flex;
+  }
+
+  // On a phone the search sits in the panel with the links.
+  .navbar__actions .navbar-search {
+    display: none;
   }
 
   .brand__name {

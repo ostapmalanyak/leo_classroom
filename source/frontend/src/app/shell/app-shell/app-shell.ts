@@ -38,9 +38,6 @@ export class AppShell {
   /** The menu of the links under the bar on a phone. */
   protected readonly menuOpen = signal(false);
 
-  /** True while the avatar menu is open: the avatar shows it with an outline. */
-  protected readonly avatarMenuOpen = signal(false);
-
   protected readonly forgejoUrl = forgejoOrigin();
 
   /** The initials of the signed in user on the avatar. */
