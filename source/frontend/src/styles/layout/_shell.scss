@@ -29,17 +29,22 @@
   text-decoration: none;
 }
 
+// The logo of the app. It is drawn with a transparent background, so it sits directly on
+// the bar instead of on a white tile.
 .brand__mark {
   align-items: center;
-  background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-bg-surface));
-  border-radius: var(--radius);
-  color: var(--color-accent);
+  background-color: transparent;
   display: inline-flex;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+  flex: none;
   height: 1.5rem;
   justify-content: center;
   width: 1.5rem;
+
+  img {
+    display: block;
+    height: 100%;
+    width: 100%;
+  }
 }
 
 .brand__name {
@@ -62,6 +67,7 @@
 
 .navbar-link {
   align-items: center;
+  // The underline is the marker of the current page, not a decoration of the text.
   border-bottom: 0.125rem solid transparent;
   color: var(--color-text-muted);
   display: flex;
@@ -80,6 +86,7 @@
     outline-offset: -0.125rem;
   }
 
+  // The current page is bright and wears the accent underline at the bottom of the bar.
   &.is-active {
     border-bottom-color: var(--color-accent);
     color: var(--color-text-strong);
@@ -254,9 +261,23 @@ button.icon-button {
   }
 }
 
+// The page itself does not scroll: the bar stays on top, the footer stays at the bottom
+// and only the content between them moves.
 .shell-content {
   background-color: var(--color-bg-body);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   padding-block: var(--space-5);
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.footer {
+  flex: 0 0 auto;
 }
 
 @include mixins.breakpoint-md {
