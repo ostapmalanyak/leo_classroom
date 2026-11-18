@@ -193,8 +193,9 @@
   padding-inline: var(--space-3);
 }
 
-.input--invalid {
-  background-color: var(--color-danger-bg);
+.input.input--invalid {
+  border-color: var(--color-danger-border);
+  background-color: color-mix(in srgb, var(--color-danger-bg) 30%, var(--color-bg-input));
 }
 
 .input-group {
@@ -229,19 +230,24 @@
   border-bottom: var(--border-width) solid var(--color-border);
 }
 
+// A selected tab is marked with the accent line, exactly like the current page in the bar.
 .tabs__item {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: 0;
-  border-bottom: calc(var(--border-width) * 2) solid transparent;
+  border-bottom: 0.125rem solid transparent;
+  border-radius: 0;
   background: none;
   color: var(--color-text-muted);
   cursor: pointer;
   text-decoration: none;
 
-  &:hover,
+  &:hover {
+    color: var(--color-text);
+  }
+
   &.is-active {
     border-bottom-color: var(--color-accent);
     color: var(--color-text-strong);
@@ -425,7 +431,6 @@ app-empty-state .empty-state[class] {
 
   &:hover {
     color: var(--color-accent-hover);
-    text-decoration: underline;
   }
 }
 
@@ -1202,10 +1207,10 @@ h2[mat-dialog-title] {
   text-decoration: none;
 
   // Hover only where a pointer exists: on touch, a sticky :hover left the first row looking
-  // permanently selected.
+  // permanently selected. The row lifts with its colour, never with a line.
   @media (hover: hover) {
     &:hover strong {
-      text-decoration: underline;
+      color: var(--color-text-strong);
     }
   }
 

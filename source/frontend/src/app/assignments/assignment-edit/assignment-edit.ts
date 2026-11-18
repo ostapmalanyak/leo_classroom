@@ -1,14 +1,8 @@
-import { Component, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
+import { Component, computed, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
 import { MatIcon } from '@angular/material/icon';
-import { MatFormField, MatLabel } from '@angular/material/form-field';
-import { MatInput } from '@angular/material/input';
-import { MatSelect } from '@angular/material/select';
-import { MatOption } from '@angular/material/core';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
-import { MatButton } from '@angular/material/button';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import {
   Assignment, AssignmentService, AssignmentWrite, DeadlineKind, DownloadSnapshotMode, StarterSourceKind
@@ -16,12 +10,20 @@ import {
 import { SnackbarService } from '../../../core/services/snackbar-service';
 import { MarkdownEditor } from '../../shared/markdown-editor/markdown-editor';
 
+/** How many issues the form has: the summary and the save button use it. */
+type Issue = { message: string; field: 'title' | 'date' | 'time' | 'url' };
+
+const MAX_TITLE_LENGTH = 100;
+const MAX_YEARS_AHEAD = 5;
+
+/**
+ * The assignment form in four steps: basics, deadline, starter and lifecycle. Everything
+ * is validated as it is typed, so the summary can say "1 issue to fix" while the teacher
+ * is still in step one.
+ */
 @Component({
   selector: 'app-assignment-edit',
-  imports: [
-    FormsModule, RouterLink, MatCard, MatCardContent, MatCardTitle, MatFormField, MatLabel, MatInput, MatSelect,
-    MatOption, MatIcon, MatSlideToggle, MatButton, MatProgressBar, MarkdownEditor
-  ],
+  imports: [FormsModule, RouterLink, MatIcon, MatSlideToggle, MatProgressBar, MarkdownEditor],
   templateUrl: './assignment-edit.html',
   styleUrl: './assignment-edit.scss'
 })
@@ -36,17 +38,16 @@ export class AssignmentEdit implements OnInit {
   protected readonly DeadlineKind = DeadlineKind;
   protected readonly StarterSourceKind = StarterSourceKind;
   protected readonly DownloadSnapshotMode = DownloadSnapshotMode;
-  protected readonly deadlineKinds = Object.values(DeadlineKind);
-  protected readonly starterSources = Object.values(StarterSourceKind);
-  protected readonly snapshotModes = Object.values(DownloadSnapshotMode);
+  protected readonly maxTitleLength = MAX_TITLE_LENGTH;
+  protected readonly steps = ['Basics', 'Deadline', 'Starter', 'Lifecycle'];
 
   protected readonly loading: WritableSignal<boolean> = signal(false);
   protected readonly saving: WritableSignal<boolean> = signal(false);
+  protected readonly step: WritableSignal<number> = signal(0);
 
   protected readonly title: WritableSignal<string> = signal('');
   protected readonly description: WritableSignal<string> = signal('');
   protected readonly hints: WritableSignal<string> = signal('');
-  protected readonly deadline: WritableSignal<string> = signal('');
   protected readonly deadlineDate: WritableSignal<string> = signal('');
   protected readonly deadlineTime: WritableSignal<string> = signal('');
   protected readonly deadlineKind: WritableSignal<DeadlineKind> = signal(DeadlineKind.None);
@@ -58,26 +59,137 @@ export class AssignmentEdit implements OnInit {
   protected readonly autoDeleteOn: WritableSignal<string> = signal('');
   protected readonly snapshotMode: WritableSignal<DownloadSnapshotMode> = signal(DownloadSnapshotMode.Deadline);
 
-  protected isFork(): boolean {
-    return this.starterSource() === StarterSourceKind.ForkOwnRepo;
-  }
+  /** Today, so the date input cannot offer a day that has already passed. */
+  protected readonly minDate = computed(() => this.formatDate(new Date()));
 
-  protected isEditMode(): boolean {
-    return this.id() !== undefined;
-  }
+  /** Five years ahead, so a year like 44444 has no way into the form. */
+  protected readonly maxDate = computed(() => `${new Date().getFullYear() + MAX_YEARS_AHEAD}-12-31`);
 
-  // Editing an assignment is reached from its submissions page; a new one is reached
-  // from the course page and has no id yet, only the course it belongs to.
+  protected readonly isEditMode = computed(() => this.id() !== undefined);
+  protected readonly isCopyRepo = computed(() => this.starterSource() === StarterSourceKind.CopyRepo);
+  protected readonly hasDeadline = computed(() => this.deadlineKind() !== DeadlineKind.None);
+
+  // ---- validation, recomputed on every change ----
+
+  protected readonly titleError = computed<string | null>(() => {
+    const title = this.title().trim();
+    if (title === '') {
+      return 'A title is required.';
+    }
+
+    return title.length > MAX_TITLE_LENGTH
+      ? `The title is ${title.length} characters; ${MAX_TITLE_LENGTH} is the limit.`
+      : null;
+  });
+
+  protected readonly deadlineError = computed<string | null>(() => {
+    if (!this.hasDeadline()) {
+      return null;
+    }
+
+    const date = this.deadlineDate();
+    const time = this.deadlineTime();
+    if (date === '' || time === '') {
+      return 'Pick a date and a time, or switch the deadline to None.';
+    }
+
+    const [year, month, day] = date.split('-').map(Number);
+    const [hours, minutes] = time.split(':').map(Number);
+    const at = new Date(year, month - 1, day, hours, minutes);
+    if (Number.isNaN(at.getTime())) {
+      return 'That date does not exist. Pick another one.';
+    }
+
+    const latestYear = new Date().getFullYear() + MAX_YEARS_AHEAD;
+    if (year > latestYear) {
+      return `That year is not realistic. Pick a date up to ${latestYear}.`;
+    }
+
+    const now = new Date();
+    if (at.getTime() <= now.getTime()) {
+      return `That date has passed. Pick ${this.messageDate(now)} or later.`;
+    }
+
+    return null;
+  });
+
+  protected readonly repoError = computed<string | null>(() => {
+    if (!this.isCopyRepo()) {
+      return null;
+    }
+
+    const url = this.starterRepoUrl().trim();
+    if (url === '') {
+      return 'A repository URL is required when you copy a repository.';
+    }
+
+    return /^https:\/\/[^\s]+\.[^\s]+$/i.test(url)
+      ? null
+      : 'The repository URL must be a full https address, for example https://forgejo.example/owner/repo.';
+  });
+
+  protected readonly issues = computed<Issue[]>(() => {
+    const issues: Issue[] = [];
+    const title = this.titleError();
+    const deadline = this.deadlineError();
+    const repo = this.repoError();
+    if (title !== null) {
+      issues.push({ message: title, field: 'title' });
+    }
+    if (deadline !== null) {
+      issues.push({ message: deadline, field: this.deadlineDate() === '' ? 'date' : 'time' });
+    }
+    if (repo !== null) {
+      issues.push({ message: repo, field: 'url' });
+    }
+
+    return issues;
+  });
+
+  protected readonly hasIssues = computed(() => this.issues().length > 0);
+
+  /** The line under the summary: what the form still needs. */
+  protected readonly issueLabel = computed(() => {
+    const count = this.issues().length;
+
+    return count === 0 ? 'Ready to save' : `${count} issue${count === 1 ? '' : 's'} to fix`;
+  });
+
+  /** How much of the form is answered, for the bar of the summary. */
+  protected readonly progress = computed(() => {
+    const done = [
+      this.titleError() === null,
+      !this.hasDeadline() || this.deadlineError() === null,
+      !this.isCopyRepo() || this.repoError() === null,
+      true
+    ].filter(Boolean).length;
+
+    return Math.round((done / 4) * 100);
+  });
+
+  protected readonly deadlineSummary = computed(() => {
+    if (!this.hasDeadline()) {
+      return 'None';
+    }
+
+    if (this.deadlineError() !== null) {
+      return 'Invalid';
+    }
+
+    return `${this.messageDate(new Date(`${this.deadlineDate()}T00:00:00`))}, ${this.deadlineTime()}`;
+  });
+
+  protected readonly starterSummary = computed(() =>
+    this.isCopyRepo() ? 'Copy repository' : 'Description only');
+
+  // ---- the page ----
+
   protected get backRoute(): (string | number)[] {
     const id = this.id();
 
     return id === undefined
       ? ['/my-assignments/course', Number(this.courseId())]
       : ['/assignments', Number(id), 'students'];
-  }
-
-  protected get backLabel(): string {
-    return this.isEditMode() ? 'Back to submissions' : 'Back to course';
   }
 
   public async ngOnInit(): Promise<void> {
@@ -103,20 +215,73 @@ export class AssignmentEdit implements OnInit {
     this.apply(result);
   }
 
+  protected goTo(step: number): void {
+    this.step.set(step);
+  }
+
+  protected isDone(step: number): boolean {
+    if (step === 0) {
+      return this.titleError() === null;
+    }
+    if (step === 1) {
+      return this.deadlineError() === null;
+    }
+    if (step === 2) {
+      return this.repoError() === null;
+    }
+
+    return false;
+  }
+
+  protected setDeadlineKind(kind: DeadlineKind): void {
+    this.deadlineKind.set(kind);
+    if (kind === DeadlineKind.None) {
+      this.deadlineDate.set('');
+      this.deadlineTime.set('');
+      this.snapshotMode.set(DownloadSnapshotMode.Head);
+    }
+  }
+
+  /** The three chips of the deadline step. */
+  protected quickPick(days: number, tomorrow: boolean): void {
+    const at = new Date();
+    if (tomorrow) {
+      at.setDate(at.getDate() + 1);
+    } else {
+      at.setDate(at.getDate() + days);
+    }
+    at.setHours(23, 59, 0, 0);
+    this.deadlineDate.set(this.formatDate(at));
+    this.deadlineTime.set('23:59');
+  }
+
+  protected setSnapshotMode(mode: DownloadSnapshotMode): void {
+    if (mode === DownloadSnapshotMode.Deadline && !this.hasDeadline()) {
+      return;
+    }
+
+    this.snapshotMode.set(mode);
+  }
+
+  protected isSnapshotDisabled(mode: DownloadSnapshotMode): boolean {
+    return mode === DownloadSnapshotMode.Deadline && !this.hasDeadline();
+  }
+
+  // Without a deadline the stored value must not stay on Deadline, otherwise the toggle would show a disabled option as chosen.
+  protected readonly effectiveSnapshot = computed<DownloadSnapshotMode>(() =>
+    this.hasDeadline() ? this.snapshotMode() : DownloadSnapshotMode.Head);
+
+  /** The save button is always enabled; it points at the first thing that is wrong. */
   protected async handleSaveClicked(): Promise<void> {
-    if (this.title().trim() === '') {
-      this.snackbar.show('A title is required');
-
-      return;
-    }
-    if (this.deadlineKind() !== DeadlineKind.None && (this.deadlineDate() === '' || this.deadlineTime() === '')) {
-      this.snackbar.show('Choose a deadline date and time');
-
-      return;
-    }
-    // an assignment saved before this rule existed can still load in this state
-    if (this.isFork() && this.deadlineKind() === DeadlineKind.Hard) {
-      this.snackbar.show('A forked repository is owned by the student, so it cannot have a hard deadline');
+    const issues = this.issues();
+    if (issues.length > 0) {
+      const first = issues[0];
+      this.step.set(first.field === 'title' ? 0 : first.field === 'url' ? 2 : 1);
+      setTimeout(() => {
+        const element = document.getElementById(`field-${first.field}`);
+        element?.scrollIntoView({ block: 'center' });
+        element?.focus();
+      });
 
       return;
     }
@@ -142,55 +307,42 @@ export class AssignmentEdit implements OnInit {
     await this.router.navigate(['assignments', result.id, 'students']);
   }
 
-  protected handleDeadlineDateChanged(date: string): void {
-    this.deadlineDate.set(date);
-    this.updateDeadline();
-  }
-
-  protected handleDeadlineKindChanged(kind: DeadlineKind): void {
-    this.deadlineKind.set(kind);
-    if (kind === DeadlineKind.None) {
-      this.clearDeadline();
-    }
-  }
-
-  protected handleDeadlineTimeChanged(time: string): void {
-    this.deadlineTime.set(time);
-    this.updateDeadline();
-  }
-
-  protected clearDeadline(): void {
-    this.deadlineDate.set('');
-    this.deadlineTime.set('');
-    this.deadline.set('');
-  }
-
   private buildWrite(): AssignmentWrite {
     return {
       title: this.title().trim(),
       description: this.emptyToNull(this.description()),
       hintsInstructions: this.emptyToNull(this.hints()),
-      deadline: this.emptyToNull(this.deadline()),
+      deadline: this.buildDeadline(),
       deadlineKind: this.deadlineKind(),
       hardDeadlineRevokesRead: this.hardRevokesRead(),
       starterSourceKind: this.starterSource(),
-      starterRepoUrl: this.emptyToNull(this.starterRepoUrl()),
-      readmeMarkdown: this.emptyToNull(this.readme()),
+      starterRepoUrl: this.isCopyRepo() ? this.emptyToNull(this.starterRepoUrl()) : null,
+      readmeMarkdown: this.isCopyRepo() ? this.emptyToNull(this.readme()) : null,
       autoDeleteEnabled: this.autoDeleteEnabled(),
       autoDeleteOn: this.emptyToNull(this.autoDeleteOn()),
-      downloadSnapshotMode: this.snapshotMode()
+      downloadSnapshotMode: this.effectiveSnapshot()
     };
+  }
+
+  private buildDeadline(): string | null {
+    if (!this.hasDeadline() || this.deadlineError() !== null) {
+      return null;
+    }
+
+    const [year, month, day] = this.deadlineDate().split('-').map(Number);
+    const [hours, minutes] = this.deadlineTime().split(':').map(Number);
+
+    return new Date(year, month - 1, day, hours, minutes).toISOString();
   }
 
   private apply(a: Assignment): void {
     this.title.set(a.title);
     this.description.set(a.description ?? '');
     this.hints.set(a.hintsInstructions ?? '');
-    this.deadline.set(a.deadline?.toString() ?? '');
-    const parsedDeadline = a.deadline === null ? null : new Date(a.deadline.toString());
-    if (parsedDeadline !== null && !Number.isNaN(parsedDeadline.getTime())) {
-      this.deadlineDate.set(this.formatDate(parsedDeadline));
-      this.deadlineTime.set(this.formatTime(parsedDeadline));
+    const parsed = a.deadline === null ? null : new Date(a.deadline.toString());
+    if (parsed !== null && !Number.isNaN(parsed.getTime())) {
+      this.deadlineDate.set(this.formatDate(parsed));
+      this.deadlineTime.set(this.formatTime(parsed));
     }
     this.deadlineKind.set(a.deadlineKind);
     this.hardRevokesRead.set(a.hardDeadlineRevokesRead);
@@ -202,32 +354,17 @@ export class AssignmentEdit implements OnInit {
     this.snapshotMode.set(a.downloadSnapshotMode);
   }
 
-  private updateDeadline(): void {
-    const date = this.deadlineDate();
-    const time = this.deadlineTime();
-    if (date === '' || time === '') {
-      this.deadline.set('');
+  private formatDate(date: Date): string {
+    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+  }
 
-      return;
-    }
-
-    const [year, month, day] = date.split('-').map(Number);
-    const [hours, minutes] = time.split(':').map(Number);
-    this.deadline.set(new Date(
-      year,
-      month - 1,
-      day,
-      hours,
-      minutes
-    ).toISOString());
+  // Messages read like the form does in Europe: 18.11.2026, not 2026-11-18.
+  private messageDate(date: Date): string {
+    return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getFullYear()}`;
   }
 
   private formatTime(date: Date): string {
     return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-  }
-
-  private formatDate(date: Date): string {
-    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
   }
 
   private emptyToNull(value: string): string | null {

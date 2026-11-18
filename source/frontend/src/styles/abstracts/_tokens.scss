@@ -15,6 +15,8 @@ $color-on-accent: #000;
 $color-danger-bg: #860707;
 $color-danger-border: #bc2727;
 $color-danger-text: #fef2f2;
+// Error text sits on the dark surface, not on the maroon danger background, so it needs its own light red.
+$color-danger-strong: #fca5a5;
 $color-success-border: #1f6e3c;
 $color-success-bg: #1d462c;
 $color-success-text: #aef0c2;
@@ -113,6 +115,7 @@ $viewport-height: 100dvh;
   --color-danger-bg: #{$color-danger-bg};
   --color-danger-border: #{$color-danger-border};
   --color-danger-text: #{$color-danger-text};
+  --color-danger-strong: #{$color-danger-strong};
   --color-success-border: #{$color-success-border};
   --color-success-bg: #{$color-success-bg};
   --color-success-text: #{$color-success-text};

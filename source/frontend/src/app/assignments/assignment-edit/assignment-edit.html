@@ -1,134 +1,241 @@
-@if (loading()) {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-}
+<div class="edit-shell">
+  <header class="edit-head">
+    <div class="edit-head__text">
+      <h1>{{ isEditMode() ? 'Edit assignment' : 'New assignment' }}</h1>
+      <p class="edit-head__sub">Four short steps, then the work is out.</p>
+    </div>
 
-<div class="page-content">
-  <div class="header">
-    <a class="back-link back-link--aside" [routerLink]="backRoute" [attr.aria-label]="backLabel"
-       [attr.title]="backLabel">
-      <mat-icon>arrow_back</mat-icon>
-      <span class="back-link__label">{{ backLabel }}</span>
-    </a>
+    <div class="edit-head__actions">
+      <a class="btn btn--secondary" [routerLink]="backRoute">Cancel</a>
+      <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="handleSaveClicked()">
+        {{ saving() ? 'Saving…' : 'Save' }}
+      </button>
+    </div>
+  </header>
 
-    <h1>{{ isEditMode() ? 'Edit assignment' : 'New assignment' }}</h1>
-  </div>
+  <!-- The stepper: done steps get a check, the current one is bright, the rest are quiet. -->
+  <ol class="stepper">
+    @for (name of steps; track name; let index = $index) {
+      <li class="stepper__item" [class.is-current]="step() === index" [class.is-done]="index < step() && isDone(index)">
+        <button class="stepper__button" type="button" (click)="goTo(index)"
+                [attr.aria-current]="step() === index ? 'step' : null">
+          <span class="stepper__mark" aria-hidden="true">
+            @if (index < step() && isDone(index)) {
+              <mat-icon>check</mat-icon>
+            } @else {
+              {{ index + 1 }}
+            }
+          </span>
+          <span class="stepper__name">{{ name }}</span>
+        </button>
+      </li>
+    }
+  </ol>
 
-  <mat-card class="section">
-    <mat-card-content>
-      <mat-form-field class="full">
-        <mat-label>Title</mat-label>
-        <input matInput [ngModel]="title()" (ngModelChange)="title.set($event)">
-      </mat-form-field>
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  }
 
-      <app-markdown-editor label="Description" [value]="description()" (valueChange)="description.set($event)"></app-markdown-editor>
-      <app-markdown-editor label="Hints / instructions" [value]="hints()" (valueChange)="hints.set($event)"></app-markdown-editor>
-    </mat-card-content>
-  </mat-card>
+  <div class="edit-grid">
+    <div class="edit-main">
+      @if (step() === 0) {
+        <section class="card-surface edit-card">
+          <h2 class="edit-card__title">Basics</h2>
 
-  <mat-card class="section">
-    <mat-card-title>Deadline</mat-card-title>
-    <mat-card-content>
-      <mat-form-field>
-        <mat-label>Deadline kind</mat-label>
-        <mat-select [ngModel]="deadlineKind()" (ngModelChange)="handleDeadlineKindChanged($event)">
-          @for (kind of deadlineKinds; track kind) {
-            <mat-option [value]="kind" [disabled]="kind === DeadlineKind.Hard && isFork()">{{ kind }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
+          <div class="field">
+            <label class="field__label" for="field-title">Title</label>
+            <input id="field-title" class="input" type="text" [class.input--invalid]="titleError() !== null"
+                   [attr.aria-invalid]="titleError() !== null" attr.maxlength="{{ maxTitleLength }}"
+                   placeholder="Week 3: Build a REST API" [value]="title()"
+                   (input)="title.set($any($event.target).value)">
+            <div class="field__foot">
+              @if (titleError(); as error) {
+                <p class="field__error" role="alert">
+                  <mat-icon aria-hidden="true">error</mat-icon>
+                  <span>{{ error }}</span>
+                </p>
+              } @else {
+                <span></span>
+              }
+              <span class="field__counter">{{ title().trim().length }} / {{ maxTitleLength }}</span>
+            </div>
+          </div>
 
-      @if (isFork()) {
-        <p class="field-note">
-          Hard deadlines are unavailable: with a forked starter repository the student owns their repository,
-          so write access cannot be taken away at the deadline.
-        </p>
+          <app-markdown-editor label="Description" [value]="description()" (valueChange)="description.set($event)" />
+          <app-markdown-editor label="Hints" [value]="hints()" (valueChange)="hints.set($event)" />
+        </section>
       }
 
-      @if (deadlineKind() !== DeadlineKind.None) {
-        <mat-form-field>
-          <mat-label>Deadline date</mat-label>
-          <input matInput type="date" [ngModel]="deadlineDate()"
-                 (ngModelChange)="handleDeadlineDateChanged($event)">
-        </mat-form-field>
+      @if (step() === 1) {
+        <section class="card-surface edit-card" [class.edit-card--invalid]="deadlineError() !== null">
+          <h2 class="edit-card__title">Deadline</h2>
 
-        @if (deadlineDate() !== '') {
-          <mat-form-field>
-            <mat-label>Deadline time(local)</mat-label>
-            <input matInput type="time" [ngModel]="deadlineTime()"
-                   (ngModelChange)="handleDeadlineTimeChanged($event)">
-          </mat-form-field>
-          <button class="light-button" mat-button type="button" (click)="clearDeadline()">Clear deadline</button>
+          <div class="segmented" role="group" aria-label="Deadline kind">
+            <button type="button" [class.is-active]="deadlineKind() === DeadlineKind.None"
+                    (click)="setDeadlineKind(DeadlineKind.None)">None</button>
+            <button type="button" [class.is-active]="deadlineKind() === DeadlineKind.Soft"
+                    (click)="setDeadlineKind(DeadlineKind.Soft)">Soft</button>
+            <button type="button" [class.is-active]="deadlineKind() === DeadlineKind.Hard"
+                    (click)="setDeadlineKind(DeadlineKind.Hard)">Hard</button>
+          </div>
+
+          @if (hasDeadline()) {
+            <div class="field-row">
+              <div class="field">
+                <label class="field__label" for="field-date">Date</label>
+                <input id="field-date" class="input" type="date" [class.input--invalid]="deadlineError() !== null"
+                       [min]="minDate()" [max]="maxDate()" [value]="deadlineDate()"
+                       (input)="deadlineDate.set($any($event.target).value)">
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="field-time">Time (local)</label>
+                <input id="field-time" class="input" type="time" [class.input--invalid]="deadlineError() !== null"
+                       [value]="deadlineTime()" (input)="deadlineTime.set($any($event.target).value)">
+              </div>
+            </div>
+
+            @if (deadlineError(); as error) {
+              <p class="field__error" role="alert">
+                <mat-icon aria-hidden="true">error</mat-icon>
+                <span>{{ error }}</span>
+              </p>
+            }
+
+            <div class="chips">
+              <button class="chip" type="button" (click)="quickPick(0, true)">Tomorrow 23:59</button>
+              <button class="chip" type="button" (click)="quickPick(7, false)">In 1 week</button>
+              <button class="chip" type="button" (click)="quickPick(14, false)">In 2 weeks</button>
+            </div>
+          } @else {
+            <p class="edit-hint">Without a deadline the assignment never closes.</p>
+          }
+        </section>
+      }
+
+      @if (step() === 2) {
+        <section class="card-surface edit-card" [class.edit-card--invalid]="repoError() !== null">
+          <h2 class="edit-card__title">Starter</h2>
+
+          <div class="starter-grid" role="group" aria-label="Starter source">
+            <button class="starter" type="button" [class.is-active]="!isCopyRepo()"
+                    (click)="starterSource.set(StarterSourceKind.DescriptionOnly)">
+              <mat-icon aria-hidden="true">description</mat-icon>
+              <span>Description only</span>
+            </button>
+            <button class="starter" type="button" [class.is-active]="isCopyRepo()"
+                    (click)="starterSource.set(StarterSourceKind.CopyRepo)">
+              <mat-icon aria-hidden="true">content_copy</mat-icon>
+              <span>Copy repository</span>
+            </button>
+            <!-- Not wired to the backend yet; the wrapper carries the tooltip because a disabled button gets no hover events. -->
+            <span class="starter-wrap" title="Not Available yet">
+              <button class="starter" type="button" disabled aria-label="Archive, not available yet">
+                <mat-icon aria-hidden="true">inventory_2</mat-icon>
+                <span>Archive</span>
+              </button>
+            </span>
+            <span class="starter-wrap" title="Not Available yet">
+              <button class="starter" type="button" disabled aria-label="Fork own repository, not available yet">
+                <mat-icon aria-hidden="true">fork_right</mat-icon>
+                <span>Fork own repository</span>
+              </button>
+            </span>
+          </div>
+
+          @if (isCopyRepo()) {
+            <div class="field">
+              <label class="field__label" for="field-url">Repository URL</label>
+              <input id="field-url" class="input" type="url" [class.input--invalid]="repoError() !== null"
+                     placeholder="https://forgejo.example/owner/template" [value]="starterRepoUrl()"
+                     (input)="starterRepoUrl.set($any($event.target).value)">
+              @if (repoError(); as error) {
+                <p class="field__error" role="alert">
+                  <mat-icon aria-hidden="true">error</mat-icon>
+                  <span>{{ error }}</span>
+                </p>
+              }
+            </div>
+
+            <app-markdown-editor label="README" [value]="readme()" (valueChange)="readme.set($event)" />
+          } @else {
+            <p class="edit-hint">Repository URL and README appear only when you copy a repo.</p>
+          }
+        </section>
+      }
+
+      @if (step() === 3) {
+        <section class="card-surface edit-card">
+          <h2 class="edit-card__title">Lifecycle</h2>
+
+          <label class="switch-row" for="field-auto-delete">
+            <span>
+              <strong>Auto-delete</strong>
+              <span class="edit-hint">Delete the repositories of this assignment after a while.</span>
+            </span>
+            <mat-slide-toggle id="field-auto-delete" [checked]="autoDeleteEnabled()"
+                              (change)="autoDeleteEnabled.set($event.checked)"></mat-slide-toggle>
+          </label>
+
+          <div class="field">
+            <label class="field__label" for="field-mode">Download snapshot</label>
+            <div class="segmented" role="group" aria-label="Download snapshot">
+              <button type="button" [class.is-active]="effectiveSnapshot() === DownloadSnapshotMode.Deadline"
+                      [disabled]="isSnapshotDisabled(DownloadSnapshotMode.Deadline)"
+                      (click)="setSnapshotMode(DownloadSnapshotMode.Deadline)">Deadline</button>
+              <button type="button" [class.is-active]="effectiveSnapshot() === DownloadSnapshotMode.Head"
+                      (click)="setSnapshotMode(DownloadSnapshotMode.Head)">Head</button>
+            </div>
+            @if (!hasDeadline()) {
+              <p class="edit-hint">The deadline snapshot needs a deadline. Pick one in the Deadline step.</p>
+            }
+          </div>
+        </section>
+      }
+
+      <div class="edit-nav">
+        <button class="btn btn--secondary" type="button" [disabled]="step() === 0" (click)="goTo(step() - 1)">
+          Back
+        </button>
+        @if (step() < steps.length - 1) {
+          <button class="btn btn--secondary" type="button" (click)="goTo(step() + 1)">Next</button>
         }
-      }
+      </div>
+    </div>
 
-      @if (deadlineKind() === DeadlineKind.Hard) {
-        <mat-slide-toggle [ngModel]="hardRevokesRead()" (ngModelChange)="hardRevokesRead.set($event)">
-          Hard deadline revokes read access
-        </mat-slide-toggle>
-      }
-    </mat-card-content>
-  </mat-card>
+    <!-- The summary follows the form and says the same thing the fields say. -->
+    <aside class="edit-side">
+      <section class="card-surface edit-card edit-summary">
+        <h2 class="edit-card__title">Summary</h2>
 
-  <mat-card class="section">
-    <mat-card-title>Starter</mat-card-title>
-    <mat-card-content>
-      <mat-form-field>
-        <mat-label>Starter source</mat-label>
-        <mat-select [ngModel]="starterSource()" (ngModelChange)="starterSource.set($event)">
-          @for (source of starterSources; track source) {
-            <mat-option [value]="source"
-                        [disabled]="source === StarterSourceKind.ForkOwnRepo && deadlineKind() === DeadlineKind.Hard">
-              {{ source }}
-            </mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
+        <dl class="summary">
+          <div class="summary__row">
+            <dt>Title</dt>
+            <dd>{{ title().trim() === '' ? '—' : title().trim() }}</dd>
+          </div>
+          <div class="summary__row">
+            <dt>Deadline</dt>
+            <dd [class.is-invalid]="deadlineError() !== null">{{ deadlineSummary() }}</dd>
+          </div>
+          <div class="summary__row">
+            <dt>Starter</dt>
+            <dd>{{ starterSummary() }}</dd>
+          </div>
+          <div class="summary__row">
+            <dt>Auto-delete</dt>
+            <dd>{{ autoDeleteEnabled() ? 'On' : 'Off' }}</dd>
+          </div>
+        </dl>
 
-      @if (isFork()) {
-        <p class="field-note">
-          Forking makes the student the owner of their repository. A hard deadline cannot be enforced on it.
+        <p class="summary__issues" [class.is-invalid]="hasIssues()">
+          <mat-icon aria-hidden="true">{{ hasIssues() ? 'error' : 'check_circle' }}</mat-icon>
+          <span>{{ issueLabel() }}</span>
         </p>
-      } @else if (deadlineKind() === DeadlineKind.Hard) {
-        <p class="field-note">
-          ForkOwnRepo is unavailable with a hard deadline: a fork belongs to the student, so the deadline could not
-          be enforced. Use CopyRepo instead, or switch to a soft deadline.
-        </p>
-      }
 
-      @if (starterSource() === StarterSourceKind.ForkOwnRepo || starterSource() === StarterSourceKind.CopyRepo) {
-        <mat-form-field class="full">
-          <mat-label>Starter repository URL</mat-label>
-          <input matInput [ngModel]="starterRepoUrl()" (ngModelChange)="starterRepoUrl.set($event)">
-        </mat-form-field>
-      }
-
-      <app-markdown-editor label="README" [value]="readme()" (valueChange)="readme.set($event)"></app-markdown-editor>
-    </mat-card-content>
-  </mat-card>
-
-  <mat-card class="section">
-    <mat-card-title>Lifecycle</mat-card-title>
-    <mat-card-content>
-      <mat-slide-toggle [ngModel]="autoDeleteEnabled()" (ngModelChange)="autoDeleteEnabled.set($event)">
-        Auto-delete this assignment
-      </mat-slide-toggle>
-      @if (autoDeleteEnabled()) {
-        <mat-form-field>
-          <mat-label>Auto-delete on (ISO 8601, default +2y)</mat-label>
-          <input matInput [ngModel]="autoDeleteOn()" (ngModelChange)="autoDeleteOn.set($event)">
-        </mat-form-field>
-      }
-
-      <mat-form-field>
-        <mat-label>Download snapshot mode</mat-label>
-        <mat-select [ngModel]="snapshotMode()" (ngModelChange)="snapshotMode.set($event)">
-          @for (mode of snapshotModes; track mode) {
-            <mat-option [value]="mode">{{ mode }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-    </mat-card-content>
-  </mat-card>
-
-  <button mat-flat-button color="primary" [disabled]="saving()" (click)="handleSaveClicked()">Save</button>
+        <div class="summary__bar" role="progressbar" [attr.aria-valuenow]="progress()" aria-valuemin="0" aria-valuemax="100">
+          <span class="summary__fill" [class.is-invalid]="hasIssues()" [style.inline-size.%]="progress()"></span>
+        </div>
+      </section>
+    </aside>
+  </div>
 </div>

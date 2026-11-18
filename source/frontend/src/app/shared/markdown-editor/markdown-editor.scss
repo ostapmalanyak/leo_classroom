@@ -1,30 +1,64 @@
-@use "../../../styles/abstracts/mixins" as mixins;
-
 .markdown-editor {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.editor-input {
-  width: 100%;
+.markdown-editor__head {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
 }
 
-.editor-preview {
-  @include mixins.surface;
+.markdown-editor__label {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
 
+// The switch is a small segmented control, not two links.
+.markdown-editor__switch {
+  background-color: var(--color-bg-input);
+  border-radius: var(--radius-button);
+  display: inline-flex;
+  padding: 0.125rem;
+
+  button {
+    background: none;
+    border: 0;
+    border-radius: calc(var(--radius-button) - 0.0625rem);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--font-size-sm);
+    padding: 0.25rem var(--space-3);
+
+    &.is-active {
+      background-color: var(--color-bg-hover);
+      color: var(--color-text-strong);
+    }
+
+    &:focus-visible {
+      outline: 0.125rem solid var(--color-accent);
+      outline-offset: 0.0625rem;
+    }
+  }
+}
+
+.markdown-editor__field {
+  min-height: 10rem;
+  resize: vertical;
+}
+
+.markdown-editor__preview {
+  background-color: var(--color-bg-input);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  min-height: 10rem;
   padding: var(--space-3);
 }
 
-.preview-label {
-  display: block;
-  font-size: var(--font-size-sm);
+.markdown-editor__empty {
   color: var(--color-text-muted);
-  margin-bottom: var(--space-2);
-}
-
-@include mixins.breakpoint-md {
-  .markdown-editor {
-    grid-template-columns: 1fr;
-  }
+  margin: 0;
 }

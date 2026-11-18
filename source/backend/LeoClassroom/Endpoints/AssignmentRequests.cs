@@ -68,6 +68,12 @@ internal static class AssignmentRules
                  .NotNull()
                  .When(r => r.DeadlineKind != DeadlineKind.None)
                  .WithMessage("A deadline is required when a deadline kind is set.");
+        // The form refuses a date that has already passed; the API refuses it too, so no
+        // client can create an assignment that is born expired.
+        validator.RuleFor(r => r.Deadline)
+                 .GreaterThan(SystemClock.Instance.GetCurrentInstant())
+                 .When(r => r.DeadlineKind != DeadlineKind.None && r.Deadline != null)
+                 .WithMessage("The deadline has passed. Pick a date in the future.");
         validator.RuleFor(r => r.StarterRepoUrl)
                  .NotEmpty()
                  .Must(BeAnAbsoluteHttpUrl)

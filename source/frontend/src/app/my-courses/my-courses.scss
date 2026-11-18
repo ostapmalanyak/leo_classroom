@@ -217,9 +217,6 @@
 
     &:focus-visible mat-icon {
       color: var(--color-text-strong);
-      text-decoration-line: underline;
-      text-decoration-thickness: 0.0625rem;
-      text-underline-offset: 0.2rem;
     }
 
     mat-icon {
