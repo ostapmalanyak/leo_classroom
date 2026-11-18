@@ -1,16 +1,2 @@
-.welcome-card {
-  max-width: var(--container-narrow);
-}
-
-.welcome-card h1 {
-  margin-top: 0;
-}
-
-.welcome-card p {
-  line-height: var(--line-height-base);
-}
-
-.motivation {
-  font-style: italic;
-  margin-bottom: 0;
-}
+// The student home uses the shared home layout (home grid, panels, tiles, rows) that the
+// teacher home uses as well, so it lives in the global patterns.

@@ -15,7 +15,8 @@ public sealed record RosterOverview(
     string Name,
     RosterKind Kind,
     int MemberCount,
-    long? OwnerId);
+    long? OwnerId,
+    bool IsOwner = false);
 
 public sealed record UserSummary(
     long Id,
@@ -75,7 +76,11 @@ public sealed record AssignedAssignment(
     long CourseId,
     string CourseTitle,
     string Title,
+    string? Description,
     Instant? Deadline,
     DeadlineKind DeadlineKind,
     bool Accepted,
-    SubmissionStatus? Status);
+    SubmissionStatus? Status,
+    Instant? LastPushAt,
+    bool Late,
+    FeedbackState FeedbackState);

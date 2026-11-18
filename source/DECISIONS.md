@@ -4,6 +4,166 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-17 — The bar carries the work, the page carries the content
+
+**Status:** accepted.
+
+**The bar.** The navigation is a `<nav aria-label="Main">` that sticks to the top: a brand mark with the
+letter of the app, the links as text only, and three icon buttons on the right - search, the bell of the
+deadlines and the avatar. The links are text because an icon next to every link says less than the word
+does; the icons are kept for the three buttons, where the picture is the whole message. The current page
+wears the accent colour and an underline that touches the bottom edge of the bar, so the place in the app
+is visible without reading the links. On a phone the links move into a panel behind a hamburger button.
+
+**The search lives in the bar.** The palette is mounted in the shell and reads the courses and the
+assignments of the signed in user itself, so the keyboard shortcut (Ctrl K, Cmd K on macOS) opens the same
+search on every page and the field on the courses page opens the same palette. One palette, one place
+that knows what can be found.
+
+**The bell counts deadlines.** The bell shows how many assignments close within the next day - for a
+student the ones they have not handed in, for a teacher the ones of their courses - and the menu lists the
+next five with the urgency pill of the assignment cards. A deadline that has passed is not counted: the
+bell is about what is still coming.
+
+**The avatar is the account.** The round avatar with the initials opens the menu of the things that belong
+to the person: the name with the role, the Forgejo links, the profile and the way out. The name next to
+the avatar is gone - it is in the menu, where there is room for it.
+
+What would change it: a bar with more than three icon buttons, which would need a group for them.
+
+---
+
+## 2026-11-17 — A teacher sees their own rosters first, and the teacher pages stay teacher pages
+
+**Status:** accepted.
+
+**The rosters of a teacher.** The rosters page starts with the rosters the teacher created and the form
+to create another one, because that is what a teacher opens the page for. The list of every roster of the
+school sits below it in a foldable section, and for now only administrators see it: a teacher does not
+need the class lists of other classes, and a page full of rosters that are none of their business is
+noise. The backend marks the rosters of the signed in user (`RosterOverview.IsOwner`), because the
+browser knows the school user name of the teacher but not the local account that owns the roster.
+
+**The teacher pages are the teacher's pages.** The home page of a teacher (`/home/teacher`), the course
+lists (`/courses`, `/courses/:id`) and the roster pages require the teacher role; an administrator passes
+every check, a student gets the forbidden page. The landing route sends a teacher to `/home/teacher` and
+a student to `/home/student`, so the first page of the app is always the one that belongs to the role of
+the signed in user.
+
+What would change it: rosters that every teacher should see - then the foldable list comes back for
+teachers as well.
+
+---
+
+## 2026-11-17 — A teacher gets a home page of their own
+
+**Status:** accepted.
+
+**The teacher home.** `/home/teacher` is its own page (`app/dashboards/teacher-dashboard`) and a teacher
+lands there; the student page stays `/home/student`. The page answers three questions in a fixed order:
+what can I do (four action cards), how much work is open (three tiles) and what closes next (the list of
+the four nearest deadlines). A teacher who is not technical should be able to reach every task of the
+app from the first screen, so the action cards are the largest elements on the page and only link to
+pages that already exist - the course list, the create-assignment flow (the card asks which course the
+assignment belongs to and then opens the existing form), the rosters and the CLI download. The tiles
+count only work that is still open; the missed work is a list of its own at the bottom of the page, the
+five most recent deadlines first, with a button for the rest. A teacher who is not technical should be
+able to reach every task of the app from the first screen, and should still see what was missed without
+the page opening with a wall of red.
+
+**The shared home layout.** The grid, the panels, the tiles and the rows of the student home moved into
+`styles/components/_patterns.scss`, so the teacher home reuses them instead of carrying a copy. The two
+pages therefore cannot drift apart, and a change to the card style reaches both.
+
+**Deadlines speak the same everywhere - except the marks.** The closing-soon pills use `dueUrgency` from
+`core/util/assignment-state.ts`, the same function the student pages use, so the colour of a deadline
+depends on the deadline and not on the page that shows it. The exclamation marks are the exception: they
+are the student's way of saying "this is urgent", and a teacher reads the time itself, so the teacher page
+shows "35 min" where the student page shows "35 min!!!!!". The teacher page adds a short form of the
+remaining time ("22 h", "1 h 40 min", "1 day") because the list is about what is closing, not about the
+date, and an aria-label spells the time out for a screen reader.
+
+**A teacher counts work, not misses.** The tiles of the teacher page count what the teacher has to do:
+courses, assignments that are still open, assignments that close within a day and assignments that closed
+in the last week and are waiting to be looked at. The last one is called "To review", because an
+assignment whose deadline passed is not something a teacher missed - it is something a teacher still has
+to mark, and a count of misses would say the opposite.
+
+What would change it: a teacher who should see a different set of actions, or a course overview that
+replaces the tiles.
+
+---
+
+## 2026-11-17 — A search field that opens a palette, and deadlines that shout when they are close
+
+**Status:** accepted.
+
+**The search field on *My Courses*.** The page has a field-shaped trigger that spans the whole course grid
+and opens a search palette (`app/shared/search-palette`) instead of filtering the grid in place. The
+reason is that the grid is a map of the courses - it should show all of them - while searching is a
+question with a single answer, and a palette can answer it with a jump instead of a filtered page. The
+trigger carries the shortcut hint (`Ctrl K`, or `Cmd K` on macOS) because the palette can be opened from
+anywhere on the page; the palette itself is one panel with a field, a list of courses and assignments and
+keyboard navigation (arrows, enter, escape). The courses, their sizes, their spacing and the columns of
+the grid are untouched by this.
+
+**Deadlines that shout.** `urgencyMarks` in `core/util/assignment-state.ts` adds exclamation marks to a
+deadline, and the count grows the closer the deadline gets: a deadline days away stays quiet, one inside
+three days says `!`, one inside a day says `!!`, one inside twelve hours `!!!`, inside six hours `!!!!`
+and inside the last hour `!!!!!`. A deadline that has passed shouts loudest of all (ten marks, capped
+there so a deadline that is years old does not become a wall of punctuation): that is the state a
+student has to act on, and the marks make it impossible to scroll past. The marks are part of the
+text rather than a separate badge so they cannot drift away from the deadline they belong to.
+
+What would change it: a search that has to filter the grid itself would need the inline field back.
+
+---
+
+## 2026-11-17 — One urgency ramp, one button design, and a temporary git notice
+
+**Status:** accepted.
+
+**The urgency ramp.** `dueUrgency` in `core/util/assignment-state.ts` is the single place that decides how
+close a deadline is, and it ramps: quiet grey (`later`) while the deadline is days away, yellow (`soon`)
+inside three days, orange (`warm`) inside a day, orange-red (`urgent`) inside six hours, a deeper
+orange-red (`critical`) inside the last hour, and red (`overdue`) only once the deadline has passed. The
+reason for the ramp rather than three coarse buckets is that a deadline that is one hour away and one that
+is six hours away are not the same situation, and a flat "soon" hides that. Red is reserved for work that
+was missed: a deadline that is still reachable must never wear the colour of one that is not, or students
+learn to ignore red. The thresholds are minutes, not days, so the last hours are visible; `relativeDue`
+prints minutes inside the last hour and whole hours inside the last day.
+
+**One button design.** Every action in the student UI uses the shared `.btn` / `.btn--primary` /
+`.btn--secondary` classes from `styles/components/_patterns.scss`. Earlier iterations had a hand-written
+accept button on the home page and Material buttons on the assignment cards, which made the same action
+look different depending on where it was. The rule now is that a component may not restyle a button; it
+picks a variant and leaves the shape to the global class.
+
+**The git notice.** `app/shared/git-credentials-notice` is a temporary banner on the home page: while git
+asks for a username and password, students have to use the credentials from *Generate git password*.
+The banner is a separate component that owns its own markup, styles and state so it can be removed by
+deleting one component and one line in the home page. Its dismissed state lives in `localStorage` under
+`git-credentials-notice-v1-hidden`; the version suffix is part of the key, so bumping it brings the notice
+back for everyone. The banner links to the account page rather than generating a credential itself,
+because the credential is shown exactly once and the account page is where that already happens.
+
+What would change it: the git login problem being fixed, which removes the banner entirely.
+
+---
+
+## 2026-11-13 — A course's member count is its own membership, not the roster's
+
+**Status:** accepted.
+
+`CourseOverview.MemberCount` counts `Course.Members`, the students attached to that course, not
+`Roster.Members`, the whole class roster the course was opened for. The two stopped being the same when
+`CourseSpecificMembership` made course participation its own relation and the settings tab began adding and
+removing participants; a roster-wide count would show students who never accepted the course. The merge
+that brought that migration in left both projections side by side, so the roster count could silently win.
+What would change it: a column that deliberately reports class size, which would then need its own field.
+
+---
+
 ## 2026-11-17 — A forked starter cannot have a hard deadline
 
 **Status:** accepted.

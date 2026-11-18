@@ -1,0 +1,27 @@
+<button class="icon-button bell" type="button" [matMenuTriggerFor]="menu" [attr.aria-label]="ariaLabel()">
+  <mat-icon aria-hidden="true">notifications</mat-icon>
+  @if (count() > 0) {
+    <span class="bell__badge" aria-hidden="true">{{ count() }}</span>
+  }
+</button>
+
+<mat-menu #menu="matMenu" class="notification-menu">
+  @if (listed().length === 0) {
+    <div class="notification-menu__empty">Nothing closes soon.</div>
+  } @else {
+    @for (item of listed(); track item.id) {
+      <a mat-menu-item class="notification-menu__item" [routerLink]="item.route">
+        <span class="notification-menu__row">
+          <span class="notification-menu__text">
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.courseTitle }}</span>
+          </span>
+          <span class="pill pill--due" [class]="'pill pill--due due--' + urgency(item)"
+                [attr.aria-label]="closingLabel(item)">
+            {{ remaining(item) }}{{ urgency(item) === 'critical' || urgency(item) === 'urgent' ? ' !!!' : '' }}
+          </span>
+        </span>
+      </a>
+    }
+  }
+</mat-menu>

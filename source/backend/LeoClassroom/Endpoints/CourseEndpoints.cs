@@ -36,16 +36,19 @@ public static class CourseEndpoints
         {
             var courses = app.MapGroup("/api/courses")
                              .WithTags("Courses")
-                             .RequireAuthorization(AuthPolicies.RequireTeacher);
+                             .RequireAuthorization();
 
             courses.MapGet("/avatar", GetAvatarAsync)
                    .AllowAnonymous();
             courses.MapGet("/", GetCoursesAsync);
             courses.MapGet("/{id:long:min(1)}", GetCourseByIdAsync)
                    .WithName(nameof(GetCourseByIdAsync));
-            courses.MapPost("/", AddCourseAsync);
-            courses.MapPut("/{id:long:min(1)}", UpdateCourseAsync);
-            courses.MapDelete("/{id:long:min(1)}", DeleteCourseAsync);
+            courses.MapPost("/", AddCourseAsync)
+                   .RequireAuthorization(AuthPolicies.RequireTeacher);
+            courses.MapPut("/{id:long:min(1)}", UpdateCourseAsync)
+                   .RequireAuthorization(AuthPolicies.RequireTeacher);
+            courses.MapDelete("/{id:long:min(1)}", DeleteCourseAsync)
+                   .RequireAuthorization(AuthPolicies.RequireTeacher);
 
             var courseParticipants = app.MapGroup("/api/courses")
                                         .WithTags("Courses")

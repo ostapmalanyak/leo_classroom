@@ -1,10 +1,107 @@
 @use "../abstracts/mixins" as mixins;
 
+// One card style for the whole app. Assignment cards, course tiles and the panels on the
+// home page all use it, so a card looks the same wherever it shows up: a flat surface, no
+// border and a generous corner radius.
 .card,
-.mat-mdc-card {
-  @include mixins.surface;
-
+.mat-mdc-card,
+.card-surface {
+  background-color: var(--color-bg-surface);
+  border: 0;
+  border-radius: var(--course-card-radius);
+  color: var(--color-text);
   box-shadow: none;
+}
+
+// A card that can be clicked says so through its surface, not through a border.
+.card-surface--interactive {
+  transition: background-color var(--transition);
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--color-bg-hover);
+  }
+}
+
+// A state is a tinted capsule, so the same status reads identically wherever it appears.
+.pill {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-neutral-bg);
+  padding: 0.125rem var(--space-3);
+  color: var(--color-neutral-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.pill--success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.pill--warning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.pill--late {
+  background-color: var(--color-late-bg);
+  color: var(--color-late-text);
+}
+
+.pill--danger {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.pill--info {
+  background-color: var(--color-info-bg);
+  color: var(--color-info-text);
+}
+
+// A deadline badge that carries the urgency colour itself. The tint is mixed from the
+// urgency colour, so the badge walks the same ramp as the text next to it.
+.pill--due {
+  align-self: center;
+  background-color: color-mix(in srgb, var(--due-color, var(--color-neutral-text)) 18%, transparent);
+  color: var(--due-color, var(--color-neutral-text));
+}
+
+// The deadline ramp itself. The steps only set a custom property, so any element can pick
+// the colour up with `color: var(--due-color, ...)` without the two rules fighting over
+// specificity.
+.due--later {
+  --due-color: var(--color-urgency-later);
+}
+
+.due--soon {
+  --due-color: var(--color-urgency-soon);
+}
+
+.due--warm {
+  --due-color: var(--color-urgency-warm);
+}
+
+.due--imminent {
+  --due-color: var(--color-urgency-urgent);
+}
+
+.due--urgent {
+  --due-color: var(--color-urgency-urgent);
+}
+
+.due--critical {
+  --due-color: var(--color-urgency-critical);
+}
+
+.due--overdue {
+  --due-color: var(--color-urgency-overdue);
 }
 
 .mat-mdc-form-field-subscript-wrapper {
@@ -51,6 +148,14 @@
   font-weight: var(--font-weight-medium);
   text-decoration: none;
   cursor: pointer;
+  // The colour belongs to the button, not to the link rules of the page: a hovered link
+  // would otherwise turn the label the colour of the button and the label would vanish.
+  color: var(--color-text);
+
+  &:hover {
+    color: var(--color-text-strong);
+    text-decoration: none;
+  }
 }
 
 .btn--primary {
@@ -61,6 +166,7 @@
   &:hover {
     border-color: var(--color-accent-hover);
     background-color: var(--color-accent-hover);
+    color: var(--color-on-accent);
   }
 }
 
@@ -128,8 +234,11 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3);
+  border: 0;
   border-bottom: calc(var(--border-width) * 2) solid transparent;
+  background: none;
   color: var(--color-text-muted);
+  cursor: pointer;
   text-decoration: none;
 
   &:hover,
@@ -149,6 +258,89 @@
 // room the rest of the page has.
 .course-tab-group .mat-mdc-tab-body-content {
   padding-block-start: var(--space-5);
+}
+
+// One assignment card, shared by the course page and "My Assignments". Only the
+// contents of `.assignment-details` differ between them (status vs. due date), so the
+// box is defined here once instead of twice in the components.
+.assignment-card {
+  border-radius: var(--course-card-radius);
+  width: 100%;
+}
+
+.assignment-card mat-card-content {
+  align-items: center;
+  display: flex;
+  gap: var(--space-5);
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+}
+
+.assignment-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.assignment-heading strong {
+  display: block;
+  font-size: 1.0625rem;
+  line-height: 1.4;
+  // A long title wraps inside its column instead of running into the time that is left.
+  overflow-wrap: anywhere;
+}
+
+// The remaining time and the push note share one look. The colour of the remaining time
+// comes from the urgency ramp, so a deadline that is close turns orange and only a
+// deadline that has passed turns red.
+.assignment-due {
+  color: var(--due-color, var(--color-text-muted));
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+// On a phone the title gets the whole width of the card and the time and the action
+// sit below it, so a long name can never reach them.
+@media (max-width: 40rem) {
+  .assignment-card mat-card-content {
+    align-items: center;
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .assignment-heading {
+    grid-column: 1 / -1;
+  }
+
+  .assignment-due {
+    grid-column: 1;
+  }
+
+  .assignment-details {
+    grid-column: 2;
+  }
+}
+
+.assignment-pushed {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.2;
+}
+
+.assignment-details {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+@media (max-width: 48rem) {
+  .assignment-details {
+    justify-content: flex-start;
+  }
 }
 
 .badge {
@@ -252,7 +444,7 @@ app-empty-state .empty-state[class] {
     text-decoration: none;
   }
 
-  // The glyph must be told its size as well as its box: mat-icon defaults to a 24px
+  // The glyph must be told its size as well as its box: mat-icon defaults to a 1.5rem
   // font, which would render the arrow larger than the 1.25rem box and push it off
   // centre.
   mat-icon {
@@ -394,8 +586,8 @@ app-inline-error .inline-error[role="alert"] {
 }
 
 mat-card.mat-mdc-card {
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
+  border: 0;
+  border-radius: var(--course-card-radius);
   background-color: var(--color-bg-surface);
   color: var(--color-text);
   box-shadow: none;
@@ -506,11 +698,19 @@ mat-card.mat-mdc-card {
 }
 
 .mat-mdc-icon-button.mat-mdc-button-base {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
   width: var(--control-height);
   height: var(--control-height);
   padding: 0;
   border: var(--border-width) solid var(--color-border);
   background-color: var(--color-bg-input);
+  line-height: 1;
+
+  mat-icon {
+    line-height: 1;
+  }
 }
 
 .mat-mdc-button-base:disabled,
@@ -530,8 +730,12 @@ mat-card.mat-mdc-card {
 }
 
 // Material's own controls use bare <button> elements internally (the slide-toggle
-// switch is one), so they must not receive the generic control box.
-button:not(.mat-mdc-button-base, .mat-mdc-menu-item, .mdc-switch) {
+// switch is one), and the tab strip is a row of bare buttons that must read as text,
+// so neither may receive the generic control box.
+// A plain button gets the shape of a control. A button that carries the shared .btn class
+// is styled by .btn alone, so its variant (primary, secondary) is not overwritten here.
+button:not(.mat-mdc-button-base, .mat-mdc-menu-item, .mdc-switch, .tabs__item, .btn, .icon-button,
+    .avatar, .navbar-search) {
   @include mixins.control-base;
 
   border-radius: var(--radius-button);
@@ -695,5 +899,385 @@ select:not(.mat-mdc-input-element) {
 
   .page-header {
     align-items: flex-start;
+  }
+}
+
+// A dialog title and the close button next to it share one line: the title centres in the
+// line instead of sitting below the button.
+h2[mat-dialog-title] {
+  align-items: center;
+  display: flex;
+  line-height: 1.2;
+}
+
+// The menu of the bell: wide enough for the title of the assignment, the course and the
+// time that is left.
+.mat-mdc-menu-panel.notification-menu {
+  min-width: 22rem;
+  max-width: 28rem;
+}
+
+// The menu of the avatar: a header with the name and the role, then the entries.
+.account-menu__head {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.account-menu__name {
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-medium);
+}
+
+.account-menu__role {
+  background-color: var(--color-bg-input);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  padding: 0.0625rem var(--space-2);
+}
+
+.account-menu__divider {
+  background-color: var(--color-border);
+  block-size: var(--border-width);
+  margin: var(--space-1) 0;
+}
+
+.account-menu__item {
+  justify-content: space-between;
+
+  svg {
+    color: var(--color-text-muted);
+    flex: none;
+    height: 1rem;
+    margin-inline-start: var(--space-3);
+    width: 1rem;
+  }
+}
+
+// The course picker on My Assignments opens as a compact popover instead of Material's roomy
+// menu: small rows, one line per course and the same initials badge the rest of the page uses.
+// The rules are bound to the panel class, so every other menu in the app keeps its current look.
+.mat-mdc-menu-panel.course-menu {
+  --mat-menu-container-color: var(--color-bg-input);
+  --mat-menu-item-label-text-color: var(--color-text);
+  --mat-menu-item-hover-state-layer-color: var(--color-bg-hover);
+
+  min-width: 12rem;
+  max-width: 18rem;
+  padding: var(--space-1);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: var(--color-bg-input);
+  box-shadow: 0 0.75rem 1.75rem -1rem rgb(0 0 0 / 80%);
+}
+
+.mat-mdc-menu-panel.course-menu .mat-mdc-menu-content {
+  padding: 0;
+}
+
+// Material renders menu rows as plain buttons and loads its own panel styles after the global
+// sheet, so the rules are written against the panel element to win the cascade.
+.mat-mdc-menu-panel.course-menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-button);
+  background: none;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  text-align: start;
+  color: var(--color-text);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text-strong);
+  }
+}
+
+.mat-mdc-menu-panel.course-menu .mat-mdc-menu-item-text {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+// The destructive row says so, but quietly: a hint of red while the pointer is on it,
+// never a red block.
+.mat-mdc-menu-panel.course-menu button.course-menu__delete {
+  color: var(--color-text-muted);
+
+  &:hover,
+  &:focus-visible {
+    background-color: color-mix(in srgb, var(--color-danger-bg) 30%, var(--color-bg-hover));
+    color: var(--color-danger-text);
+  }
+}
+
+.course-menu__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-menu__check {
+  margin-inline-start: auto;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  font-size: var(--icon-sm);
+  color: var(--color-accent);
+}
+
+// The home pages of the student and the teacher share their layout: the same grid, the
+// same panels, the same tiles and the same rows. They live here so neither page has to
+// carry a copy of them.
+// Home uses the global palette and the global card style, so its panels look like the
+// assignment cards and the course tiles.
+
+.home-grid {
+  display: grid;
+  // Panels keep their content height: stretching the short column to match left an empty slab
+  // under the last row.
+  align-items: start;
+  gap: var(--space-5);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+
+  @media (max-width: 60rem) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.panel {
+  h2 {
+    margin: 0;
+    font-size: 1.0625rem;
+  }
+}
+
+// The greeting opens the main panel, so the page starts with a name and not with a chrome.
+.home-head {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-semibold);
+}
+
+.panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block: var(--space-5) var(--space-3);
+
+  a {
+    font-size: var(--font-size-sm);
+  }
+}
+
+.panel__text {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.panel__empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) dashed var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+
+  p {
+    margin: 0;
+    font-size: var(--font-size-sm);
+  }
+
+  mat-icon {
+    color: var(--color-success-text);
+  }
+}
+
+// The numbers of the week. Each tile is a way into the list it counts.
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+
+  @media (max-width: 40rem) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  border: 0;
+  border-radius: var(--radius-card);
+  background-color: var(--color-bg-input);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  transition: background-color var(--transition);
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--color-bg-hover);
+    text-decoration: none;
+  }
+
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
+  }
+}
+
+.stat__value {
+  color: var(--color-text-strong);
+  font-size: 1.75rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+// Only the numbers that ask for attention change colour.
+// The number that is due within a day wears the warm end of the urgency ramp, so the tile
+// and the deadline badges below it read as the same scale.
+.stat--warning .stat__value {
+  color: var(--color-urgency-soon);
+}
+
+.stat--urgent .stat__value {
+  color: var(--color-urgency-warm);
+}
+
+.stat--danger .stat__value {
+  color: var(--color-urgency-overdue);
+}
+
+// The three soonest deadlines: a row each, with the deadline as a badge and the one action
+// that makes sense before it.
+.next-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A row is a small card, like the assignment cards on My Assignments. The button keeps the
+// shared button colour, so it reads as a button here exactly as it does there.
+.next-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  border: var(--border-width) solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background-color: var(--color-bg-surface);
+  padding: var(--space-3);
+}
+
+.next-row__main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+
+  // Hover only where a pointer exists: on touch, a sticky :hover left the first row looking
+  // permanently selected.
+  @media (hover: hover) {
+    &:hover strong {
+      text-decoration: underline;
+    }
+  }
+
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
+    border-radius: var(--radius);
+  }
+}
+
+.next-row__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  strong {
+    overflow: hidden;
+    color: var(--color-text-strong);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.next-row__course {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-sm);
+}
+
+// Forgejo is infrastructure, but the student has to reach it from here, so it gets the same
+// buttons as any other panel.
+.forgejo__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-end: var(--space-3);
+}
+
+.forgejo__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius);
+  background-color: var(--color-bg-input);
+  color: var(--color-accent);
+
+  mat-icon {
+    font-size: 1.25rem;
+    height: 1.25rem;
+    width: 1.25rem;
+  }
+}
+
+.forgejo__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
+
+  .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 36rem) {
+  .next-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  // On a phone the action gets its own full-width line, like every other call to action.
+  .next-row .btn {
+    grid-column: 1 / -1;
   }
 }

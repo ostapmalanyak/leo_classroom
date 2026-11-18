@@ -14,12 +14,12 @@ public interface ICourseService
 {
     public ValueTask<OneOf<Success<Course>, NotFound, AlreadyExists>>
         AddCourseAsync(string title, long rosterId, string? iconSeed = null);
+    public ValueTask<OneOf<Course, NotFound, Forbidden>> GetCourseByIdAsync(long id);
     public ValueTask<OneOf<CourseParticipants, NotFound, Forbidden>> GetParticipantsAsync(long id);
     public ValueTask<OneOf<IReadOnlyCollection<CourseParticipant>, NotFound, Forbidden>>
         SearchAvailableStudentsAsync(long id, string term);
     public ValueTask<OneOf<Success, NotFound, Forbidden>> AddParticipantAsync(long id, long userId);
     public ValueTask<OneOf<Success, NotFound, Forbidden>> RemoveParticipantAsync(long id, long userId);
-    public ValueTask<OneOf<Course, NotFound, Forbidden>> GetCourseByIdAsync(long id);
     public ValueTask<IReadOnlyCollection<CourseOverview>> GetCourseOverviewsAsync();
 
     public ValueTask<OneOf<Success<Course>, NotFound, AlreadyExists, Forbidden>>
@@ -89,14 +89,16 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
 
     public async ValueTask<OneOf<Course, NotFound, Forbidden>> GetCourseByIdAsync(long id)
     {
-        Course? course = await uow.CourseRepository.GetWithTeachersAsync(id);
+        Course? course = await uow.CourseRepository.GetWithTeachersAndMembersAsync(id);
         if (course is null)
         {
             logger.LogWarning("Course {CourseId} was not found", id);
 
             return new NotFound();
         }
-        if (!IsCourseTeacher(course))
+        if (!IsCourseTeacher(course)
+            && !course.Members.Any(member =>
+                string.Equals(member.StudentId, currentUser.StudentId, StringComparison.Ordinal)))
         {
             return new Forbidden();
         }
@@ -234,9 +236,14 @@ internal sealed class CourseService(IUnitOfWork uow, ICurrentUser currentUser, I
 
         long? userId = await uow.UserRepository.GetIdByStudentIdAsync(currentUser.StudentId);
 
-        return userId is null
-            ? Array.Empty<CourseOverview>()
-            : await uow.CourseRepository.GetOverviewsForTeacherAsync(userId.Value);
+        if (userId is null)
+        {
+            return Array.Empty<CourseOverview>();
+        }
+
+        return currentUser.Roles.Contains(Role.Teacher)
+            ? await uow.CourseRepository.GetOverviewsForTeacherAsync(userId.Value)
+            : await uow.CourseRepository.GetOverviewsForMemberAsync(userId.Value);
     }
 
     public async ValueTask<OneOf<Success<Course>, NotFound, ICourseService.AlreadyExists, Forbidden>>

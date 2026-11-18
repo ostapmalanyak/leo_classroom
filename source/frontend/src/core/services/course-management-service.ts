@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom, map, Observable } from 'rxjs';
 import { z } from 'zod';
 import { backendApiBaseUrl } from '../auth/auth-config';
+import { courseIconUrl } from '../util/course-icon';
 
 const rosterSchema = z.object({
   id: z.number().int().positive().transform(id => id.toString()),
@@ -43,7 +44,7 @@ export class CourseManagementService {
   }
 
   public avatarUrl(seed: string): string {
-    return `${backendApiBaseUrl()}/courses/avatar?seed=${encodeURIComponent(seed)}`;
+    return courseIconUrl(seed);
   }
 
   public async createCourse(name: string, rosterId: string, iconSeed: string): Promise<CreateCourseResult> {

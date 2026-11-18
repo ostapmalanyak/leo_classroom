@@ -11,6 +11,7 @@ public interface ICourseRepository
     public ValueTask<Course?> GetTrackedByIdAsync(long id);
     public ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsAsync();
     public ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsForTeacherAsync(long userId);
+    public ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsForMemberAsync(long userId);
     public ValueTask<bool> ExistsWithTitleInRosterAsync(string title, long rosterId, long? excludingCourseId = null);
     public ValueTask<string?> GetOwnerStudentIdAsync(long id);
     public ValueTask<bool> DeleteByIdAsync(long id);
@@ -65,12 +66,6 @@ internal sealed class CourseRepository(DbSet<Course> courses) : ICourseRepositor
 
     public async ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsAsync()
     {
-        List<CourseOverview> overviews = await courses.AsNoTracking()
-                                                      .OrderBy(c => c.Title)
-                                                      .Select(c => new CourseOverview(c.Id, c.Title, c.IconSeed, c.RosterId,
-                                                                  c.Roster.Name, c.Members.Count, c.IsReadOnly,
-                                                                  c.StudentsRetainAccess))
-                                                      .ToListAsync();
         return await ProjectOverviews(courses.AsNoTracking());
     }
 
@@ -83,11 +78,19 @@ internal sealed class CourseRepository(DbSet<Course> courses) : ICourseRepositor
         return await ProjectOverviews(visibleCourses);
     }
 
+    public async ValueTask<IReadOnlyCollection<CourseOverview>> GetOverviewsForMemberAsync(long userId)
+    {
+        IQueryable<Course> visibleCourses = courses.AsNoTracking()
+                                                   .Where(c => c.Members.Any(member => member.Id == userId));
+
+        return await ProjectOverviews(visibleCourses);
+    }
+
     private static async ValueTask<IReadOnlyCollection<CourseOverview>> ProjectOverviews(IQueryable<Course> query)
     {
         List<CourseOverview> overviews = await query.OrderBy(c => c.Title)
                                                     .Select(c => new CourseOverview(c.Id, c.Title, c.IconSeed, c.RosterId,
-                                                                c.Roster.Name, c.Roster.Members.Count, c.IsReadOnly,
+                                                                c.Roster.Name, c.Members.Count, c.IsReadOnly,
                                                                 c.StudentsRetainAccess))
                                                     .ToListAsync();
 

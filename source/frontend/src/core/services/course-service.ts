@@ -26,6 +26,21 @@ export class CourseService extends BackendServiceBase {
     }
   }
 
+  /**
+   * The icon seed of every course the student can see, keyed by course id. Lists that show
+   * a course need the seed to show the icon the course really has.
+   */
+  public async getCourseIconSeeds(): Promise<Map<number, string | null>> {
+    const courses = await this.getCourses();
+    const seeds = new Map<number, string | null>();
+
+    for (const course of courses ?? []) {
+      seeds.set(course.id, course.iconSeed ?? null);
+    }
+
+    return seeds;
+  }
+
   public async getCourseById(id: number): Promise<Course | null> {
     try {
       const response = await firstValueFrom(this.http.get<unknown>(this.buildUrl(`${id}`)));

@@ -24,8 +24,19 @@ public interface ICustomRosterService
 internal sealed class CustomRosterService(
     IUnitOfWork uow, ICurrentUser currentUser, ILogger<CustomRosterService> logger) : ICustomRosterService
 {
-    public async ValueTask<IReadOnlyCollection<RosterOverview>> ListAsync() =>
-        await uow.RosterRepository.GetOverviewsAsync();
+    public async ValueTask<IReadOnlyCollection<RosterOverview>> ListAsync()
+    {
+        IReadOnlyCollection<RosterOverview> rosters = await uow.RosterRepository.GetOverviewsAsync();
+        long? currentId = await uow.UserRepository.GetIdByStudentIdAsync(currentUser.StudentId);
+        if (currentId is null)
+        {
+            return rosters;
+        }
+
+        // "My rosters" is what the teacher created, so the page can show it apart from the
+        // rosters that came out of the school directory.
+        return rosters.Select(roster => roster with { IsOwner = roster.OwnerId == currentId }).ToArray();
+    }
 
     public async ValueTask<OneOf<IReadOnlyCollection<UserSummary>, NotFound>> ListMembersAsync(long id)
     {

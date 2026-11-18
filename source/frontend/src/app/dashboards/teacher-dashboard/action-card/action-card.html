@@ -1,0 +1,45 @@
+<ng-template #content>
+  <span class="action-card__icon" aria-hidden="true">
+    <mat-icon>{{ icon() }}</mat-icon>
+  </span>
+
+  <span class="action-card__text">
+    <strong>{{ label() }}</strong>
+    <span class="action-card__description">{{ description() }}</span>
+  </span>
+
+  @if (primary()) {
+    <mat-icon class="action-card__arrow" aria-hidden="true">arrow_forward</mat-icon>
+  }
+</ng-template>
+
+@if (route(); as target) {
+  <a class="action-card"
+     [class.action-card--primary]="primary()"
+     [routerLink]="target"
+     [attr.aria-label]="label() + '. ' + description()">
+    <ng-container [ngTemplateOutlet]="content" />
+  </a>
+} @else if (choices().length > 0) {
+  <button class="action-card"
+          type="button"
+          [class.action-card--primary]="primary()"
+          [matMenuTriggerFor]="menu"
+          [attr.aria-label]="label() + '. ' + description()">
+    <ng-container [ngTemplateOutlet]="content" />
+  </button>
+
+  <mat-menu #menu="matMenu" class="course-menu-panel">
+    @for (choice of choices(); track choice.label) {
+      <button mat-menu-item type="button" (click)="chosen.emit(choice)">{{ choice.label }}</button>
+    }
+  </mat-menu>
+} @else {
+  <button class="action-card"
+          type="button"
+          [class.action-card--primary]="primary()"
+          [attr.aria-label]="label() + '. ' + description()"
+          (click)="picked.emit()">
+    <ng-container [ngTemplateOutlet]="content" />
+  </button>
+}

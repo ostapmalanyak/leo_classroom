@@ -149,7 +149,7 @@ public sealed class CourseServiceTests
     [Fact]
     public async Task GetCourseByIdAsync_Existing_ReturnsCourse()
     {
-        _courseRepo.GetWithTeachersAsync(5).Returns(new ValueTask<Course?>(OwnedCourse(OwnerStudentId)));
+        _courseRepo.GetWithTeachersAndMembersAsync(5).Returns(new ValueTask<Course?>(OwnedCourse(OwnerStudentId)));
 
         var result = await _sut.GetCourseByIdAsync(5);
 
@@ -162,7 +162,7 @@ public sealed class CourseServiceTests
     [Fact]
     public async Task GetCourseByIdAsync_Missing_ReturnsNotFound()
     {
-        _courseRepo.GetWithTeachersAsync(99).Returns(new ValueTask<Course?>(default(Course?)));
+        _courseRepo.GetWithTeachersAndMembersAsync(99).Returns(new ValueTask<Course?>(default(Course?)));
 
         var result = await _sut.GetCourseByIdAsync(99);
 
@@ -175,7 +175,7 @@ public sealed class CourseServiceTests
     [Fact]
     public async Task GetCourseByIdAsync_NonTeacher_ReturnsForbidden()
     {
-        _courseRepo.GetWithTeachersAsync(5).Returns(new ValueTask<Course?>(OwnedCourse(OtherStudentId)));
+        _courseRepo.GetWithTeachersAndMembersAsync(5).Returns(new ValueTask<Course?>(OwnedCourse(OtherStudentId)));
 
         var result = await _sut.GetCourseByIdAsync(5);
 
@@ -183,6 +183,24 @@ public sealed class CourseServiceTests
             course => Assert.Fail("Expected Forbidden but got Course"),
             notFound => Assert.Fail("Expected Forbidden but got NotFound"),
             forbidden => { });
+    }
+
+    [Fact]
+    public async Task GetCourseByIdAsync_StudentMember_ReturnsCourse()
+    {
+        Course course = OwnedCourse(OtherStudentId);
+        course.Members.Add(new User
+        {
+            StudentId = OwnerStudentId, FirstName = "Member", LastName = "Student", Role = Role.Student
+        });
+        _courseRepo.GetWithTeachersAndMembersAsync(5).Returns(new ValueTask<Course?>(course));
+
+        var result = await _sut.GetCourseByIdAsync(5);
+
+        result.Switch(
+            c => c.Id.Should().Be(5),
+            notFound => Assert.Fail("Expected Course but got NotFound"),
+            forbidden => Assert.Fail("Expected Course but got Forbidden"));
     }
 
     [Fact]
@@ -312,6 +330,23 @@ public sealed class CourseServiceTests
         ];
         _userRepo.GetIdByStudentIdAsync(OwnerStudentId).Returns(new ValueTask<long?>(OwnerId));
         _courseRepo.GetOverviewsForTeacherAsync(OwnerId)
+                   .Returns(new ValueTask<IReadOnlyCollection<CourseOverview>>(overviews));
+
+        var result = await _sut.GetCourseOverviewsAsync();
+
+        result.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task GetCourseOverviewsAsync_Student_ReturnsCoursesTheyAreMemberOf()
+    {
+        IReadOnlyCollection<CourseOverview> overviews =
+        [
+            new CourseOverview(1, "Algorithms", null, RosterId, "5AHIF", 25, false, true)
+        ];
+        _currentUser.Roles.Returns(new HashSet<Role> { Role.Student });
+        _userRepo.GetIdByStudentIdAsync(OwnerStudentId).Returns(new ValueTask<long?>(OwnerId));
+        _courseRepo.GetOverviewsForMemberAsync(OwnerId)
                    .Returns(new ValueTask<IReadOnlyCollection<CourseOverview>>(overviews));
 
         var result = await _sut.GetCourseOverviewsAsync();

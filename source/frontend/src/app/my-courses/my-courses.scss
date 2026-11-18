@@ -1,44 +1,114 @@
-.empty {
-  color: var(--color-text-muted);
+// The heading stands on its own; the search field and the grid follow it below.
+.page-header {
+  margin-block-end: var(--space-4);
 }
 
+// The search opens the palette of the shell: it is a field that says what it would
+// search, and it follows the theme of the other inputs.
 .course-search {
   align-items: center;
   background-color: var(--color-bg-input);
-  border: var(--border-width) solid var(--color-input-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
+  color: var(--color-text-subtle);
+  cursor: pointer;
   display: flex;
-  gap: var(--space-2);
-  margin-block: 0 var(--space-4);
-  padding-inline: var(--space-3);
-  width: 100%;
+  font: inherit;
+  gap: var(--space-3);
+  inline-size: 100%;
+  margin-block-end: var(--space-4);
+  min-height: 3rem;
+  padding-inline: var(--space-4);
+  text-align: start;
+  transition: border-color var(--transition), box-shadow var(--transition);
 
-  &:focus-within {
+  &:hover {
+    border-color: var(--color-input-border);
+  }
+
+  &:focus-visible {
     border-color: var(--color-accent);
-    outline: var(--border-width) solid var(--color-accent);
-    outline-offset: 0;
+    box-shadow: 0 0 0 0.1875rem color-mix(in srgb, var(--color-accent) 25%, transparent);
+    outline: 0;
   }
 
   mat-icon {
-    color: var(--color-text-muted);
+    color: var(--color-text-subtle);
     flex: none;
     font-size: 1.25rem;
     height: 1.25rem;
     width: 1.25rem;
   }
 
-  input {
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-    color: var(--color-text);
+  &__text {
     flex: 1 1 auto;
-    font: inherit;
-    min-height: var(--control-height);
-    min-width: 0;
-    outline: 0;
-    padding: 0;
-    width: 100%;
+    font-size: var(--font-size-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__key {
+    background-color: var(--color-bg-hover);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    flex: none;
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-sm);
+    padding: 0.125rem var(--space-2);
+  }
+}
+
+// An empty result is a card like every other, with the way out inside it.
+.empty {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+
+.empty__icon {
+  align-items: center;
+  background-color: color-mix(in srgb, var(--color-accent) 14%, var(--color-bg-surface));
+  border-radius: var(--radius);
+  color: var(--color-accent-hover);
+  display: inline-flex;
+  height: 3rem;
+  justify-content: center;
+  width: 3rem;
+
+  mat-icon {
+    font-size: 1.5rem;
+    height: 1.5rem;
+    width: 1.5rem;
+  }
+}
+
+.empty__text {
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.empty__action {
+  background: none;
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius-button);
+  color: var(--color-accent-hover);
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  padding: var(--space-2) var(--space-4);
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-bg-surface));
+  }
+
+  &:focus-visible {
+    outline: var(--border-width) solid var(--color-accent);
+    outline-offset: var(--border-width);
   }
 }
 
@@ -51,7 +121,7 @@
 
   display: grid;
   gap: var(--space-4);
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 24rem));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
 
   @media (max-width: 24rem) {
     .course-card {
@@ -61,26 +131,18 @@
   }
 }
 
+// The card surface itself comes from the shared card style, so a course tile looks like
+// every other card in the app.
 .course-card {
   aspect-ratio: 2 / 1;
   align-items: center;
-  background-color: var(--color-bg-surface);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--course-card-radius);
-  color: var(--color-text);
   display: flex;
   gap: var(--course-content-gap);
   min-height: 0;
   padding: var(--course-card-padding);
   position: relative;
   text-decoration: none;
-  transition: background-color var(--transition), border-color var(--transition);
   width: 100%;
-
-  &:hover,
-  &:focus-visible {
-    background-color: var(--color-bg-hover);
-  }
 
   &__avatar {
     border-radius: var(--course-avatar-radius);

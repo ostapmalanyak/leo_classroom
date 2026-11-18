@@ -16,7 +16,8 @@ export interface NavEntry {
 export const navEntries: readonly NavEntry[] = [
   { label: 'Home', route: '/', icon: 'home' },
   { label: 'My Assignments', route: '/my-assignments', icon: 'assignment', requiredRole: Role.Student },
-  { label: 'My Courses', route: '/my-courses', icon: 'school', requiredRole: Role.Teacher, teacherOnly: true },
+  { label: 'My Courses', route: '/my-courses', icon: 'school' },
+  { label: 'Rosters', route: '/rosters', icon: 'groups', requiredRole: Role.Teacher },
   { label: 'Teacher CLI', route: '/cli', icon: 'terminal', requiredRole: Role.Teacher },
   { label: 'Audit Log', route: '/audit', icon: 'fact_check', requiredRole: Role.Admin },
   { label: 'Forgejo Connection', route: '/admin/forgejo', icon: 'cable', requiredRole: Role.Admin }
@@ -24,13 +25,8 @@ export const navEntries: readonly NavEntry[] = [
 
 export function visibleNavEntries(entries: readonly NavEntry[], roles: readonly Role[]): NavEntry[] {
   const isAdmin = roles.includes(Role.Admin);
-  const isTeacher = roles.includes(Role.Teacher);
 
   return entries.filter(entry => {
-    if (entry.route === '/' && isTeacher && !isAdmin) {
-      return false;
-    }
-
     if (entry.teacherOnly) {
       return roles.includes(Role.Teacher) || isAdmin;
     }
@@ -44,7 +40,7 @@ export function defaultRouteForRoles(roles: readonly Role[]): string {
     return '/home/admin';
   }
   if (roles.includes(Role.Teacher)) {
-    return '/my-courses';
+    return '/home/teacher';
   }
 
   return '/home/student';

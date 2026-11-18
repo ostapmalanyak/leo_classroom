@@ -1,0 +1,75 @@
+// The bell and its badge: the count sits on the corner of the button, small enough to
+// stay out of the way of the icon.
+:host {
+  display: inline-flex;
+}
+
+.bell {
+  position: relative;
+}
+
+.bell__badge {
+  align-items: center;
+  background-color: var(--color-accent);
+  border: var(--border-width) solid var(--color-bg-body);
+  border-radius: 50%;
+  color: var(--color-on-accent);
+  display: flex;
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-semibold);
+  height: 1rem;
+  justify-content: center;
+  line-height: 1;
+  min-width: 1rem;
+  padding-inline: 0.125rem;
+  position: absolute;
+  right: -0.25rem;
+  top: -0.25rem;
+}
+
+// The menu rows carry the name of the assignment and the time that is left.
+// One row: the assignment and its course on the left, the time that is left on the right.
+.notification-menu__row {
+  align-items: center;
+  display: flex;
+  gap: var(--space-4);
+  inline-size: 100%;
+  justify-content: space-between;
+}
+
+.notification-menu__item {
+  min-height: 3rem;
+  padding-block: var(--space-2);
+}
+
+.notification-menu__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+
+  strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.notification-menu__empty {
+  color: var(--color-text-muted);
+  padding: var(--space-3);
+}
+
+// The pill keeps its size, whatever the title next to it is long.
+.notification-menu__item .pill--due {
+  flex: none;
+}

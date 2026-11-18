@@ -1,10 +1,187 @@
 @use "../abstracts/mixins" as mixins;
 
+// The bar sits on top of the page and is a little lighter than it, so the navigation
+// separates from the content without a heavy border.
 .navbar {
-  min-height: var(--navbar-height);
+  position: sticky;
+  top: 0;
+  z-index: 10;
   border-bottom: var(--border-width) solid var(--color-border);
-  background-color: var(--color-bg-nav);
+  background-color: color-mix(in srgb, var(--color-bg-surface) 45%, var(--color-bg-body));
   color: var(--color-text);
+}
+
+.navbar__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 3rem;
+  padding-inline: var(--space-4);
+}
+
+// The brand: a rounded square with the letter of the app and the name next to it.
+.brand {
+  align-items: center;
+  color: var(--color-text-strong);
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+  text-decoration: none;
+}
+
+.brand__mark {
+  align-items: center;
+  background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-bg-surface));
+  border-radius: var(--radius);
+  color: var(--color-accent);
+  display: inline-flex;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  height: 1.5rem;
+  justify-content: center;
+  width: 1.5rem;
+}
+
+.brand__name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+// The links are text only and reach the bottom of the bar, so the underline of the
+// current page touches the border of the bar.
+.navbar__links {
+  align-items: stretch;
+  align-self: stretch;
+  display: flex;
+  flex: 1 1 auto;
+  gap: 0;
+  margin-inline-start: var(--space-3);
+  min-width: 0;
+}
+
+.navbar-link {
+  align-items: center;
+  border-bottom: 0.125rem solid transparent;
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: var(--font-size-sm);
+  padding-inline: var(--space-4);
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text);
+  }
+
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: -0.125rem;
+  }
+
+  &.is-active {
+    border-bottom-color: var(--color-accent);
+    color: var(--color-text-strong);
+  }
+}
+
+.navbar__actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  // The three buttons of the right side get room between them, so the bar does not
+  // look like one long row of icons.
+  gap: var(--space-3);
+  margin-inline-start: auto;
+}
+
+// The icon buttons of the bar: a square, a rounded corner, a quiet hover.
+.icon-button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 2.125rem;
+  justify-content: center;
+  padding: 0;
+  width: 2.125rem;
+
+  &:hover {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text);
+  }
+
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
+  }
+
+  mat-icon {
+    font-size: 1.25rem;
+    height: 1.25rem;
+    width: 1.25rem;
+  }
+}
+
+// The avatar is a round button with the initials of the signed in user.
+// The avatar is a clean circle with the initials of the user in it.
+.avatar {
+  align-items: center;
+  background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-bg-surface));
+  border: 0;
+  border-radius: 50%;
+  color: var(--color-accent);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  height: 2rem;
+  justify-content: center;
+  padding: 0;
+  width: 2rem;
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--color-accent) 26%, var(--color-bg-surface));
+  }
+
+  // The ring belongs to the keyboard: a mouse click leaves no ring behind.
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
+  }
+
+  // While its menu is open the avatar wears a thin ring.
+  &[aria-expanded='true'] {
+    box-shadow: 0 0 0 0.125rem var(--color-accent);
+  }
+}
+
+.navbar__burger {
+  display: none;
+}
+
+// On a phone the links move into a panel under the bar.
+.navbar__panel {
+  border-top: var(--border-width) solid var(--color-border-subtle);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-4) var(--space-3);
+}
+
+.navbar-link--panel {
+  border-bottom: 0;
+  border-radius: var(--radius);
+  min-height: 2.75rem;
+  padding: var(--space-3);
+
+  &.is-active {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text-strong);
+  }
 }
 
 .subbar {
@@ -45,102 +222,36 @@
   background-color: var(--color-bg-body);
 }
 
-.shell-toolbar {
-  --mat-toolbar-container-background-color: var(--color-bg-nav);
-  --mat-toolbar-container-text-color: var(--color-text);
-  --mat-toolbar-container-padding: 0;
 
-  overflow-x: auto;
-  position: relative;
-  height: var(--navbar-height);
-  min-height: var(--navbar-height);
+// The icon buttons of the bar keep the shape of a control, so they are not styled by
+// the rule for plain buttons.
+button.icon-button {
+  min-height: 2.125rem;
 }
 
-.navbar__inner {
-  display: flex;
-  align-items: center;
-  width: max-content;
-  min-width: 100%;
-  min-height: inherit;
-  gap: var(--space-1);
-}
-
-.app-title {
-  flex: 0 0 auto;
-  color: var(--color-text-strong);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-normal);
-  line-height: 1;
-}
-
-.navbar__items {
-  display: contents;
-}
-
-.navbar-item {
-  @include mixins.hover-bg;
-  @include mixins.focus-ring;
-
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: var(--control-height);
-  padding: var(--space-2) var(--space-3);
-  border: var(--border-width) solid transparent;
-  border-radius: var(--radius-button);
-  background-color: transparent;
-  color: var(--color-text);
+// The search in the bar is a word, like the links, with the quiet surface of a button
+// behind it so it does not read as a page.
+.navbar-search {
+  background-color: var(--color-bg-surface);
+  border: 0;
+  border-radius: 0.5rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
   font: inherit;
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-normal);
-  line-height: 1;
+  padding: 0.375rem 0.75rem;
   text-decoration: none;
   white-space: nowrap;
 
-  mat-icon {
-    width: var(--icon-sm);
-    height: var(--icon-sm);
-    font-size: var(--icon-sm);
+  &:hover {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text);
   }
-}
 
-.navbar__items [data-route="/"] {
-  order: 1;
-}
-
-.navbar__items [data-route="/my-assignments"] {
-  order: 2;
-}
-
-.navbar__items [data-route="/courses"] {
-  order: 3;
-}
-
-.navbar__items [data-route="/rosters"] {
-  order: 4;
-}
-
-.navbar__items [data-route="/cli"] {
-  order: 5;
-}
-
-.navbar__items [data-route="/audit"] {
-  order: 6;
-}
-
-.navbar__items [data-route="/admin/forgejo"] {
-  order: 8;
-}
-
-.navbar-account {
-  order: 10;
-  margin-inline-start: auto;
-}
-
-.navbar-item.active-nav,
-.navbar-item:hover {
-  background-color: var(--color-bg-hover);
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
+  }
 }
 
 .shell-content {
@@ -151,5 +262,25 @@
 @include mixins.breakpoint-md {
   .shell-content {
     padding-block: var(--space-4);
+  }
+}
+
+// On a phone the links live in the panel of the menu button.
+@media (max-width: 48rem) {
+  .navbar__links {
+    display: none;
+  }
+
+  .navbar__burger {
+    display: inline-flex;
+  }
+
+  // On a phone the search sits in the panel with the links.
+  .navbar__actions .navbar-search {
+    display: none;
+  }
+
+  .brand__name {
+    display: none;
   }
 }

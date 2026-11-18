@@ -1,0 +1,24 @@
+@if (rows().length === 0) {
+  <p class="closing__empty">Nothing closes soon.</p>
+} @else {
+  <ul class="next-list">
+    @for (row of rows(); track row.item.id) {
+      <li class="next-row">
+        <span class="next-row__text">
+          <strong>{{ row.item.title }}</strong>
+          <span class="next-row__course">
+            {{ row.item.courseTitle }} · {{ row.item.accepted }} of {{ row.item.total }} accepted
+          </span>
+        </span>
+
+        <span class="pill pill--due"
+              [class]="'pill pill--due due--' + row.urgency"
+              [attr.aria-label]="row.label">
+          {{ row.remaining }}
+        </span>
+
+        <a class="btn btn--secondary" [routerLink]="openRoute(row.item.id)">Open</a>
+      </li>
+    }
+  </ul>
+}

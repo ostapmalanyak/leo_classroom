@@ -16,8 +16,13 @@ export const routes: Routes = [
     data: { role: Role.Student },
     loadComponent: () => import('./dashboards/student-dashboard/student-dashboard').then(m => m.StudentDashboard)
   },
-  { path: 'home/teacher', pathMatch: 'full', redirectTo: '/my-courses' },
-  { path: 'home/teachers', pathMatch: 'full', redirectTo: '/my-courses' },
+  {
+    path: 'home/teacher',
+    canActivate: [authGuard],
+    data: { role: Role.Teacher },
+    loadComponent: () => import('./dashboards/teacher-dashboard/teacher-dashboard').then(m => m.TeacherDashboard)
+  },
+  { path: 'home/teachers', pathMatch: 'full', redirectTo: '/home/teacher' },
   {
     path: 'home/admin',
     canActivate: [authGuard],
@@ -28,6 +33,7 @@ export const routes: Routes = [
   {
     path: 'courses',
     canActivate: [authGuard],
+    data: { role: Role.Teacher },
     loadComponent: () => import('./course-list/course-list').then(m => m.CourseList)
   },
   {
@@ -39,6 +45,7 @@ export const routes: Routes = [
   {
     path: 'courses/:id',
     canActivate: [authGuard],
+    data: { role: Role.Teacher },
     loadComponent: () => import('./course-detail/course-detail').then(m => m.CourseDetail)
   },
   {

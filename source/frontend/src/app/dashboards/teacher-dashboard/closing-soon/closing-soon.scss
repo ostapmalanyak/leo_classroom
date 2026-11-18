@@ -1,0 +1,5 @@
+// The list reuses the shared rows of the home pages, so only the empty line is its own.
+.closing__empty {
+  color: var(--color-text-muted);
+  margin: 0;
+}

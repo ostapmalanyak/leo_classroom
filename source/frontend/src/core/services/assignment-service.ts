@@ -311,10 +311,14 @@ const assignedAssignmentZod = z.object({
   courseId: z.int().positive(),
   courseTitle: z.string(),
   title: z.string(),
+  description: z.string().nullable(),
   deadline: InstantSchema.nullable(),
   deadlineKind: z.enum(DeadlineKind),
   accepted: z.boolean(),
-  status: z.enum(SubmissionStatus).nullable()
+  status: z.enum(SubmissionStatus).nullable(),
+  lastPushAt: InstantSchema.nullable(),
+  late: z.boolean(),
+  feedbackState: z.enum(FeedbackState)
 });
 export type AssignedAssignment = z.infer<typeof assignedAssignmentZod>;
 

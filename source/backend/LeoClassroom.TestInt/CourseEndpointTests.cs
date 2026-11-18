@@ -94,6 +94,35 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
     }
 
     [Fact]
+    public async Task GetCourses_StudentMember_ReturnsOnlyCoursesTheyBelongTo()
+    {
+        CourseDto memberCourse = await CreateCourseAsOwnerAsync("Algorithms");
+        AuthenticateAsTeacher(OwnerIf);
+        var otherResponse = await ApiClient.PostAsJsonAsync("api/courses",
+            new CourseCreateRequest("Databases", _secondRosterId), JsonOptions, TestCancellationToken);
+        otherResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        AuthenticateAsStudent(StudentIf);
+
+        CourseOverview[] courses = (await ApiClient.GetFromJsonAsync<CourseOverview[]>(
+            "api/courses", JsonOptions, TestCancellationToken))!;
+
+        courses.Should().ContainSingle().Which.Id.Should().Be(memberCourse.Id);
+    }
+
+    [Fact]
+    public async Task GetCourse_StudentMember_ReturnsCourse()
+    {
+        CourseDto course = await CreateCourseAsOwnerAsync();
+
+        AuthenticateAsStudent(StudentIf);
+
+        var response = await ApiClient.GetAsync($"api/courses/{course.Id}", TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task PostCourse_Teacher_Returns201WithActingOwner()
     {
         var created = await CreateCourseAsOwnerAsync();

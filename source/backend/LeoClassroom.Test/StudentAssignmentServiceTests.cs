@@ -136,8 +136,8 @@ public sealed class StudentAssignmentServiceTests
     {
         IReadOnlyCollection<AssignedAssignment> all = new List<AssignedAssignment>
         {
-            new(1L, 7L, "Course", "A", null, DeadlineKind.None, true, SubmissionStatus.Ready),
-            new(2L, 7L, "Course", "B", null, DeadlineKind.None, false, null)
+            new(1L, 7L, "Course", "A", null, null, DeadlineKind.None, true, SubmissionStatus.Ready, null, false, FeedbackState.None),
+            new(2L, 7L, "Course", "B", null, null, DeadlineKind.None, false, null, null, false, FeedbackState.None)
         }.AsReadOnly();
         _assignmentRepo.GetAssignedToStudentAsync(StudentLocalId)
                        .Returns(new ValueTask<IReadOnlyCollection<AssignedAssignment>>(all));
