@@ -381,3 +381,11 @@ export function lastPushLabel(lastPushAt: Instant | null, now: Instant): string 
 
   return `Last push ${relativeDue(lastPushAt, now)}`;
 }
+
+/**
+ * Whether students cannot see the assignment right now: it is unpublished and either has no publish time or that
+ * time is still ahead. The backend applies the same rule, so nothing has to wait for the scheduled job.
+ */
+export function isHiddenNow(assignment: { isPublished: boolean; publishAt: Instant | null }, now: Instant): boolean {
+  return !assignment.isPublished && (assignment.publishAt === null || assignment.publishAt.isAfter(now));
+}

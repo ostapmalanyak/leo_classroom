@@ -85,15 +85,57 @@
               <mat-card-content>
                 <div class="assignment-heading">
                   <strong>{{ assignment.title }}</strong>
+                  @if (session.isTeacher() && assignment.deadline) {
+                    <span class="assignment-meta">
+                      {{ formatDeadline(assignment.deadline) | date: 'HH:mm' }} · {{ deadlineKindLabel(assignment.deadlineKind) }}
+                    </span>
+                  }
                 </div>
                 <div class="assignment-details">
                   @if (session.isTeacher()) {
-                    <a mat-button [routerLink]="['/assignments', assignment.id, 'edit']">Edit</a>
-                    <a mat-button [routerLink]="['/assignments', assignment.id, 'students']">See submissions</a>
+                    <a class="btn btn--secondary" [routerLink]="['/assignments', assignment.id, 'students']">See submissions</a>
+                    <button type="button" class="btn btn--icon" [matMenuTriggerFor]="cardMenu"
+                            [attr.aria-label]="'More actions for ' + assignment.title">
+                      <mat-icon aria-hidden="true">more_horiz</mat-icon>
+                    </button>
+                    <mat-menu #cardMenu="matMenu">
+                      <a mat-menu-item [routerLink]="['/assignments', assignment.id, 'edit']">Edit</a>
+                      <button type="button" mat-menu-item (click)="copyStudentLink(assignment.id)">Copy student link</button>
+                    </mat-menu>
                   } @else {
                     <span>{{ assignment.accepted ? (assignment.status ?? 'Accepted') : 'Not accepted yet' }}</span>
                     <a mat-button [routerLink]="['/my-assignments', assignment.id]">Open assignment</a>
                   }
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </ng-template>
+
+          <!-- A hidden assignment says when it is due; when students get to see it is in the heading above it. -->
+          <ng-template #hiddenCard let-assignment>
+            <mat-card class="assignment-card">
+              <mat-card-content>
+                <div class="assignment-heading">
+                  <strong>{{ assignment.title }}</strong>
+                  <span class="assignment-meta">
+                    @if (assignment.deadline) {
+                      Due {{ formatDeadline(assignment.deadline) | date: 'EEEE dd.MM.yyyy' }} at
+                      {{ formatDeadline(assignment.deadline) | date: 'HH:mm' }} · {{ deadlineKindLabel(assignment.deadlineKind) }}
+                    } @else {
+                      No deadline
+                    }
+                  </span>
+                </div>
+                <div class="assignment-details">
+                  <button type="button" class="btn btn--primary" (click)="publish(assignment.id)">Publish now</button>
+                  <button type="button" class="btn btn--icon" [matMenuTriggerFor]="hiddenMenu"
+                          [attr.aria-label]="'More actions for ' + assignment.title">
+                    <mat-icon aria-hidden="true">more_horiz</mat-icon>
+                  </button>
+                  <mat-menu #hiddenMenu="matMenu">
+                    <a mat-menu-item [routerLink]="['/assignments', assignment.id, 'edit']">Edit</a>
+                    <button type="button" mat-menu-item (click)="copyStudentLink(assignment.id)">Copy student link</button>
+                  </mat-menu>
                 </div>
               </mat-card-content>
             </mat-card>
@@ -104,7 +146,7 @@
           <div class="assignments">
             @for (group of sections.dated; track group.key) {
               <section class="assignment-group">
-                <h3 class="subsection-heading">{{ group.date | date: 'dd.MM.yyyy' }}</h3>
+                <h3 class="subsection-heading">Due {{ group.date | date: 'EEEE dd.MM.yyyy' }}</h3>
                 @for (assignment of group.assignments; track assignment.id) {
                   <ng-container [ngTemplateOutlet]="assignmentCard"
                                 [ngTemplateOutletContext]="{ $implicit: assignment }" />
@@ -114,10 +156,63 @@
 
             @if (sections.noDate.length > 0) {
               <section class="assignment-section">
-                <h2 class="section-heading">No Date</h2>
+                <h2 class="section-heading">No deadline</h2>
                 @for (assignment of sections.noDate; track assignment.id) {
                   <ng-container [ngTemplateOutlet]="assignmentCard"
                                 [ngTemplateOutletContext]="{ $implicit: assignment }" />
+                }
+              </section>
+            }
+
+            @if (session.isTeacher() && sections.hiddenCount > 0) {
+              <section class="assignment-section hidden-section">
+                <div class="hidden-head">
+                  <button type="button" class="hidden-toggle" (click)="toggleHidden()"
+                          [attr.aria-expanded]="hiddenOpen()">
+                    <mat-icon aria-hidden="true">{{ hiddenOpen() ? 'expand_more' : 'chevron_right' }}</mat-icon>
+                    Hidden from students ({{ sections.hiddenCount }})
+                  </button>
+                  <div class="help">
+                    <button class="help__button" type="button" aria-label="Help: Hidden from students"
+                            aria-describedby="help-hidden">?</button>
+                    <span class="help__tip" id="help-hidden" role="tooltip">
+                      Publish now makes an assignment visible to students immediately, and they get an email.
+                      The deadline stays exactly as you set it.
+                    </span>
+                  </div>
+                </div>
+
+                @if (hiddenOpen()) {
+                  <p class="hidden-note">
+                    Students cannot see these yet. Each one appears automatically at the time shown, or when you press Publish now.
+                  </p>
+
+                  @for (group of sections.hiddenScheduled; track group.key) {
+                    <section class="assignment-group">
+                      <h3 class="subsection-heading">
+                        Students see these on {{ group.appearsAt | date: 'EEEE dd.MM.yyyy' }} at {{ group.appearsAt | date: 'HH:mm' }}
+                      </h3>
+                      @for (assignment of group.assignments; track assignment.id) {
+                        <ng-container [ngTemplateOutlet]="hiddenCard"
+                                      [ngTemplateOutletContext]="{ $implicit: assignment }" />
+                      }
+                    </section>
+                  }
+
+                  @if (sections.hiddenManual.length > 0) {
+                    <section class="assignment-group">
+                      <h3 class="subsection-heading">Students see these only when you press Publish now</h3>
+                      @for (assignment of sections.hiddenManual; track assignment.id) {
+                        <ng-container [ngTemplateOutlet]="hiddenCard"
+                                      [ngTemplateOutletContext]="{ $implicit: assignment }" />
+                      }
+                    </section>
+                  }
+                } @else if (sections.hiddenScheduled.length > 0) {
+                  <p class="hidden-note">
+                    Next one appears for students on {{ sections.hiddenScheduled[0].appearsAt | date: 'EEEE dd.MM.yyyy' }}
+                    at {{ sections.hiddenScheduled[0].appearsAt | date: 'HH:mm' }}. Click to see all.
+                  </p>
                 }
               </section>
             }
