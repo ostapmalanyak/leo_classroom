@@ -148,6 +148,7 @@
   font-weight: var(--font-weight-medium);
   text-decoration: none;
   cursor: pointer;
+
   // The colour belongs to the button, not to the link rules of the page: a hovered link
   // would otherwise turn the label the colour of the button and the label would vanish.
   color: var(--color-text);
@@ -291,6 +292,7 @@
   display: block;
   font-size: 1.0625rem;
   line-height: 1.4;
+
   // A long title wraps inside its column instead of running into the time that is left.
   overflow-wrap: anywhere;
 }
@@ -308,7 +310,7 @@
 
 // On a phone the title gets the whole width of the card and the time and the action
 // sit below it, so a long name can never reach them.
-@media (max-width: 40rem) {
+@media (width <= 40rem) {
   .assignment-card mat-card-content {
     align-items: center;
     display: grid;
@@ -343,7 +345,7 @@
   justify-content: flex-end;
 }
 
-@media (max-width: 48rem) {
+@media (width <= 48rem) {
   .assignment-details {
     justify-content: flex-start;
   }
@@ -501,10 +503,11 @@ app-empty-state .empty-state[class] {
 
 // Below that width the column reaches the edge of the page and there is no gutter
 // to put the arrow in, so the link goes back above the title and shows its label.
-@media (max-width: 74rem) {
+@media (width <= 74rem) {
   .back-link--aside {
     background-color: transparent;
     border-color: transparent;
+
     // Takes the whole first line of the title row so it sits above the title again.
     flex-basis: 100%;
     height: auto;
@@ -1053,13 +1056,14 @@ h2[mat-dialog-title] {
 
 .home-grid {
   display: grid;
+
   // Panels keep their content height: stretching the short column to match left an empty slab
   // under the last row.
   align-items: start;
   gap: var(--space-5);
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
 
-  @media (max-width: 60rem) {
+  @media (width <= 60rem) {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -1121,7 +1125,7 @@ h2[mat-dialog-title] {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-3);
 
-  @media (max-width: 40rem) {
+  @media (width <= 40rem) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1276,7 +1280,7 @@ h2[mat-dialog-title] {
   }
 }
 
-@media (max-width: 36rem) {
+@media (width <= 36rem) {
   .next-row {
     grid-template-columns: minmax(0, 1fr) auto;
   }

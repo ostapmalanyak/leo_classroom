@@ -21,8 +21,27 @@ public abstract class WebApiTestBase(WebApiTestFixture webApiFixture) : IClassFi
     protected static string WebhookSecret => WebAppFactory.WebhookSecret;
     protected CancellationToken TestCancellationToken => TestContext.Current.CancellationToken;
 
-    protected void AuthenticateAsTeacher(string studentId) => webApiFixture.AuthState.SetUser(studentId, ["teacher"]);
-    protected void AuthenticateAsStudent(string studentId) => webApiFixture.AuthState.SetUser(studentId, ["student"]);
+    protected void AuthenticateAsTeacher(string studentId) => AuthenticateAs(studentId, "teacher");
+
+    /// <inheritdoc cref="AuthenticateAsStudent(string, string, string, string)" />
+    protected void AuthenticateAsTeacher(string studentId, string firstName, string lastName) =>
+        AuthenticateAs(studentId, "teacher", null, firstName, lastName);
+    protected void AuthenticateAsStudent(string studentId) => AuthenticateAs(studentId, "student");
+
+    /// <summary>
+    ///     Authenticates as a seeded student whose token carries the seeded profile, so reconciliation leaves the
+    ///     stored row as it is instead of overwriting it with the default test claims
+    /// </summary>
+    protected void AuthenticateAsStudent(string studentId, string @class, string firstName, string lastName) =>
+        AuthenticateAs(studentId, "student", @class, firstName, lastName);
+
+    private void AuthenticateAs(string studentId, string role, string? @class = null, string? firstName = null,
+                                string? lastName = null)
+    {
+        // the database was wiped for this test, so the caller has to be reconciled against it again
+        webApiFixture.ForgetProvisionedUser(studentId);
+        webApiFixture.AuthState.SetUser(studentId, [role], @class, firstName, lastName);
+    }
     /// <remarks>
     ///     Administrators are configured by username rather than carried in the token, so the caller has to be
     ///     the one <see cref="WebAppFactory.AdminStudentId" /> declares - the argument is accepted only so the
@@ -32,7 +51,7 @@ public abstract class WebApiTestBase(WebApiTestFixture webApiFixture) : IClassFi
     {
         studentId.Should().Be(WebAppFactory.AdminStudentId,
                               "administrators come from Keycloak:AdminUsers, not from the token");
-        webApiFixture.AuthState.SetUser(studentId, ["teacher"]);
+        AuthenticateAs(studentId, "teacher");
     }
     protected void Anonymous() => webApiFixture.AuthState.SetAnonymous();
 
