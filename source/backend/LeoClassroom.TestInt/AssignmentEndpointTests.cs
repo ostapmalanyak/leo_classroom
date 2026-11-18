@@ -148,6 +148,42 @@ public sealed class AssignmentEndpointTests(WebApiTestFixture fixture) : WebApiT
     }
 
     [Fact]
+    public async Task PostAssignment_ForkWithHardDeadline_Returns400()
+    {
+        AuthenticateAsTeacher(OwnerIf);
+
+        // the student owns a fork, so revoking their write access at a hard deadline is impossible
+        var bad = new AssignmentCreateRequest(_courseId, "X", null, null, Instant.FromUtc(2030, 1, 1, 0, 0),
+            DeadlineKind.Hard, false, StarterSourceKind.ForkOwnRepo, "https://git.example/teacher/starter", null,
+            false, null, DownloadSnapshotMode.Deadline);
+
+        var response = await ApiClient.PostAsJsonAsync("api/assignments", bad, JsonOptions, TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var problemDetails = await response.Content
+                                           .ReadFromJsonAsync<HttpValidationProblemDetails>(
+                                               JsonOptions, TestCancellationToken);
+
+        problemDetails.Should().NotBeNull();
+        problemDetails.Errors.Should().ContainKey("deadlineKind");
+    }
+
+    [Fact]
+    public async Task PutAssignment_SwitchToForkWithHardDeadline_Returns400()
+    {
+        AssignmentDto created = await CreateAsOwnerAsync();
+        var update = new AssignmentUpdateRequest("X", null, null, Instant.FromUtc(2030, 1, 1, 0, 0),
+            DeadlineKind.Hard, false, StarterSourceKind.ForkOwnRepo, "https://git.example/teacher/starter", null,
+            false, null, DownloadSnapshotMode.Deadline);
+
+        var response = await ApiClient.PutAsJsonAsync($"api/assignments/{created.Id}", update, JsonOptions,
+                                                      TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task AcceptLink_AsOwner_ReturnsStudentLink()
     {
         AssignmentDto created = await CreateAsOwnerAsync("Trees");

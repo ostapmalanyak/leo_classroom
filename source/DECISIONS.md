@@ -4,6 +4,19 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-17 — A forked starter cannot have a hard deadline
+
+**Status:** accepted.
+
+`ForkOwnRepo` creates the repository under the student's own Forgejo account, so the student is its owner. A hard
+deadline is enforced by lowering collaborator permissions, which cannot be done to an owner, so the deadline would
+silently not apply. `AssignmentRules` rejects `ForkOwnRepo` together with `DeadlineKind.Hard` on create and update
+(400 on `deadlineKind`), and the edit form disables each option while the other is selected. `CopyRepo` gives the
+same starter in a course-owned repository and supports hard deadlines. Assignments saved before this rule keep
+working, but they cannot be saved again until one of the two settings is changed.
+
+---
+
 ## 2026-11-05 — Forgejo `full_name` is `FamilyGiven`, no space
 
 **Status:** accepted.

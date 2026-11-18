@@ -73,6 +73,12 @@ internal static class AssignmentRules
                  .Must(BeAnAbsoluteHttpUrl)
                  .When(r => r.StarterSourceKind is StarterSourceKind.ForkOwnRepo or StarterSourceKind.CopyRepo)
                  .WithMessage("An absolute http(s) starter repository URL is required for fork/copy starter sources.");
+        // a fork is created under the student's own account, so the student owns it and no collaborator change
+        // can take their write access away - a hard deadline would be silently unenforceable
+        validator.RuleFor(r => r.DeadlineKind)
+                 .NotEqual(DeadlineKind.Hard)
+                 .When(r => r.StarterSourceKind == StarterSourceKind.ForkOwnRepo)
+                 .WithMessage("A hard deadline cannot be enforced on a forked repository, because the student owns it.");
     }
 
     // the starter URL is fetched and cloned server-side, so anything but http(s) - file://, ssh://, git:// and the
