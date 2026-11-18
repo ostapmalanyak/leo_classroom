@@ -18,7 +18,7 @@ version and refuses to run against an incompatible backend.
 | macOS (Apple Silicon) | `osx-arm64` |
 
 `git` must be on your `PATH` with HTTPS access to Forgejo. Get your Forgejo username and password from
-**My account** in the web app — the app generates it and shows it once. No token is ever embedded in a URL
+**My account** in the web app — the app generates it and shows it once (once an LDAP source is configured, your ordinary school password replaces it). No token is ever embedded in a URL
 or written to logs. See **Git credentials** below for storing it so git stops asking.
 
 ## Git credentials
@@ -32,6 +32,23 @@ matching one per remote. GitHub over HTTPS and Forgejo can sit side by side with
 
 This deployment runs Forgejo with SSH switched off (`DISABLE_SSH: true`), so HTTPS with the generated
 password is the only route to it.
+
+### Sign in with the browser (no password to copy)
+
+Install [git-credential-oauth](https://github.com/hickford/git-credential-oauth), then, with the
+`client_id` your admin got from `DEPLOY.md` step 7b (host and port exactly as in the clone URL):
+
+```sh
+H=http://10.191.18.44:3000
+git config --global --add credential.helper cache
+git config --global --add credential.helper oauth
+git config --global credential.$H.oauthClientId <client_id>
+git config --global credential.$H.oauthAuthURL /login/oauth/authorize
+git config --global credential.$H.oauthTokenURL /login/oauth/access_token
+```
+
+The first clone or push opens your browser; after that git reuses the token. The generated password below
+still works if you would rather not do this.
 
 ### Store it in the OS keychain
 

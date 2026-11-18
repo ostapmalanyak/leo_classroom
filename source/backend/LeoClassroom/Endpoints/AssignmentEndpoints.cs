@@ -42,6 +42,7 @@ public static class AssignmentEndpoints
                        .WithName(nameof(GetAssignmentForEditAsync));
             assignments.MapPut("/{id:long:min(1)}", UpdateAssignmentAsync);
             assignments.MapDelete("/{id:long:min(1)}", DeleteAssignmentAsync);
+            assignments.MapPost("/{id:long:min(1)}/publish", PublishAssignmentAsync);
             assignments.MapPost("/{id:long:min(1)}/teachers", AddCoTeacherAsync);
             assignments.MapDelete("/{id:long:min(1)}/teachers/{userId:long:min(1)}", RemoveCoTeacherAsync);
             assignments.MapGet("/{id:long:min(1)}/students", GetStudentListAsync);
@@ -120,6 +121,16 @@ public static class AssignmentEndpoints
 
         return await result.CommitOkOrInvalidAsync(transaction,
                                                    success => AssignmentDto.FromAssignment(success.Value));
+    }
+
+    private static async ValueTask<Results<NoContent, NotFound, ProblemHttpResult>> PublishAssignmentAsync(
+        [FromRoute] long id, [FromServices] IAssignmentService service,
+        [FromServices] ITransactionProvider transaction)
+    {
+        await transaction.BeginTransactionAsync();
+        var result = await service.PublishAsync(id);
+
+        return await result.CommitNoContentAsync(transaction);
     }
 
     private static async ValueTask<Results<NoContent, NotFound, ProblemHttpResult>> DeleteAssignmentAsync(
@@ -243,10 +254,12 @@ public sealed record AssignmentDto(
     string? ReadmeMarkdown,
     bool AutoDeleteEnabled,
     Instant? AutoDeleteOn,
-    DownloadSnapshotMode DownloadSnapshotMode)
+    DownloadSnapshotMode DownloadSnapshotMode,
+    bool IsPublished,
+    Instant? PublishAt)
 {
     public static AssignmentDto FromAssignment(Assignment a) => new(
         a.Id, a.CourseId, a.OwnerId, a.Title, a.Slug, a.Description, a.HintsInstructions, a.Deadline,
         a.DeadlineKind, a.HardDeadlineRevokesRead, a.StarterSourceKind, a.StarterRepoUrl, a.ReadmeMarkdown,
-        a.AutoDeleteEnabled, a.AutoDeleteOn, a.DownloadSnapshotMode);
+        a.AutoDeleteEnabled, a.AutoDeleteOn, a.DownloadSnapshotMode, a.IsPublished, a.PublishAt);
 }

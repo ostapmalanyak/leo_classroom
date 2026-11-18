@@ -20,6 +20,10 @@ public static class SchedulingSetup
             q.AddTrigger(t => t.ForJob(DeadlineReconciliationJob.Key)
                                .WithSimpleSchedule(s => s.WithIntervalInMinutes(5).RepeatForever()));
 
+            q.AddJob<AssignmentPublishJob>(j => j.WithIdentity(AssignmentPublishJob.Key));
+            q.AddTrigger(t => t.ForJob(AssignmentPublishJob.Key)
+                               .WithSimpleSchedule(s => s.WithIntervalInMinutes(5).RepeatForever()));
+
             q.AddJob<LdapSyncJob>(j => j.WithIdentity(LdapSyncJob.Key));
             q.AddTrigger(t => t.ForJob(LdapSyncJob.Key).WithCronSchedule(ldapCron));
 

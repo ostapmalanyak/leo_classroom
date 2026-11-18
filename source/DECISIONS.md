@@ -4,6 +4,33 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-18 — Hidden assignments: one flag, one transition
+
+**Status:** accepted.
+
+An assignment has `IsPublished` (default true, so every existing row stays visible) and an optional
+`PublishAt`. Students see an assignment only while `IsPublished` is true; teachers always see it. The
+student queries decide visibility when they run: visible means `IsPublished` is true, or `PublishAt` has
+passed (`Assignment.IsVisibleAt`). So a scheduled assignment appears for students at exactly its time, with no job
+involved, and a hidden assignment answers **404** to a student, including from an old accept link, so its existence does not leak.
+
+Going live is a single transition: set `IsPublished`, clear `PublishAt`, then send the "new assignment"
+e-mails and create the Moodle grade item. Creating a hidden assignment sends neither, and editing one does
+not send deadline-changed mails. The transition has two triggers: the teacher's **Publish** button
+(`POST /api/assignments/{id}/publish`) and `AssignmentPublishJob`, which runs every 5 minutes and publishes
+anything whose `PublishAt` has passed. The job does not decide who sees what, only when the "new assignment"
+e-mail and the Moodle item are sent, so those can trail the visible moment by up to about five minutes.
+Teacher screens use the same rule on the client (`isHiddenNow`), so an assignment stops looking hidden the
+moment students can see it.
+
+A published assignment cannot be hidden again, because students may already have accepted it; the edit form
+simply stops offering the choice, and the API ignores `IsPublished = false` for a published assignment.
+
+**What would change it:** a need to unpublish (then acceptances would have to be hidden too), or a need for
+publish times to the minute (then the job interval, or a per-assignment Quartz trigger).
+
+---
+
 ## 2026-11-17 — The bar carries the work, the page carries the content
 
 **Status:** accepted.

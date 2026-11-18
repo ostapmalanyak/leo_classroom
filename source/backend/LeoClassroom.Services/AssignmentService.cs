@@ -24,7 +24,9 @@ public sealed record AssignmentSettings(
     string? ReadmeMarkdown,
     bool AutoDeleteEnabled,
     Instant? AutoDeleteOn,
-    DownloadSnapshotMode DownloadSnapshotMode);
+    DownloadSnapshotMode DownloadSnapshotMode,
+    bool IsPublished = true,
+    Instant? PublishAt = null);
 
 public interface IAssignmentService
 {
@@ -32,6 +34,7 @@ public interface IAssignmentService
     public ValueTask<OneOf<Success<Assignment>, NotFound, Forbidden, ForgejoError>> CreateAsync(long courseId, AssignmentSettings settings);
     public ValueTask<OneOf<Success<Assignment>, NotFound, Forbidden>> EditAsync(long id, AssignmentSettings settings);
     public ValueTask<OneOf<Assignment, NotFound, Forbidden>> GetForEditAsync(long id);
+    public ValueTask<OneOf<Success, NotFound, Forbidden>> PublishAsync(long id);
     public ValueTask<OneOf<Success, NotFound, Forbidden>> DeleteAsync(long id);
     public ValueTask<OneOf<Success, NotFound, Forbidden>> AddCoTeacherAsync(long id, long userId);
     public ValueTask<OneOf<Success, NotFound, Forbidden>> RemoveCoTeacherAsync(long id, long userId);
@@ -104,12 +107,17 @@ internal sealed class AssignmentService(
         string slug = await UniqueSlugAsync(settings.Title, courseId);
         var assignment = new Assignment { CourseId = courseId, Title = settings.Title, Slug = slug, OwnerId = ownerId.Value };
         Apply(assignment, settings);
+        ApplyVisibility(assignment, settings);
         uow.AssignmentRepository.Add(assignment);
         await uow.SaveChangesAsync();
         await audit.RecordAsync(AuditAction.AssignmentCreated, "Assignment", assignment.Id.ToString(),
                                 new Dictionary<string, string> { ["courseId"] = courseId.ToString() });
-        await notifications.EnqueueAssignmentCreatedAsync(assignment);
-        await moodle.EnqueueCreateAsync(assignment);
+        if (assignment.IsPublished)
+        {
+            // a hidden assignment stays silent until it is published
+            await notifications.EnqueueAssignmentCreatedAsync(assignment);
+            await moodle.EnqueueCreateAsync(assignment);
+        }
 
         return new Success<Assignment>(assignment);
     }
@@ -129,7 +137,14 @@ internal sealed class AssignmentService(
         bool deadlineChanged = assignment.Deadline != settings.Deadline
                                || assignment.DeadlineKind != settings.DeadlineKind;
         bool titleChanged = !string.Equals(assignment.Title, settings.Title, StringComparison.Ordinal);
+        bool wasPublished = assignment.IsPublished;
         Apply(assignment, settings);
+        // students may already have accepted a published assignment, so it cannot be hidden again
+        if (!wasPublished)
+        {
+            ApplyVisibility(assignment, settings);
+        }
+        bool publishing = !wasPublished && assignment.IsPublished;
         await uow.SaveChangesAsync();
 
         if (deadlineChanged)
@@ -141,10 +156,17 @@ internal sealed class AssignmentService(
                 error => logger.LogWarning("Deadline edit for assignment {Id} reconcile failed: {Reason}",
                                            id, error.Reason));
 
-            await notifications.EnqueueDeadlineChangedAsync(assignment);
+            if (assignment.IsPublished && !publishing)
+            {
+                await notifications.EnqueueDeadlineChangedAsync(assignment);
+            }
         }
 
-        if (titleChanged || deadlineChanged)
+        if (publishing)
+        {
+            await AnnouncePublishedAsync(assignment);
+        }
+        else if (assignment.IsPublished && (titleChanged || deadlineChanged))
         {
             await moodle.EnqueueUpdateAsync(assignment);
         }
@@ -161,6 +183,29 @@ internal sealed class AssignmentService(
         }
 
         return IsOwnerOrCoTeacherOrAdmin(assignment) ? assignment : new Forbidden();
+    }
+
+    public async ValueTask<OneOf<Success, NotFound, Forbidden>> PublishAsync(long id)
+    {
+        Assignment? assignment = await uow.AssignmentRepository.GetTrackedWithTeachersAsync(id);
+        if (assignment is null)
+        {
+            return new NotFound();
+        }
+        if (!IsOwnerOrCoTeacherOrAdmin(assignment))
+        {
+            return new Forbidden();
+        }
+
+        if (!assignment.IsPublished)
+        {
+            assignment.IsPublished = true;
+            assignment.PublishAt = null;
+            await uow.SaveChangesAsync();
+            await AnnouncePublishedAsync(assignment);
+        }
+
+        return new Success();
     }
 
     public async ValueTask<OneOf<Success, NotFound, Forbidden>> DeleteAsync(long id)
@@ -277,6 +322,19 @@ internal sealed class AssignmentService(
         assignment.AutoDeleteOn = settings.AutoDeleteEnabled
             ? settings.AutoDeleteOn ?? DefaultAutoDeleteInstant()
             : null;
+    }
+
+    private static void ApplyVisibility(Assignment assignment, AssignmentSettings settings)
+    {
+        assignment.IsPublished = settings.IsPublished;
+        assignment.PublishAt = settings.IsPublished ? null : settings.PublishAt;
+    }
+
+    /// <summary>The moment students first get to know about the assignment</summary>
+    private async ValueTask AnnouncePublishedAsync(Assignment assignment)
+    {
+        await notifications.EnqueueAssignmentCreatedAsync(assignment);
+        await moodle.EnqueueCreateAsync(assignment);
     }
 
     private Instant DefaultAutoDeleteInstant() =>
