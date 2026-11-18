@@ -48,7 +48,7 @@ internal sealed class MoodleSyncRepository(
     public async ValueTask<IReadOnlyCollection<MoodleAssignmentTarget>> GetAssignmentTargetsForCourseAsync(long courseId)
     {
         List<MoodleAssignmentTarget> targets = await assignments.AsNoTracking()
-            .Where(a => a.CourseId == courseId)
+            .Where(a => a.CourseId == courseId && a.IsPublished)
             .Select(a => new MoodleAssignmentTarget(a.Id, a.Title, a.Deadline))
             .ToListAsync();
 

@@ -69,6 +69,35 @@ public sealed class StudentAssignmentEndpointTests(WebApiTestFixture fixture) : 
     }
 
     [Fact]
+    public async Task HiddenAssignment_IsInvisibleToStudents_UntilPublished()
+    {
+        await ModifyDatabaseContentAsync(async context =>
+        {
+            await context.Assignments.Where(a => a.Id == _assignmentId)
+                         .ExecuteUpdateAsync(set => set.SetProperty(a => a.IsPublished, false),
+                                             TestCancellationToken);
+        });
+        AuthenticateAsStudent(MemberIf);
+
+        var list = await ApiClient.GetFromJsonAsync<StudentAssignmentList>("api/assignments/mine", JsonOptions,
+                                                                          TestCancellationToken);
+        var info = await ApiClient.GetAsync($"api/assignments/{_assignmentId}/info", TestCancellationToken);
+        var accept = await ApiClient.PostAsync($"api/assignments/{_assignmentId}/accept", null, TestCancellationToken);
+
+        list!.Unaccepted.Should().NotContain(a => a.Id == _assignmentId);
+        info.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        accept.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        AuthenticateAsTeacher(OwnerIf);
+        var publish = await ApiClient.PostAsync($"api/assignments/{_assignmentId}/publish", null, TestCancellationToken);
+        publish.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        AuthenticateAsStudent(MemberIf);
+        var after = await ApiClient.GetAsync($"api/assignments/{_assignmentId}/info", TestCancellationToken);
+        after.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task Info_ForNonMember_Returns403()
     {
         AuthenticateAsStudent(OutsiderIf);

@@ -40,7 +40,7 @@ internal sealed class StudentAssignmentService(
         }
 
         IReadOnlyCollection<AssignedAssignment> all =
-            await uow.AssignmentRepository.GetAssignedToStudentAsync(studentId.Value);
+            await uow.AssignmentRepository.GetAssignedToStudentAsync(studentId.Value, clock.GetCurrentInstant());
 
         return new StudentAssignmentList(
             all.Where(a => a.Accepted).ToList().AsReadOnly(),
@@ -56,11 +56,12 @@ internal sealed class StudentAssignmentService(
         }
 
         Assignment? assignment = await uow.AssignmentRepository.GetByIdAsync(id);
-        if (assignment is null)
+        // a hidden assignment does not exist as far as students can tell, so an old link leaks nothing
+        if (assignment is null || !assignment.IsVisibleAt(clock.GetCurrentInstant()))
         {
             return new NotFound();
         }
-        if (!await uow.AssignmentRepository.IsStudentAssignedAsync(id, studentId.Value))
+        if (!await uow.AssignmentRepository.IsStudentAssignedAsync(id, studentId.Value, clock.GetCurrentInstant()))
         {
             return new Forbidden();
         }
@@ -79,11 +80,11 @@ internal sealed class StudentAssignmentService(
         }
 
         Assignment? assignment = await uow.AssignmentRepository.GetByIdAsync(assignmentId);
-        if (assignment is null)
+        if (assignment is null || !assignment.IsVisibleAt(clock.GetCurrentInstant()))
         {
             return new NotFound();
         }
-        if (!await uow.AssignmentRepository.IsStudentAssignedAsync(assignmentId, studentId.Value))
+        if (!await uow.AssignmentRepository.IsStudentAssignedAsync(assignmentId, studentId.Value, clock.GetCurrentInstant()))
         {
             return new Forbidden();
         }

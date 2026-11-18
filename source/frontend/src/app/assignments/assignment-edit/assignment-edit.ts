@@ -9,10 +9,14 @@ import {
   Assignment, AssignmentService, AssignmentWrite, DeadlineKind, DownloadSnapshotMode, StarterSourceKind
 } from '../../../core/services/assignment-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
+import { isHiddenNow } from '../../../core/util/assignment-state';
 import { MarkdownEditor } from '../../shared/markdown-editor/markdown-editor';
 
 /** How many issues the form has: the summary and the save button use it. */
-type Issue = { message: string; field: 'title' | 'date' | 'time' | 'url' };
+type Issue = { message: string; field: 'title' | 'date' | 'time' | 'url' | 'publish' };
+
+/** When students get to see the assignment. */
+type Visibility = 'now' | 'date' | 'manual';
 
 const MAX_TITLE_LENGTH = 100;
 const MAX_YEARS_AHEAD = 5;
@@ -59,6 +63,11 @@ export class AssignmentEdit implements OnInit {
   protected readonly autoDeleteEnabled: WritableSignal<boolean> = signal(false);
   protected readonly autoDeleteOn: WritableSignal<string> = signal('');
   protected readonly snapshotMode: WritableSignal<DownloadSnapshotMode> = signal(DownloadSnapshotMode.Deadline);
+  protected readonly visibility: WritableSignal<Visibility> = signal('now');
+  protected readonly publishDate: WritableSignal<string> = signal('');
+  protected readonly publishTime: WritableSignal<string> = signal('');
+  /** A published assignment stays published: students may already have accepted it. */
+  protected readonly alreadyPublished: WritableSignal<boolean> = signal(false);
 
   /** Today, so the date input cannot offer a day that has already passed. */
   protected readonly minDate = computed(() => this.formatDate(new Date()));
@@ -138,6 +147,28 @@ export class AssignmentEdit implements OnInit {
     return null;
   });
 
+  protected readonly publishError = computed<string | null>(() => {
+    if (this.visibility() !== 'date') {
+      return null;
+    }
+
+    const at = this.parseLocal(this.publishDate(), this.publishTime());
+    if (at === null) {
+      return 'Pick a date and a time, or choose to publish it yourself.';
+    }
+    if (at.getTime() <= Date.now()) {
+      return 'That moment has passed. Pick a time in the future.';
+    }
+
+    const deadline = this.deadlineError() === null && this.hasDeadline()
+      ? this.parseLocal(this.deadlineDate(), this.deadlineTime())
+      : null;
+
+    return deadline !== null && at.getTime() >= deadline.getTime()
+      ? 'The assignment must appear before its deadline.'
+      : null;
+  });
+
   protected readonly repoError = computed<string | null>(() => {
     if (!this.needsRepoUrl()) {
       return null;
@@ -158,11 +189,15 @@ export class AssignmentEdit implements OnInit {
     const title = this.titleError();
     const deadline = this.deadlineError();
     const repo = this.repoError();
+    const publish = this.publishError();
     if (title !== null) {
       issues.push({ message: title, field: 'title' });
     }
     if (deadline !== null) {
       issues.push({ message: deadline, field: this.deadlineDate() === '' ? 'date' : 'time' });
+    }
+    if (publish !== null) {
+      issues.push({ message: publish, field: 'publish' });
     }
     if (repo !== null) {
       issues.push({ message: repo, field: 'url' });
@@ -184,7 +219,7 @@ export class AssignmentEdit implements OnInit {
   protected readonly progress = computed(() => {
     const done = [
       this.titleError() === null,
-      !this.hasDeadline() || this.deadlineError() === null,
+      (!this.hasDeadline() || this.deadlineError() === null) && this.publishError() === null,
       !this.needsRepoUrl() || this.repoError() === null,
       true
     ].filter(Boolean).length;
@@ -202,6 +237,19 @@ export class AssignmentEdit implements OnInit {
     }
 
     return `${this.messageDate(new Date(`${this.deadlineDate()}T00:00:00`))}, ${this.deadlineTime()}`;
+  });
+
+  protected readonly visibilitySummary = computed(() => {
+    if (this.alreadyPublished() || this.visibility() === 'now') {
+      return 'Visible to students';
+    }
+    if (this.visibility() === 'manual') {
+      return 'Hidden until you publish';
+    }
+
+    return this.parseLocal(this.publishDate(), this.publishTime()) === null
+      ? 'Hidden, date missing'
+      : `Appears ${this.messageDate(new Date(`${this.publishDate()}T00:00:00`))}, ${this.publishTime()}`;
   });
 
   protected readonly starterSummary = computed(() => {
@@ -265,7 +313,7 @@ export class AssignmentEdit implements OnInit {
       return this.repoError() === null;
     }
     if (step === 2) {
-      return this.deadlineError() === null;
+      return this.deadlineError() === null && this.publishError() === null;
     }
 
     return false;
@@ -278,6 +326,10 @@ export class AssignmentEdit implements OnInit {
       this.deadlineTime.set('');
       this.snapshotMode.set(DownloadSnapshotMode.Head);
     }
+  }
+
+  protected setVisibility(visibility: Visibility): void {
+    this.visibility.set(visibility);
   }
 
   /** The three chips of the deadline step. */
@@ -358,7 +410,9 @@ export class AssignmentEdit implements OnInit {
       readmeMarkdown: this.isCopyRepo() ? this.emptyToNull(this.readme()) : null,
       autoDeleteEnabled: this.autoDeleteEnabled(),
       autoDeleteOn: this.emptyToNull(this.autoDeleteOn()),
-      downloadSnapshotMode: this.effectiveSnapshot()
+      downloadSnapshotMode: this.effectiveSnapshot(),
+      isPublished: this.alreadyPublished() || this.visibility() === 'now',
+      publishAt: this.buildPublishAt()
     };
   }
 
@@ -371,6 +425,27 @@ export class AssignmentEdit implements OnInit {
     const [hours, minutes] = this.deadlineTime().split(':').map(Number);
 
     return new Date(year, month - 1, day, hours, minutes).toISOString();
+  }
+
+  private buildPublishAt(): string | null {
+    if (this.alreadyPublished() || this.visibility() !== 'date') {
+      return null;
+    }
+
+    return this.parseLocal(this.publishDate(), this.publishTime())?.toISOString() ?? null;
+  }
+
+  /** A local date and time from the two inputs, or null while either is empty or impossible. */
+  private parseLocal(date: string, time: string): Date | null {
+    if (date === '' || time === '') {
+      return null;
+    }
+
+    const [year, month, day] = date.split('-').map(Number);
+    const [hours, minutes] = time.split(':').map(Number);
+    const at = new Date(year, month - 1, day, hours, minutes);
+
+    return Number.isNaN(at.getTime()) ? null : at;
   }
 
   private apply(a: Assignment): void {
@@ -390,6 +465,19 @@ export class AssignmentEdit implements OnInit {
     this.autoDeleteEnabled.set(a.autoDeleteEnabled);
     this.autoDeleteOn.set(a.autoDeleteOn?.toString() ?? '');
     this.snapshotMode.set(a.downloadSnapshotMode);
+    // a scheduled time that has passed already counts as published: students can see it
+    const hidden = isHiddenNow(a, Instant.now());
+    this.alreadyPublished.set(!hidden);
+    if (hidden) {
+      const publishAt = a.publishAt === null ? null : new Date(a.publishAt.toString());
+      if (publishAt !== null && !Number.isNaN(publishAt.getTime())) {
+        this.visibility.set('date');
+        this.publishDate.set(this.formatDate(publishAt));
+        this.publishTime.set(this.formatTime(publishAt));
+      } else {
+        this.visibility.set('manual');
+      }
+    }
   }
 
   private formatDate(date: Date): string {

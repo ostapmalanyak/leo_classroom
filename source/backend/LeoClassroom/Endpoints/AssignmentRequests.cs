@@ -16,11 +16,13 @@ public sealed record AssignmentUpdateRequest(
     string? ReadmeMarkdown,
     bool AutoDeleteEnabled,
     Instant? AutoDeleteOn,
-    DownloadSnapshotMode DownloadSnapshotMode) : IAssignmentFields
+    DownloadSnapshotMode DownloadSnapshotMode,
+    bool IsPublished = true,
+    Instant? PublishAt = null) : IAssignmentFields
 {
     public AssignmentSettings ToSettings() => new(
         Title, Description, HintsInstructions, Deadline, DeadlineKind, HardDeadlineRevokesRead,
-        StarterSourceKind, StarterRepoUrl, ReadmeMarkdown, AutoDeleteEnabled, AutoDeleteOn, DownloadSnapshotMode);
+        StarterSourceKind, StarterRepoUrl, ReadmeMarkdown, AutoDeleteEnabled, AutoDeleteOn, DownloadSnapshotMode, IsPublished, PublishAt);
 
     public sealed class Validator : AbstractValidator<AssignmentUpdateRequest>
     {
@@ -41,11 +43,13 @@ public sealed record AssignmentCreateRequest(
     string? ReadmeMarkdown,
     bool AutoDeleteEnabled,
     Instant? AutoDeleteOn,
-    DownloadSnapshotMode DownloadSnapshotMode) : IAssignmentFields
+    DownloadSnapshotMode DownloadSnapshotMode,
+    bool IsPublished = true,
+    Instant? PublishAt = null) : IAssignmentFields
 {
     public AssignmentSettings ToSettings() => new(
         Title, Description, HintsInstructions, Deadline, DeadlineKind, HardDeadlineRevokesRead,
-        StarterSourceKind, StarterRepoUrl, ReadmeMarkdown, AutoDeleteEnabled, AutoDeleteOn, DownloadSnapshotMode);
+        StarterSourceKind, StarterRepoUrl, ReadmeMarkdown, AutoDeleteEnabled, AutoDeleteOn, DownloadSnapshotMode, IsPublished, PublishAt);
 
     public sealed class Validator : AbstractValidator<AssignmentCreateRequest>
     {
@@ -74,6 +78,11 @@ internal static class AssignmentRules
                  .GreaterThan(SystemClock.Instance.GetCurrentInstant())
                  .When(r => r.DeadlineKind != DeadlineKind.None && r.Deadline != null)
                  .WithMessage("The deadline has passed. Pick a date in the future.");
+        // a hidden assignment may wait for an explicit publish (no date), but a date must still lie ahead
+        validator.RuleFor(r => r.PublishAt)
+                 .GreaterThan(SystemClock.Instance.GetCurrentInstant())
+                 .When(r => !r.IsPublished && r.PublishAt != null)
+                 .WithMessage("The publish date has passed. Pick a date in the future.");
         validator.RuleFor(r => r.StarterRepoUrl)
                  .NotEmpty()
                  .Must(BeAnAbsoluteHttpUrl)
@@ -101,4 +110,6 @@ public interface IAssignmentFields
     public DeadlineKind DeadlineKind { get; }
     public StarterSourceKind StarterSourceKind { get; }
     public string? StarterRepoUrl { get; }
+    public bool IsPublished { get; }
+    public Instant? PublishAt { get; }
 }

@@ -94,6 +94,74 @@ public sealed class AssignmentServiceTests
     }
 
     [Fact]
+    public async Task Create_Hidden_StaysSilentUntilPublished()
+    {
+        _courseRepo.GetWithTeachersAsync(CourseId).Returns(new ValueTask<Course?>(CourseOwnedByCurrent()));
+        _assignmentRepo.ExistsWithSlugInCourseAsync(Arg.Any<string>(), CourseId).Returns(new ValueTask<bool>(false));
+
+        var result = await _sut.CreateAsync(CourseId, Settings() with { IsPublished = false });
+
+        result.ShouldBe<Success<Assignment>>().Value.IsPublished.Should().BeFalse();
+        await _notifications.DidNotReceive().EnqueueAssignmentCreatedAsync(Arg.Any<Assignment>());
+        await _moodle.DidNotReceive().EnqueueCreateAsync(Arg.Any<Assignment>());
+    }
+
+    [Fact]
+    public async Task Publish_Hidden_AnnouncesOnce()
+    {
+        Assignment hidden = AssignmentOwnedByCurrent();
+        hidden.IsPublished = false;
+        hidden.PublishAt = Instant.FromUtc(2026, 7, 1, 0, 0);
+        _assignmentRepo.GetTrackedWithTeachersAsync(AssignmentId).Returns(new ValueTask<Assignment?>(hidden));
+
+        (await _sut.PublishAsync(AssignmentId)).ShouldBe<Success>();
+        (await _sut.PublishAsync(AssignmentId)).ShouldBe<Success>();
+
+        hidden.IsPublished.Should().BeTrue();
+        hidden.PublishAt.Should().BeNull();
+        await _notifications.Received(1).EnqueueAssignmentCreatedAsync(hidden);
+        await _moodle.Received(1).EnqueueCreateAsync(hidden);
+    }
+
+    [Fact]
+    public async Task Publish_ByOtherTeacher_ReturnsForbidden()
+    {
+        Assignment hidden = AssignmentOwnedByCurrent();
+        hidden.IsPublished = false;
+        hidden.Owner.StudentId = OtherStudentId;
+        _assignmentRepo.GetTrackedWithTeachersAsync(AssignmentId).Returns(new ValueTask<Assignment?>(hidden));
+
+        (await _sut.PublishAsync(AssignmentId)).ShouldBe<Forbidden>();
+
+        hidden.IsPublished.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Edit_PublishedAssignment_CannotBeHiddenAgain()
+    {
+        Assignment published = AssignmentOwnedByCurrent();
+        _assignmentRepo.GetTrackedWithTeachersAsync(AssignmentId).Returns(new ValueTask<Assignment?>(published));
+
+        await _sut.EditAsync(AssignmentId, Settings() with { IsPublished = false });
+
+        published.IsPublished.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Edit_HiddenAssignment_ChangingDeadline_DoesNotNotifyStudents()
+    {
+        Assignment hidden = AssignmentOwnedByCurrent();
+        hidden.IsPublished = false;
+        _assignmentRepo.GetTrackedWithTeachersAsync(AssignmentId).Returns(new ValueTask<Assignment?>(hidden));
+
+        await _sut.EditAsync(AssignmentId, Settings(DeadlineKind.Soft, Instant.FromUtc(2026, 7, 1, 0, 0))
+                                           with { IsPublished = false });
+
+        await _notifications.DidNotReceive().EnqueueDeadlineChangedAsync(Arg.Any<Assignment>());
+        await _moodle.DidNotReceive().EnqueueUpdateAsync(Arg.Any<Assignment>());
+    }
+
+    [Fact]
     public async Task Create_ByNonCourseTeacher_ReturnsForbidden()
     {
         Course course = CourseOwnedByCurrent();

@@ -38,6 +38,7 @@ public static class ServicesSetup
         services.AddScoped<IAssignmentService, AssignmentService>();
         services.AddScoped<IStudentAssignmentService, StudentAssignmentService>();
         services.AddScoped<IAssignmentAutoDeleteService, AssignmentAutoDeleteService>();
+        services.AddScoped<IAssignmentPublishService, AssignmentPublishService>();
         services.AddScoped<IAuditLog, AuditLog>();
         services.AddScoped<IAuditQueryService, AuditQueryService>();
         services.AddScoped<IAuditRetentionService, AuditRetentionService>();
