@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  backend:
+    name: Backend (build, unit + integration tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: source/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          # pins the exact (preview) SDK the backend targets (net11.0)
+          global-json-file: source/backend/global.json
+      - name: Restore
+        run: dotnet restore LeoClassroom.slnx
+      - name: Build
+        run: dotnet build LeoClassroom.slnx --no-restore -c Release
+      - name: Unit tests
+        run: dotnet test --project LeoClassroom.Test/LeoClassroom.Test.csproj --no-build -c Release
+      - name: Integration tests (Testcontainers / Docker)
+        run: dotnet test --project LeoClassroom.TestInt/LeoClassroom.TestInt.csproj --no-build -c Release
+
+  offline-checks:
+    name: CLI, LDAP export & offline checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Build CLI
+        run: dotnet build source/cli/LeoClassroom.Cli.csproj
+      - name: Build LDAP export
+        run: dotnet build source/ldap-export/LdapUserExport.csproj
+      - name: Offline .NET checks
+        working-directory: source/tests/OfflineChecks
+        run: |
+          dotnet restore --configfile NuGet.Config --packages obj/packages
+          dotnet run --no-restore --disable-build-servers
+      - name: Offline frontend checks
+        working-directory: source/tests/OfflineChecks
+        run: node frontend.test.mjs
+
+  frontend:
+    name: Frontend (lint + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: source/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: source/frontend/package-lock.json
+      - run: npm ci
+      - name: Lint styles
+        run: npm run lint:styles
+      - name: Build
+        run: npm run build

@@ -27,7 +27,7 @@ public sealed record AssignmentUpdateRequest(
 
     public sealed class Validator : AbstractValidator<AssignmentUpdateRequest>
     {
-        public Validator() => AssignmentRules.Apply(this);
+        public Validator(IClock clock) => AssignmentRules.Apply(this, clock);
     }
 }
 
@@ -55,7 +55,7 @@ public sealed record AssignmentCreateRequest(
 
     public sealed class Validator : AbstractValidator<AssignmentCreateRequest>
     {
-        public Validator()
+        public Validator(IClock clock)
         {
             RuleFor(r => r.CourseId).GreaterThan(0);
             RuleFor(r => r.StarterArchiveUploadId)
@@ -78,7 +78,7 @@ public sealed record AssignmentCreateRequest(
                 .Empty()
                 .When(r => !string.IsNullOrEmpty(r.StarterArchiveUploadId))
                 .WithMessage("Choose either a repository URL or a ZIP upload, not both.");
-            AssignmentRules.Apply(this, r => string.IsNullOrEmpty(r.StarterArchiveUploadId));
+            AssignmentRules.Apply(this, clock, r => string.IsNullOrEmpty(r.StarterArchiveUploadId));
         }
     }
 }
@@ -87,7 +87,8 @@ internal static class AssignmentRules
 {
     private const int MaxTitleLength = 200;
 
-    public static void Apply<T>(AbstractValidator<T> validator, Func<T, bool>? repositoryUrlRequired = null)
+    public static void Apply<T>(AbstractValidator<T> validator, IClock clock,
+                                Func<T, bool>? repositoryUrlRequired = null)
         where T : IAssignmentFields
     {
         validator.RuleFor(r => r.Title).NotEmpty().MaximumLength(MaxTitleLength);
@@ -98,12 +99,12 @@ internal static class AssignmentRules
         // The form refuses a date that has already passed; the API refuses it too, so no
         // client can create an assignment that is born expired.
         validator.RuleFor(r => r.Deadline)
-                 .GreaterThan(SystemClock.Instance.GetCurrentInstant())
+                 .GreaterThan(clock.GetCurrentInstant())
                  .When(r => r.DeadlineKind != DeadlineKind.None && r.Deadline != null)
                  .WithMessage("The deadline has passed. Pick a date in the future.");
         // a hidden assignment may wait for an explicit publish (no date), but a date must still lie ahead
         validator.RuleFor(r => r.PublishAt)
-                 .GreaterThan(SystemClock.Instance.GetCurrentInstant())
+                 .GreaterThan(clock.GetCurrentInstant())
                  .When(r => !r.IsPublished && r.PublishAt != null)
                  .WithMessage("The publish date has passed. Pick a date in the future.");
         validator.RuleFor(r => r.StarterRepoUrl)

@@ -41,11 +41,13 @@
   align-items: center;
   color: var(--color-text-muted);
   display: inline-flex;
+
   // The arrow needs room to breathe next to the words, and it sits on their line.
   gap: var(--space-2);
   height: var(--control-height);
   left: 0;
   min-height: var(--control-height);
+
   // The tab strip starts after the h1 line and its bottom margin; line the back
   // link up with it without putting it back into the course column.
   position: absolute;
@@ -104,7 +106,7 @@
   svg {
     fill: none;
     height: 1.25rem;
-    stroke: currentColor;
+    stroke: currentcolor;
     stroke-linecap: round;
     stroke-linejoin: round;
     stroke-width: 1.75;
@@ -251,6 +253,7 @@
   justify-content: space-between;
   margin-block: var(--space-3);
   min-height: 3.5rem;
+
   // The dashed border adds to the inset, so subtract it to line the add button up
   // with the remove buttons of the participant rows below.
   padding-inline: calc(var(--space-2) - var(--border-width));
@@ -363,8 +366,8 @@
   color: var(--color-danger-text);
 
   &:hover {
-    background-color: color-mix(in srgb, var(--color-danger-bg) 70%, #ff0000);
-    border-color: color-mix(in srgb, var(--color-danger-border) 60%, #ff0000);
+    background-color: color-mix(in srgb, var(--color-danger-bg) 70%, #f00);
+    border-color: color-mix(in srgb, var(--color-danger-border) 60%, #f00);
   }
 }
 
@@ -374,8 +377,8 @@
   color: var(--color-success-text);
 
   &:hover {
-    background-color: color-mix(in srgb, var(--color-success-bg) 70%, #00ff66);
-    border-color: color-mix(in srgb, var(--color-success-border) 60%, #00ff66);
+    background-color: color-mix(in srgb, var(--color-success-bg) 70%, #0f6);
+    border-color: color-mix(in srgb, var(--color-success-border) 60%, #0f6);
   }
 }
 
@@ -390,7 +393,7 @@
   margin-block: var(--space-4);
 }
 
-@media (max-width: 72rem) {
+@media (width <= 72rem) {
   .back-to-courses {
     height: auto;
     margin-block-end: var(--space-3);
@@ -404,7 +407,7 @@
   }
 }
 
-@media (max-width: 48rem) {
+@media (width <= 48rem) {
   .course-header {
     width: 100%;
 

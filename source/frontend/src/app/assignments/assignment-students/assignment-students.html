@@ -63,13 +63,21 @@
 
           <span class="row__text">
             <span class="row__name">{{ row.name }}</span>
-            <span class="row__meta" [title]="row.pushedTitle">
-              @if (row.commits !== null) {
-                {{ row.commits }} {{ row.commits === 1 ? 'commit' : 'commits' }} ·
-              }
-              {{ row.pushedLabel }}
-            </span>
           </span>
+
+          <!-- the student's own commits only: green once there is any, red while there is none -->
+          @if (row.commits !== null) {
+            <span class="pill" [class.pill--success]="row.commits > 0" [class.pill--danger]="row.commits === 0">
+              {{ row.commits }} {{ row.commits === 1 ? 'commit' : 'commits' }}
+            </span>
+          }
+          <!-- orange, as late commits are on the analytics page -->
+          @if (row.lateCommits !== null && row.lateCommits > 0) {
+            <span class="pill pill--accent">
+              <mat-icon aria-hidden="true">hourglass_bottom</mat-icon>
+              {{ row.lateCommits }} late
+            </span>
+          }
 
           @if (row.badge; as badge) {
             <span class="pill" [class]="'pill pill--' + badge.tone">

@@ -21,6 +21,10 @@ internal sealed class PushActivityConsumer(IUnitOfWork uow, ILogger<PushActivity
         {
             return;
         }
+        if (!await StudentPushes.IsByStudentAsync(uow, acceptance, envelope))
+        {
+            return;
+        }
 
         acceptance.LastPushAt = envelope.ReceivedAt;
         acceptance.LastCommitAt = envelope.CommitterDate;
