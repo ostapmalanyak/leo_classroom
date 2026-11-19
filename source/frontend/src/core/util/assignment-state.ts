@@ -104,6 +104,10 @@ export function studentAssignmentState(
     return 'setting-up';
   }
 
+  if (assignment.status === SubmissionStatus.DownloadOnly) {
+    return 'in-progress';
+  }
+
   return assignment.status === SubmissionStatus.Ready ? 'in-progress' : 'setting-up';
 }
 

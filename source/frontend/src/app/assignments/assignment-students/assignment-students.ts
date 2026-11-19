@@ -187,6 +187,9 @@ export class AssignmentStudents implements OnInit {
 
     const counts = new Map<number, number>();
     await Promise.all(submissions.map(async submission => {
+      if (submission.status === SubmissionStatus.DownloadOnly) {
+        return;
+      }
       const analytics = await this.service.getAnalytics(submission.acceptanceId);
       if (analytics !== null && analytics !== 'forbidden') {
         counts.set(submission.acceptanceId, analytics.commitCount);
@@ -263,6 +266,9 @@ export class AssignmentStudents implements OnInit {
     if (submission.status === SubmissionStatus.Provisioning) {
       return { label: 'Setting up', tone: 'neutral', icon: null };
     }
+    if (submission.status === SubmissionStatus.DownloadOnly) {
+      return { label: 'Accepted', tone: 'neutral', icon: null };
+    }
     if (pushed !== null) {
       return { label: 'Submitted', tone: 'accent', icon: null };
     }
@@ -271,7 +277,8 @@ export class AssignmentStudents implements OnInit {
   }
 
   private actionOf(submission: StudentSubmission): { label: string; kind: 'feedback' | 'repository' } | null {
-    if (submission.feedbackState !== FeedbackState.None) {
+    if (submission.status === SubmissionStatus.DownloadOnly
+        || submission.feedbackState !== FeedbackState.None) {
       return null;
     }
     if (submission.lastPushAt === null) {

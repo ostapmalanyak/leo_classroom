@@ -68,15 +68,17 @@
       }
 
       @if (step() === 1) {
-        <section class="card-surface edit-card" [class.edit-card--invalid]="repoError() !== null">
+        <section class="card-surface edit-card"
+                 [class.edit-card--invalid]="repoError() !== null || archiveError() !== null">
           <h2 class="edit-card__title">Starter</h2>
           <div class="help">
             <button class="help__button" type="button" aria-label="Help: Starter" aria-describedby="help-starter">?</button>
-            <span class="help__tip" id="help-starter" role="tooltip">Choose what each student starts with: just the description, a copy of a template repository, or a fork of your own repository that becomes theirs.</span>
+            <span class="help__tip" id="help-starter" role="tooltip">Choose what each student starts with. A standalone ZIP is download-only. For a copied or forked repository, you can provide a repository or upload a ZIP to create the shared starter repository.</span>
           </div>
 
           <div class="starter-grid" role="group" aria-label="Starter source">
-            <button class="starter" type="button" [class.is-active]="!isCopyRepo()"
+            <button class="starter" type="button"
+                    [class.is-active]="starterSource() === StarterSourceKind.DescriptionOnly"
                     (click)="setStarterSource(StarterSourceKind.DescriptionOnly)">
               <mat-icon aria-hidden="true">description</mat-icon>
               <span>Description only</span>
@@ -86,13 +88,13 @@
               <mat-icon aria-hidden="true">content_copy</mat-icon>
               <span>Copy repository</span>
             </button>
-            <!-- Not wired to the backend yet; the wrapper carries the tooltip because a disabled button gets no hover events. -->
-            <span class="starter-wrap" title="Not Available yet">
-              <button class="starter" type="button" disabled aria-label="Archive, not available yet">
-                <mat-icon aria-hidden="true">inventory_2</mat-icon>
-                <span>Archive</span>
-              </button>
-            </span>
+            <button class="starter" type="button" [class.is-active]="isArchive()"
+                    [disabled]="isEditMode() && !archiveConfigured()"
+                    [attr.title]="isEditMode() && !archiveConfigured() ? 'Choose an archive when creating the assignment' : null"
+                    (click)="setStarterSource(StarterSourceKind.Archive)">
+              <mat-icon aria-hidden="true">inventory_2</mat-icon>
+              <span>ZIP archive</span>
+            </button>
             <button class="starter" type="button" [class.is-active]="isForkRepo()"
                     (click)="setStarterSource(StarterSourceKind.ForkOwnRepo)">
               <mat-icon aria-hidden="true">fork_right</mat-icon>
@@ -101,26 +103,110 @@
           </div>
 
           @if (needsRepoUrl()) {
-            <div class="field">
-              <label class="field__label" for="field-url">
-                {{ isForkRepo() ? 'Link to your repository' : 'Repository URL' }}
-              </label>
-              <input id="field-url" class="input" type="url" [class.input--invalid]="repoError() !== null"
-                     placeholder="https://forgejo.example/owner/template" [value]="starterRepoUrl()"
-                     (input)="starterRepoUrl.set($any($event.target).value)">
-              @if (repoError(); as error) {
+            @if (!isEditMode()) {
+              <div class="starter-grid" role="group" aria-label="Repository starter content">
+                <button class="starter" type="button" [class.is-active]="repoStarterMode() === 'repository'"
+                        (click)="setRepoStarterMode('repository')">
+                  <mat-icon aria-hidden="true">link</mat-icon>
+                  <span>Use a repository</span>
+                </button>
+                <button class="starter" type="button" [class.is-active]="repoStarterMode() === 'archive'"
+                        (click)="setRepoStarterMode('archive')">
+                  <mat-icon aria-hidden="true">upload_file</mat-icon>
+                  <span>Upload a ZIP</span>
+                </button>
+              </div>
+            }
+
+            @if (!usesArchiveUpload()) {
+              <div class="field">
+                <label class="field__label" for="field-url">
+                  {{ isForkRepo() ? 'Link to your repository' : 'Repository URL' }}
+                </label>
+                <input id="field-url" class="input" type="url" [class.input--invalid]="repoError() !== null"
+                       placeholder="https://forgejo.example/owner/template" [value]="starterRepoUrl()"
+                       (input)="starterRepoUrl.set($any($event.target).value)">
+                @if (repoError(); as error) {
+                  <p class="field__error" role="alert">
+                    <mat-icon aria-hidden="true">error</mat-icon>
+                    <span>{{ error }}</span>
+                  </p>
+                }
+              </div>
+            }
+
+            @if (isCopyRepo()) {
+              <app-markdown-editor label="README" [value]="readme()" (valueChange)="readme.set($event)" />
+            }
+          }
+
+          @if (usesArchiveUpload()) {
+            @if (isEditMode() && isArchive() && archiveConfigured()) {
+              @if (archiveHasTemplate()) {
+                <p class="edit-hint">The existing ZIP download and starter repository are attached to this assignment.</p>
+              } @else {
+                <p class="edit-hint">The confirmed ZIP is attached as a download-only starter.</p>
+              }
+            } @else {
+              <div class="field">
+                <label class="field__label" for="field-archive">Upload a ZIP archive</label>
+                <input id="field-archive" class="input" type="file" accept=".zip,application/zip"
+                       [disabled]="archiveUploading()"
+                       (change)="handleArchiveFileChanged($event)">
+                <p class="edit-hint">
+                  @if (isArchive()) {
+                    Students download this archive directly. No Forgejo repository will be created.
+                  } @else {
+                    The ZIP will create a private starter repository for students to copy or fork.
+                  }
+                  We’ll show the files and folders before you confirm them. ZIP files up to 50 MB.
+                </p>
+                @if (archiveUploading()) {
+                  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                  <p class="edit-hint">Reading and checking the archive…</p>
+                }
+                @if (archiveUploadError(); as error) {
+                  <p class="field__error" role="alert">
+                    <mat-icon aria-hidden="true">error</mat-icon>
+                    <span>{{ error }}</span>
+                  </p>
+                }
+              </div>
+
+              @if (archivePreview(); as preview) {
+                <section class="archive-preview" aria-label="Archive contents">
+                  <div class="archive-preview__head">
+                    <div>
+                      <h3>{{ preview.fileName }}</h3>
+                      <p>{{ preview.entries.length }} files and folders — review before confirming</p>
+                    </div>
+                    <mat-icon aria-hidden="true">folder_open</mat-icon>
+                  </div>
+                  <ul class="archive-preview__entries">
+                    @for (entry of preview.entries; track entry) {
+                      <li [class.archive-preview__folder]="entry.endsWith('/')">
+                        <mat-icon aria-hidden="true">{{ entry.endsWith('/') ? 'folder' : 'draft' }}</mat-icon>
+                        <code>{{ entry }}</code>
+                      </li>
+                    }
+                  </ul>
+                  <label class="archive-confirm">
+                    <input type="checkbox" [checked]="archiveConfirmed()"
+                           (change)="archiveConfirmed.set($any($event.target).checked)">
+                    <span>I checked the folder contents and confirm this is the correct starter.</span>
+                  </label>
+                </section>
+              }
+
+              @if (archiveError(); as error) {
                 <p class="field__error" role="alert">
                   <mat-icon aria-hidden="true">error</mat-icon>
                   <span>{{ error }}</span>
                 </p>
               }
-            </div>
-
-            @if (isCopyRepo()) {
-              <app-markdown-editor label="README" [value]="readme()" (valueChange)="readme.set($event)" />
             }
-          } @else {
-            <p class="edit-hint">Repository URL appears when you copy or fork a repository.</p>
+          } @else if (!needsRepoUrl()) {
+            <p class="edit-hint">No repository or archive is created for a description-only starter.</p>
           }
         </section>
       }

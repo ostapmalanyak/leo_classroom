@@ -290,6 +290,56 @@
   }
 }
 
+.archive-preview {
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-card);
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.archive-preview__head {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+
+  h3 {
+    font-size: var(--font-size-sm);
+    margin: 0;
+  }
+
+  p {
+    margin: var(--space-1) 0 0;
+  }
+}
+
+.archive-preview__entries {
+  background-color: var(--color-bg-input);
+  border-radius: var(--radius);
+  list-style: none;
+  margin: 0;
+  max-block-size: 16rem;
+  overflow: auto;
+  padding: var(--space-2);
+
+  li {
+    align-items: center;
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  code {
+    overflow-wrap: anywhere;
+  }
+}
+
+.archive-confirm {
+  align-items: flex-start;
+  display: flex;
+  font-size: var(--font-size-sm);
+  gap: var(--space-2);
+}
+
 // The lifecycle switch.
 .switch-row {
   align-items: center;
@@ -454,4 +504,3 @@
 .deadline-card__text {
   font-size: var(--font-size-sm);
 }
-

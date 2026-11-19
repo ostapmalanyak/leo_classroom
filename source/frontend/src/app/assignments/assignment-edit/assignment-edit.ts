@@ -6,14 +6,15 @@ import { MatIcon } from '@angular/material/icon';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import {
-  Assignment, AssignmentService, AssignmentWrite, DeadlineKind, DownloadSnapshotMode, StarterSourceKind
+  Assignment, AssignmentService, AssignmentWrite, DeadlineKind, DownloadSnapshotMode, StarterArchivePreview,
+  StarterSourceKind
 } from '../../../core/services/assignment-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 import { isHiddenNow } from '../../../core/util/assignment-state';
 import { MarkdownEditor } from '../../shared/markdown-editor/markdown-editor';
 
 /** How many issues the form has: the summary and the save button use it. */
-type Issue = { message: string; field: 'title' | 'date' | 'time' | 'url' | 'publish' };
+type Issue = { message: string; field: 'title' | 'date' | 'time' | 'url' | 'publish' | 'archive' };
 
 /** When students get to see the assignment. */
 type Visibility = 'now' | 'date' | 'manual';
@@ -59,6 +60,13 @@ export class AssignmentEdit implements OnInit {
   protected readonly hardRevokesRead: WritableSignal<boolean> = signal(false);
   protected readonly starterSource: WritableSignal<StarterSourceKind> = signal(StarterSourceKind.DescriptionOnly);
   protected readonly starterRepoUrl: WritableSignal<string> = signal('');
+  protected readonly repoStarterMode: WritableSignal<'repository' | 'archive'> = signal('repository');
+  protected readonly archivePreview: WritableSignal<StarterArchivePreview | null> = signal(null);
+  protected readonly archiveUploading: WritableSignal<boolean> = signal(false);
+  protected readonly archiveUploadError: WritableSignal<string | null> = signal(null);
+  protected readonly archiveConfirmed: WritableSignal<boolean> = signal(false);
+  protected readonly archiveConfigured: WritableSignal<boolean> = signal(false);
+  protected readonly archiveHasTemplate: WritableSignal<boolean> = signal(false);
   protected readonly readme: WritableSignal<string> = signal('');
   protected readonly autoDeleteEnabled: WritableSignal<boolean> = signal(false);
   protected readonly autoDeleteOn: WritableSignal<string> = signal('');
@@ -78,9 +86,12 @@ export class AssignmentEdit implements OnInit {
   protected readonly isEditMode = computed(() => this.id() !== undefined);
   protected readonly isCopyRepo = computed(() => this.starterSource() === StarterSourceKind.CopyRepo);
   protected readonly isForkRepo = computed(() => this.starterSource() === StarterSourceKind.ForkOwnRepo);
+  protected readonly isArchive = computed(() => this.starterSource() === StarterSourceKind.Archive);
 
-  /** Both starter kinds that point at an existing repository need its address. */
+  /** Copy and fork starters use either a repository URL or a ZIP upload. */
   protected readonly needsRepoUrl = computed(() => this.isCopyRepo() || this.isForkRepo());
+  protected readonly usesArchiveUpload = computed(() =>
+    this.isArchive() || (!this.isEditMode() && this.needsRepoUrl() && this.repoStarterMode() === 'archive'));
 
   /**
    * A hard deadline closes the repository, so a fork that keeps receiving pushes from the
@@ -170,7 +181,7 @@ export class AssignmentEdit implements OnInit {
   });
 
   protected readonly repoError = computed<string | null>(() => {
-    if (!this.needsRepoUrl()) {
+    if (!this.needsRepoUrl() || this.usesArchiveUpload()) {
       return null;
     }
 
@@ -184,11 +195,29 @@ export class AssignmentEdit implements OnInit {
       : 'The repository URL must be a full https address, for example https://forgejo.example/owner/repo.';
   });
 
+  protected readonly archiveError = computed<string | null>(() => {
+    if (!this.usesArchiveUpload()) {
+      return null;
+    }
+    if (this.isEditMode() && this.isArchive() && this.archiveConfigured()) {
+      return null;
+    }
+    if (this.archiveUploadError() !== null) {
+      return this.archiveUploadError();
+    }
+    if (this.archivePreview() === null) {
+      return 'Choose a ZIP archive to preview its contents.';
+    }
+
+    return this.archiveConfirmed() ? null : 'Review and confirm the archive contents.';
+  });
+
   protected readonly issues = computed<Issue[]>(() => {
     const issues: Issue[] = [];
     const title = this.titleError();
     const deadline = this.deadlineError();
     const repo = this.repoError();
+    const archive = this.archiveError();
     const publish = this.publishError();
     if (title !== null) {
       issues.push({ message: title, field: 'title' });
@@ -201,6 +230,9 @@ export class AssignmentEdit implements OnInit {
     }
     if (repo !== null) {
       issues.push({ message: repo, field: 'url' });
+    }
+    if (archive !== null) {
+      issues.push({ message: archive, field: 'archive' });
     }
 
     return issues;
@@ -220,7 +252,7 @@ export class AssignmentEdit implements OnInit {
     const done = [
       this.titleError() === null,
       (!this.hasDeadline() || this.deadlineError() === null) && this.publishError() === null,
-      !this.needsRepoUrl() || this.repoError() === null,
+      (!this.needsRepoUrl() || this.repoError() === null) && this.archiveError() === null,
       true
     ].filter(Boolean).length;
 
@@ -253,6 +285,14 @@ export class AssignmentEdit implements OnInit {
   });
 
   protected readonly starterSummary = computed(() => {
+    if (this.isArchive()) {
+      const entries = this.archivePreview()?.entries.length;
+
+      return entries === undefined ? 'Downloadable ZIP archive' : `Downloadable ZIP · ${entries} entries`;
+    }
+    if (this.usesArchiveUpload()) {
+      return this.isForkRepo() ? 'Fork repository from ZIP' : 'Copy repository from ZIP';
+    }
     if (this.isForkRepo()) {
       return 'Fork own repository';
     }
@@ -266,6 +306,32 @@ export class AssignmentEdit implements OnInit {
     if (kind === StarterSourceKind.ForkOwnRepo && this.deadlineKind() === DeadlineKind.Hard) {
       this.setDeadlineKind(DeadlineKind.Soft);
     }
+  }
+
+  protected setRepoStarterMode(mode: 'repository' | 'archive'): void {
+    this.repoStarterMode.set(mode);
+  }
+
+  protected async handleArchiveFileChanged(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    this.archivePreview.set(null);
+    this.archiveConfirmed.set(false);
+    this.archiveUploadError.set(null);
+    if (file === undefined) {
+      return;
+    }
+
+    this.archiveUploading.set(true);
+    const result = await this.service.previewStarterArchive(file);
+    this.archiveUploading.set(false);
+    if (typeof result === 'string') {
+      this.archiveUploadError.set(result);
+
+      return;
+    }
+
+    this.archivePreview.set(result);
   }
 
   // ---- the page ----
@@ -310,7 +376,7 @@ export class AssignmentEdit implements OnInit {
       return this.titleError() === null;
     }
     if (step === 1) {
-      return this.repoError() === null;
+      return this.repoError() === null && this.archiveError() === null;
     }
     if (step === 2) {
       return this.deadlineError() === null && this.publishError() === null;
@@ -366,7 +432,7 @@ export class AssignmentEdit implements OnInit {
     const issues = this.issues();
     if (issues.length > 0) {
       const first = issues[0];
-      this.step.set(first.field === 'title' ? 0 : first.field === 'url' ? 1 : 2);
+      this.step.set(first.field === 'title' ? 0 : first.field === 'url' || first.field === 'archive' ? 1 : 2);
       setTimeout(() => {
         const element = document.getElementById(`field-${first.field}`);
         element?.scrollIntoView({ block: 'center' });
@@ -380,7 +446,11 @@ export class AssignmentEdit implements OnInit {
     const body = this.buildWrite();
     const result = this.isEditMode()
       ? await this.service.update(Number(this.id()), body)
-      : await this.service.create({ ...body, courseId: Number(this.courseId()) });
+      : await this.service.create({
+        ...body,
+        courseId: Number(this.courseId()),
+        starterArchiveUploadId: this.usesArchiveUpload() ? this.archivePreview()?.uploadId ?? null : null
+      });
     this.saving.set(false);
 
     if (result === 'forbidden') {
@@ -406,7 +476,9 @@ export class AssignmentEdit implements OnInit {
       deadlineKind: this.deadlineKind(),
       hardDeadlineRevokesRead: this.hardRevokesRead(),
       starterSourceKind: this.starterSource(),
-      starterRepoUrl: this.needsRepoUrl() ? this.emptyToNull(this.starterRepoUrl()) : null,
+      starterRepoUrl: this.needsRepoUrl() && !this.usesArchiveUpload()
+        ? this.emptyToNull(this.starterRepoUrl())
+        : null,
       readmeMarkdown: this.isCopyRepo() ? this.emptyToNull(this.readme()) : null,
       autoDeleteEnabled: this.autoDeleteEnabled(),
       autoDeleteOn: this.emptyToNull(this.autoDeleteOn()),
@@ -461,6 +533,8 @@ export class AssignmentEdit implements OnInit {
     this.hardRevokesRead.set(a.hardDeadlineRevokesRead);
     this.starterSource.set(a.starterSourceKind);
     this.starterRepoUrl.set(a.starterRepoUrl ?? '');
+    this.archiveConfigured.set(a.hasStarterArchive);
+    this.archiveHasTemplate.set(a.starterTemplateRepoUrl !== null);
     this.readme.set(a.readmeMarkdown ?? '');
     this.autoDeleteEnabled.set(a.autoDeleteEnabled);
     this.autoDeleteOn.set(a.autoDeleteOn?.toString() ?? '');

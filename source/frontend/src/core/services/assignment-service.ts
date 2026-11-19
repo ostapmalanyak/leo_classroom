@@ -16,8 +16,48 @@ export class AssignmentService extends BackendServiceBase {
     return 'assignments';
   }
 
-  public async create(request: AssignmentWrite & { courseId: number }): Promise<WriteResult<Assignment>> {
+  public async create(request: AssignmentWrite & { courseId: number; starterArchiveUploadId: string | null })
+    : Promise<WriteResult<Assignment>> {
     return this.write(this.http.post<unknown>(this.buildUrl(''), request));
+  }
+
+  public async previewStarterArchive(file: File): Promise<StarterArchivePreview | string> {
+    const form = new FormData();
+    form.append('archive', file, file.name);
+
+    try {
+      const response = await firstValueFrom(
+        this.http.post<unknown>(this.buildUrl('archive-preview'), form));
+
+      return starterArchivePreviewZod.parse(response);
+    } catch (error) {
+      if (error instanceof HttpErrorResponse) {
+        const messages = (error.error as { errors?: Record<string, string[]> } | null)?.errors?.['archive'];
+
+        return messages?.[0] ?? 'Could not read that ZIP archive.';
+      }
+      if (error instanceof z.ZodError) {
+        return 'The server returned an invalid archive preview.';
+      }
+      throw error;
+    }
+  }
+
+  public async downloadStarterArchive(id: number): Promise<ActionResult> {
+    try {
+      const blob = await firstValueFrom(
+        this.http.get(this.buildUrl(`${id}/starter-archive`), { responseType: 'blob' }));
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `starter-${id}.zip`;
+      link.click();
+      URL.revokeObjectURL(downloadUrl);
+
+      return 'ok';
+    } catch (error) {
+      return this.mapWriteError(error);
+    }
   }
 
   public async listForCourse(courseId: number): Promise<Assignment[] | null> {
@@ -227,7 +267,8 @@ export enum DownloadSnapshotMode {
 export enum SubmissionStatus {
   Provisioning = 'Provisioning',
   Ready = 'Ready',
-  Failed = 'Failed'
+  Failed = 'Failed',
+  DownloadOnly = 'DownloadOnly'
 }
 
 export enum FeedbackState {
@@ -272,7 +313,9 @@ const assignmentZod = z.object({
   autoDeleteOn: InstantSchema.nullable(),
   downloadSnapshotMode: z.enum(DownloadSnapshotMode),
   isPublished: z.boolean(),
-  publishAt: InstantSchema.nullable()
+  publishAt: InstantSchema.nullable(),
+  hasStarterArchive: z.boolean(),
+  starterTemplateRepoUrl: z.string().nullable()
 });
 export type Assignment = z.infer<typeof assignmentZod>;
 
@@ -343,9 +386,18 @@ const assignmentInfoZod = z.object({
   hintsInstructions: z.string().nullable(),
   deadline: InstantSchema.nullable(),
   deadlineKind: z.enum(DeadlineKind),
-  accepted: z.boolean()
+  accepted: z.boolean(),
+  hasStarterArchive: z.boolean(),
+  downloadOnly: z.boolean()
 });
 export type AssignmentInfo = z.infer<typeof assignmentInfoZod>;
+
+const starterArchivePreviewZod = z.object({
+  uploadId: z.string().regex(/^[0-9a-f]{32}$/i),
+  fileName: z.string(),
+  entries: z.string().array()
+});
+export type StarterArchivePreview = z.infer<typeof starterArchivePreviewZod>;
 
 const submissionZod = z.object({
   assignmentId: z.int().positive(),
