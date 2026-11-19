@@ -26,7 +26,9 @@ public sealed record AssignmentSettings(
     Instant? AutoDeleteOn,
     DownloadSnapshotMode DownloadSnapshotMode,
     bool IsPublished = true,
-    Instant? PublishAt = null);
+    Instant? PublishAt = null,
+    string? ArchivePath = null,
+    string? StarterTemplateRepoUrl = null);
 
 public interface IAssignmentService
 {
@@ -316,6 +318,14 @@ internal sealed class AssignmentService(
         assignment.HardDeadlineRevokesRead = settings.HardDeadlineRevokesRead;
         assignment.StarterSourceKind = settings.StarterSourceKind;
         assignment.StarterRepoUrl = settings.StarterRepoUrl;
+        if (settings.ArchivePath is not null)
+        {
+            assignment.ArchivePath = settings.ArchivePath;
+        }
+        if (settings.StarterTemplateRepoUrl is not null)
+        {
+            assignment.StarterTemplateRepoUrl = settings.StarterTemplateRepoUrl;
+        }
         assignment.ReadmeMarkdown = settings.ReadmeMarkdown;
         assignment.DownloadSnapshotMode = settings.DownloadSnapshotMode;
         assignment.AutoDeleteEnabled = settings.AutoDeleteEnabled;

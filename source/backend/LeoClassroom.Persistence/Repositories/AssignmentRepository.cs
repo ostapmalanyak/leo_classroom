@@ -24,8 +24,12 @@ public interface IAssignmentRepository
     public ValueTask<bool> IsStudentAssignedAsync(long assignmentId, long studentId, Instant now);
     public ValueTask<IReadOnlyCollection<long>> GetIdsOwnedByAsync(long userId);
     public ValueTask<IReadOnlyCollection<long>> GetIdsByCoursesAsync(IReadOnlyCollection<long> courseIds);
+    public ValueTask<IReadOnlyCollection<AssignmentExternalResources>> GetExternalResourcesByIdsAsync(
+        IReadOnlyCollection<long> ids);
     public ValueTask<int> DeleteByIdsAsync(IReadOnlyCollection<long> ids);
 }
+
+public sealed record AssignmentExternalResources(string? ArchivePath, string? StarterTemplateRepoUrl);
 
 internal sealed class AssignmentRepository(DbSet<Assignment> assignments) : IAssignmentRepository
 {
@@ -96,6 +100,17 @@ internal sealed class AssignmentRepository(DbSet<Assignment> assignments) : IAss
                                           .ToListAsync();
 
         return ids.AsReadOnly();
+    }
+
+    public async ValueTask<IReadOnlyCollection<AssignmentExternalResources>> GetExternalResourcesByIdsAsync(
+        IReadOnlyCollection<long> ids)
+    {
+        List<AssignmentExternalResources> resources = await assignments.AsNoTracking()
+            .Where(a => ids.Contains(a.Id))
+            .Select(a => new AssignmentExternalResources(a.ArchivePath, a.StarterTemplateRepoUrl))
+            .ToListAsync();
+
+        return resources.AsReadOnly();
     }
 
     public async ValueTask<int> DeleteByIdsAsync(IReadOnlyCollection<long> ids) =>

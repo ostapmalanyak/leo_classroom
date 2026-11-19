@@ -1,5 +1,8 @@
+using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
+using System.Text;
 using LeoClassroom.Endpoints;
 using LeoClassroom.Persistence.Model;
 using LeoClassroom.Persistence.Util;
@@ -66,6 +69,83 @@ public sealed class AssignmentEndpointTests(WebApiTestFixture fixture) : WebApiT
 
         created.Title.Should().Be("Sorting");
         created.Slug.Should().Be("sorting");
+    }
+
+    [Fact]
+    public async Task PostArchivePreview_AsOwner_ReturnsPromotedFileList()
+    {
+        AuthenticateAsTeacher(OwnerIf);
+        using var zip = new MemoryStream();
+        using (var archive = new ZipArchive(zip, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            using Stream entry = archive.CreateEntry("starter/src/main.cs").Open();
+            await entry.WriteAsync(Encoding.UTF8.GetBytes("class Main {}"), TestCancellationToken);
+        }
+
+        using var request = new MultipartFormDataContent();
+        using var file = new ByteArrayContent(zip.ToArray());
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+        request.Add(file, "archive", "starter.zip");
+
+        var response = await ApiClient.PostAsync("api/assignments/archive-preview", request, TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        StarterArchivePreviewDto preview =
+            (await response.Content.ReadFromJsonAsync<StarterArchivePreviewDto>(JsonOptions, TestCancellationToken))!;
+        preview.UploadId.Should().MatchRegex("^[0-9a-f]{32}$");
+        preview.Entries.Should().Contain("src/main.cs");
+    }
+
+    [Fact]
+    public async Task PostArchiveAssignment_WithoutConfirmedUpload_Returns400()
+    {
+        AuthenticateAsTeacher(OwnerIf);
+        var request = new AssignmentCreateRequest(_courseId, "Archive task", null, null, null, DeadlineKind.None,
+            false, StarterSourceKind.Archive, null, null, false, null, DownloadSnapshotMode.Deadline);
+
+        var response = await ApiClient.PostAsJsonAsync("api/assignments", request, JsonOptions,
+                                                       TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails =
+            await response.Content.ReadFromJsonAsync<HttpValidationProblemDetails>(JsonOptions, TestCancellationToken);
+        problemDetails!.Errors.Should().ContainKey("starterArchiveUploadId");
+    }
+
+    [Fact]
+    public async Task PostArchiveAssignment_CreatesDownloadOnlyAssignmentWithoutStarterRepository()
+    {
+        AuthenticateAsTeacher(OwnerIf);
+        using var zip = new MemoryStream();
+        using (var archive = new ZipArchive(zip, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            using Stream entry = archive.CreateEntry("starter/readme.md").Open();
+            await entry.WriteAsync(Encoding.UTF8.GetBytes("# Starter"), TestCancellationToken);
+        }
+
+        using var previewRequest = new MultipartFormDataContent();
+        using var file = new ByteArrayContent(zip.ToArray());
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+        previewRequest.Add(file, "archive", "starter.zip");
+        var previewResponse = await ApiClient.PostAsync(
+            "api/assignments/archive-preview", previewRequest, TestCancellationToken);
+        previewResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        StarterArchivePreviewDto preview =
+            (await previewResponse.Content.ReadFromJsonAsync<StarterArchivePreviewDto>(
+                JsonOptions, TestCancellationToken))!;
+
+        var request = new AssignmentCreateRequest(
+            _courseId, "Download-only task", null, null, null, DeadlineKind.None, false,
+            StarterSourceKind.Archive, null, null, false, null, DownloadSnapshotMode.Deadline,
+            StarterArchiveUploadId: preview.UploadId);
+        var response = await ApiClient.PostAsJsonAsync(
+            "api/assignments", request, JsonOptions, TestCancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        AssignmentDto created =
+            (await response.Content.ReadFromJsonAsync<AssignmentDto>(JsonOptions, TestCancellationToken))!;
+        created.HasStarterArchive.Should().BeTrue();
+        created.StarterTemplateRepoUrl.Should().BeNull();
     }
 
     [Fact]
@@ -145,6 +225,19 @@ public sealed class AssignmentEndpointTests(WebApiTestFixture fixture) : WebApiT
 
         problemDetails.Should().NotBeNull();
         problemDetails.Errors.Should().ContainKey("starterRepoUrl");
+    }
+
+    [Theory]
+    [InlineData(StarterSourceKind.ForkOwnRepo)]
+    [InlineData(StarterSourceKind.CopyRepo)]
+    public void PostAssignment_RepoSourcesAcceptZipInsteadOfRepositoryUrl(StarterSourceKind starterSourceKind)
+    {
+        var request = new AssignmentCreateRequest(
+            _courseId, "ZIP starter", null, null, null, DeadlineKind.None, false,
+            starterSourceKind, null, null, false, null, DownloadSnapshotMode.Deadline,
+            StarterArchiveUploadId: Guid.NewGuid().ToString("N"));
+
+        new AssignmentCreateRequest.Validator().Validate(request).IsValid.Should().BeTrue();
     }
 
     [Fact]
