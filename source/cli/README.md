@@ -35,17 +35,17 @@ password is the only route to it.
 
 ### Sign in with the browser (no password to copy)
 
-Install [git-credential-oauth](https://github.com/hickford/git-credential-oauth), then, with the
-`client_id` your admin got from `DEPLOY.md` step 7b (host and port exactly as in the clone URL):
+Install [git-credential-oauth](https://github.com/hickford/git-credential-oauth), then run once per device
+(host and port exactly as in the clone URL, `client_id` from `DEPLOY.md` step 7b):
 
 ```sh
-H=http://10.191.18.44:3000
-git config --global --add credential.helper cache
-git config --global --add credential.helper oauth
-git config --global credential.$H.oauthClientId <client_id>
-git config --global credential.$H.oauthAuthURL /login/oauth/authorize
-git config --global credential.$H.oauthTokenURL /login/oauth/access_token
+cli/setup-git-auth.sh http://10.191.18.44:3000 <client_id>
+cli/setup-git-auth.sh http://localhost:3000     # local stack, id built in
+cli/setup-git-auth.sh https://vm123.htl-leonding.ac.at:3000   # the VM, id built in
 ```
+
+It stores the token with the OS keychain (`git-credential-libsecret` on Linux, install it so the login
+survives a reboot) and falls back to an 8 h memory cache.
 
 The first clone or push opens your browser; after that git reuses the token. The generated password below
 still works if you would rather not do this.
