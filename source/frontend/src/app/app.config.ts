@@ -47,8 +47,14 @@ export function createAppConfig(): ApplicationConfig {
         features: [
           // sessionTimeout is the idle window, in milliseconds. It was 60_000 - one minute - which logged
           // people out while they read the page they had just asked for.
+          // The implicit flow has no refresh token, so updateToken() always throws when the realm's short
+          // access token (5 min) runs out, and the library then runs this action. 'logout' ended every
+          // session after 5 minutes. 'login' with prompt=none instead asks Keycloak for a fresh token and
+          // comes straight back to this page while the Keycloak SSO session lives; if it is gone, the user
+          // lands on the normal login page.
           withAutoRefreshToken({
-            onInactivityTimeout: 'logout',
+            onInactivityTimeout: 'login',
+            loginOptions: { prompt: 'none', redirectUri: window.location.href },
             sessionTimeout: keycloakConfig().sessionTimeoutMinutes * 60_000
           })
         ],
