@@ -125,10 +125,12 @@ services:
       Smtp__AppBaseUrl: ${PUBLIC_SCHEME}://${APP_DOMAIN}
       Moodle__AppBaseUrl: ${PUBLIC_SCHEME}://${APP_DOMAIN}
       Download__ArtifactStoragePath: /var/lib/leo-classroom/downloads
+      StarterArchive__StoragePath: /var/lib/leo-classroom/starter-archives
     volumes:
       # "Download all submissions" artifacts. Without this they live in the container's writable layer and
       # vanish on every recreate, while the job rows still claim they are ready.
       - backend_downloads:/var/lib/leo-classroom/downloads
+      - backend_starter_archives:/var/lib/leo-classroom/starter-archives
       # Serilog's rolling log files. A bind mount rather than a named volume on purpose: the point is to
       # read them from the host with `tail -f logs/leoclassroom-*.log`, and a rootless named volume puts
       # them behind `podman unshare`. The container runs as root, which rootless podman maps to the
@@ -281,9 +283,11 @@ services:
     # oauth2-proxy has no *-file option for the cookie secret, and a value on the command line would sit in
     # /proc/<pid>/cmdline. Its config file can carry it, so the secret lives in a file of that shape.
     command: ["--config=/run/secrets/oauth2_proxy_config"]
-    secrets:
-      - Keycloak__ForgejoClientSecret
-      - oauth2_proxy_config
+    volumes:
+      # Bind the secret files directly so SELinux can label them for this container; the secrets directory
+      # itself remains owner-only on the host. The Keycloak client secret is shared with Forgejo.
+      - ./secrets/Keycloak__ForgejoClientSecret:/run/secrets/Keycloak__ForgejoClientSecret:ro,z
+      - ./secrets/oauth2_proxy_config:/run/secrets/oauth2_proxy_config:ro,Z
     networks: [leo]
 
   forgejo-db:
@@ -329,6 +333,7 @@ services:
       - backup_offsite_credentials
     volumes:
       - forgejo_data:/forgejo-data:ro
+      - backend_starter_archives:/starter-archives:ro
     networks: [leo]
     depends_on:
       backend-db:
@@ -344,7 +349,7 @@ networks:
     driver: bridge
 
 volumes:
-  # The three volumes holding data that cannot be rebuilt are `external: true`: compose neither creates nor
+  # The volumes holding data that cannot be rebuilt are `external: true`: compose neither creates nor
   # removes them, so `podman compose down -v` - and a mistyped project name - cannot take the databases or
   # the Forgejo repositories with it. Compose refuses to start when one is missing, which is a loud failure
   # instead of a silent empty database. Create them once with `podman volume create` (DEPLOY.md step 3b).
@@ -365,6 +370,9 @@ volumes:
   backend_db_data:
     external: true
     name: ${VOLUME_PREFIX:-leoclassrooms}_backend_db_data
+  backend_starter_archives:
+    external: true
+    name: ${VOLUME_PREFIX:-leoclassrooms}_backend_starter_archives
   # Empty while this deployment is on plain HTTP, but it holds the ACME account key and issued certificates
   # the moment it has a hostname, and Let's Encrypt rate-limits re-issuance. External now, so that switching
   # PUBLIC_SCHEME later is a one-line change and not a thing to remember.

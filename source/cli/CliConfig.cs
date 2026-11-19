@@ -11,7 +11,7 @@ public sealed class CliConfig
     public required string ClientId { get; init; }
 
     // The backend API version this binary is built against (pinned; verified on startup).
-    public const string ExpectedApiVersion = "1";
+    public const string ExpectedApiVersion = "2";
 
     public const string SchoolTimeZone = "Europe/Vienna";
 
