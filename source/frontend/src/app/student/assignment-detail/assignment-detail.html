@@ -17,7 +17,29 @@
     <app-deadline-timeline [deadline]="due" [kind]="deadlineKind()" />
   }
 
+  @if (hasStarterArchive()) {
+    <section class="starter-download" aria-label="Starter archive">
+      <div>
+        <h2>Starter archive</h2>
+        <p>Download the ZIP archive your teacher provided for this assignment.</p>
+      </div>
+      <button type="button" mat-flat-button color="primary" [disabled]="working()"
+              (click)="handleStarterArchiveDownload()">
+        <mat-icon aria-hidden="true">download</mat-icon>
+        {{ working() ? 'Preparing…' : 'Download ZIP' }}
+      </button>
+      @if (archiveDownloadFailed()) {
+        <p class="next__error" role="alert">The starter archive could not be downloaded.</p>
+      }
+    </section>
+  }
+
   @switch (step()) {
+    @case ('archive') {
+      <section class="next">
+        <p class="next__label">Assignment accepted. Download the starter archive to get started.</p>
+      </section>
+    }
     @case ('accept') {
       <section class="next">
         <div class="next__row">
@@ -34,7 +56,9 @@
           }
         </div>
         @if (failed()) {
-          <p class="next__error" role="alert">Couldn't create your repository. Try again.</p>
+          <p class="next__error" role="alert">
+            {{ downloadOnly() ? 'Could not accept this assignment. Try again.' : 'Could not create your repository. Try again.' }}
+          </p>
         }
       </section>
     }

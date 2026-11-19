@@ -13,7 +13,7 @@ import { DeadlineTimeline } from '../../shared/deadline-timeline/deadline-timeli
 import { MarkdownView } from '../../shared/markdown-view/markdown-view';
 
 /** What the student has to do next; only one of them is ever on screen. */
-type Step = 'accept' | 'clone' | 'push' | 'feedback';
+type Step = 'archive' | 'accept' | 'clone' | 'push' | 'feedback';
 
 /**
  * The student's page for one assignment. It answers a single question — what do I do next — and
@@ -35,6 +35,7 @@ export class StudentAssignmentDetail implements OnInit {
   protected readonly loading: WritableSignal<boolean> = signal(true);
   protected readonly working: WritableSignal<boolean> = signal(false);
   protected readonly failed: WritableSignal<boolean> = signal(false);
+  protected readonly archiveDownloadFailed: WritableSignal<boolean> = signal(false);
   protected readonly info: WritableSignal<AssignmentInfo | null> = signal(null);
   protected readonly submission: WritableSignal<Submission | null> = signal(null);
   protected readonly courseTitle: WritableSignal<string> = signal('');
@@ -50,6 +51,8 @@ export class StudentAssignmentDetail implements OnInit {
   protected readonly deadline = computed(() => this.info()?.deadline ?? null);
   protected readonly deadlineKind = computed(() => this.info()?.deadlineKind ?? DeadlineKind.None);
   protected readonly accepted = computed(() => this.info()?.accepted === true);
+  protected readonly hasStarterArchive = computed(() => this.info()?.hasStarterArchive === true);
+  protected readonly downloadOnly = computed(() => this.info()?.downloadOnly === true);
 
   /** A hard deadline that has passed closes the repository: nothing can be pushed any more. */
   protected readonly locked = computed(() => {
@@ -63,6 +66,9 @@ export class StudentAssignmentDetail implements OnInit {
   protected readonly hasPushed = computed(() => this.lastPushAt() !== null);
 
   protected readonly step = computed<Step>(() => {
+    if (this.downloadOnly()) {
+      return this.accepted() ? 'archive' : 'accept';
+    }
     const submission = this.submission();
     if (!this.accepted() || submission === null) {
       return 'accept';
@@ -138,6 +144,18 @@ export class StudentAssignmentDetail implements OnInit {
     this.submission.set(result);
     this.info.update(current => (current === null ? current : { ...current, accepted: true }));
     this.instructionsOpen.set(false);
+  }
+
+  protected async handleStarterArchiveDownload(): Promise<void> {
+    this.working.set(true);
+    this.archiveDownloadFailed.set(false);
+    const result = await this.service.downloadStarterArchive(Number(this.id()));
+    this.working.set(false);
+
+    if (result !== 'ok') {
+      this.archiveDownloadFailed.set(true);
+      this.snackbar.show('Could not download the starter archive');
+    }
   }
 
   protected openRepository(): void {

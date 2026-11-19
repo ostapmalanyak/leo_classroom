@@ -133,7 +133,7 @@ export class StudentDashboard implements OnInit {
 
     this.all.update(assignments => assignments.map(assignment =>
       assignment.id === id
-        ? { ...assignment, accepted: true, status: assignment.status ?? SubmissionStatus.Provisioning }
+        ? { ...assignment, accepted: true, status: result.status ?? SubmissionStatus.Provisioning }
         : assignment));
     this.snackbar.show('Assignment accepted');
   }

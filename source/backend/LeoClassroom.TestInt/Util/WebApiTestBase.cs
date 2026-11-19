@@ -18,6 +18,7 @@ public abstract class WebApiTestBase(WebApiTestFixture webApiFixture) : IClassFi
 
     protected HttpClient ApiClient => webApiFixture.Client;
     protected IClock TestClock => webApiFixture.Clock;
+    protected string StarterArchiveStoragePath => webApiFixture.StarterArchiveStoragePath;
     protected static string WebhookSecret => WebAppFactory.WebhookSecret;
     protected CancellationToken TestCancellationToken => TestContext.Current.CancellationToken;
 

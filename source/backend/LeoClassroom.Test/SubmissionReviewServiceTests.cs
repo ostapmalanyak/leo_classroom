@@ -290,4 +290,19 @@ public sealed class SubmissionReviewServiceTests
 
         result.ShouldBe<Forbidden>();
     }
+
+    [Fact]
+    public async Task DownloadOnlyAcceptance_DoesNotRequestRepositoryReviewOrAnalytics()
+    {
+        Acceptance acceptance = Setup();
+        acceptance.Status = SubmissionStatus.DownloadOnly;
+
+        var feedback = await _sut.OpenFeedbackPrAsync(AcceptanceId);
+        var analytics = await _sut.GetAnalyticsAsync(AcceptanceId);
+
+        feedback.ShouldBe<NotFound>();
+        analytics.ShouldBe<NotFound>();
+        await _forgejo.DidNotReceive().GetRepoAsync(Arg.Any<string>(), Arg.Any<string>());
+        await _forgejo.DidNotReceive().GetAllCommitsAsync(Arg.Any<string>(), Arg.Any<string>());
+    }
 }

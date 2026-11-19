@@ -20,6 +20,7 @@ public interface IStudentAssignmentService
 {
     public ValueTask<StudentAssignmentList> ListAsync();
     public ValueTask<OneOf<StudentAssignmentView, NotFound, Forbidden>> GetForStudentAsync(long id);
+    public ValueTask<OneOf<StarterArchiveDownload, NotFound, Forbidden>> GetStarterArchiveAsync(long id);
     public ValueTask<OneOf<Success<Acceptance>, NotFound, Forbidden, AlreadyExists>> AcceptAsync(long assignmentId);
     public ValueTask<OneOf<AcceptanceRetry, NotFound>> RetryAsync(long assignmentId);
     public ValueTask<OneOf<Success, NotFound>> ConfirmFeedbackReadAsync(long assignmentId);
@@ -28,6 +29,7 @@ public interface IStudentAssignmentService
 internal sealed class StudentAssignmentService(
     IUnitOfWork uow,
     ICurrentUser currentUser,
+    IStarterArchiveStorage starterArchives,
     IClock clock,
     ILogger<StudentAssignmentService> logger) : IStudentAssignmentService
 {
@@ -71,6 +73,34 @@ internal sealed class StudentAssignmentService(
         return new StudentAssignmentView(assignment, acceptance);
     }
 
+    public async ValueTask<OneOf<StarterArchiveDownload, NotFound, Forbidden>> GetStarterArchiveAsync(long id)
+    {
+        long? studentId = await uow.UserRepository.GetIdByStudentIdAsync(currentUser.StudentId);
+        if (studentId is null)
+        {
+            return new NotFound();
+        }
+
+        Assignment? assignment = await uow.AssignmentRepository.GetByIdAsync(id);
+        if (assignment is null || !assignment.IsVisibleAt(clock.GetCurrentInstant()))
+        {
+            return new NotFound();
+        }
+        if (assignment.StarterSourceKind != StarterSourceKind.Archive)
+        {
+            return new NotFound();
+        }
+        if (!await uow.AssignmentRepository.IsStudentAssignedAsync(id, studentId.Value, clock.GetCurrentInstant()))
+        {
+            return new Forbidden();
+        }
+
+        StarterArchiveDownload? archive =
+            starterArchives.Find(assignment.ArchivePath, $"{assignment.Slug}-starter.zip");
+
+        return archive is null ? new NotFound() : archive;
+    }
+
     public async ValueTask<OneOf<Success<Acceptance>, NotFound, Forbidden, AlreadyExists>> AcceptAsync(long assignmentId)
     {
         long? studentId = await uow.UserRepository.GetIdByStudentIdAsync(currentUser.StudentId);
@@ -91,6 +121,27 @@ internal sealed class StudentAssignmentService(
         if (await uow.AcceptanceRepository.ExistsAsync(assignmentId, studentId.Value))
         {
             return new AlreadyExists();
+        }
+
+        if (assignment.StarterSourceKind == StarterSourceKind.Archive
+            && assignment.StarterTemplateRepoUrl is null)
+        {
+            var archiveAcceptance = new Acceptance
+            {
+                AssignmentId = assignmentId,
+                StudentId = studentId.Value,
+                RepoOwner = string.Empty,
+                RepoName = string.Empty,
+                AcceptedAt = clock.GetCurrentInstant(),
+                Status = SubmissionStatus.DownloadOnly,
+                FeedbackState = FeedbackState.None
+            };
+            uow.AcceptanceRepository.Add(archiveAcceptance);
+            await uow.SaveChangesAsync();
+            logger.LogInformation("Student {StudentId} accepted download-only assignment {AssignmentId}; acceptance {AcceptanceId} created",
+                                  currentUser.StudentId, assignmentId, archiveAcceptance.Id);
+
+            return new Success<Acceptance>(archiveAcceptance);
         }
 
         string org = assignment.Course.ForgejoOrg ?? ForgejoNaming.OrgName(assignment.Course.Title, assignment.Course.Id);

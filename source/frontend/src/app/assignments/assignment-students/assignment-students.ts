@@ -248,12 +248,16 @@ export class AssignmentStudents implements OnInit {
     if (submission.status === SubmissionStatus.Provisioning) {
       return { label: 'Setting up', tone: 'neutral', icon: null };
     }
+    if (submission.status === SubmissionStatus.DownloadOnly) {
+      return { label: 'Accepted', tone: 'neutral', icon: null };
+    }
 
     return null;
   }
 
   private actionOf(submission: StudentSubmission): { label: string; kind: 'feedback' | 'repository' } | null {
-    if (submission.feedbackState !== FeedbackState.None) {
+    if (submission.status === SubmissionStatus.DownloadOnly
+        || submission.feedbackState !== FeedbackState.None) {
       return null;
     }
     if (submission.lastPushAt === null) {

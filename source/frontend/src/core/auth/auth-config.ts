@@ -38,7 +38,7 @@ const developmentDefaults: RuntimeConfig = {
     realm: 'leo',
     clientId: 'leo-classroom-frontend',
     flow: 'implicit',
-    sessionTimeoutMinutes: 360
+    sessionTimeoutMinutes: 180
   }
 };
 

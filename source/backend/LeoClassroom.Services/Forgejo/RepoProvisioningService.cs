@@ -15,6 +15,9 @@ public interface IRepoProvisioningService
 {
     public ValueTask<OneOf<Success<string>, NotFound, ForgejoError>> ProvisionCourseOrgAsync(long courseId);
 
+    public ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>> CreateArchiveStarterAsync(
+        long courseId, string title, string archivePath);
+
     public ValueTask<OneOf<Success, NotFound, ProvisioningError>> ProvisionAcceptanceAsync(long acceptanceId);
 
     public ValueTask<OneOf<Success, NotFound, ForgejoError>> DeleteAcceptanceAsync(long acceptanceId);
@@ -52,6 +55,83 @@ internal sealed class RepoProvisioningService(
         return await team.Match<ValueTask<OneOf<Success<string>, NotFound, ForgejoError>>>(
             teamId => CompleteCourseOrgAsync(course, org, teamId.Value, existed),
             error => ValueTask.FromResult<OneOf<Success<string>, NotFound, ForgejoError>>(error));
+    }
+
+    public async ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>> CreateArchiveStarterAsync(
+        long courseId, string title, string archivePath)
+    {
+        OneOf<Success<string>, NotFound, ForgejoError> orgResult = await ProvisionCourseOrgAsync(courseId);
+
+        return await orgResult.Match<ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>>>(
+            org => CreateArchiveStarterInOrgAsync(courseId, org.Value, title, archivePath),
+            notFound => ValueTask.FromResult<OneOf<ForgejoRepo, NotFound, ForgejoError>>(notFound),
+            error => ValueTask.FromResult<OneOf<ForgejoRepo, NotFound, ForgejoError>>(error));
+    }
+
+    private async ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>> CreateArchiveStarterInOrgAsync(
+        long courseId, string org, string title, string archivePath)
+    {
+        string repoName = ForgejoNaming.StarterTemplateRepoName(title, courseId, Guid.NewGuid());
+        OneOf<Success<ForgejoRepo>, AlreadyExists, ForgejoError> created =
+            await forgejo.CreateOrgRepoAsync(org, repoName, autoInit: false, isPrivate: true);
+
+        return await created.Match<ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>>>(
+            repo => SeedArchiveStarterTemplateAsync(repo.Value, archivePath),
+            alreadyExists => ValueTask.FromResult<OneOf<ForgejoRepo, NotFound, ForgejoError>>(
+                new ForgejoError((int) HttpStatusCode.Conflict,
+                                $"starter repository {org}/{repoName} already exists")),
+            error => ValueTask.FromResult<OneOf<ForgejoRepo, NotFound, ForgejoError>>(error));
+    }
+
+    private async ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>> SeedArchiveStarterTemplateAsync(
+        ForgejoRepo repo, string archivePath)
+    {
+        string extractDir = Path.Combine(Path.GetTempPath(), $"leo-starter-template-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(extractDir);
+        try
+        {
+            await using FileStream archive = File.OpenRead(archivePath);
+            OneOf<Success, ExtractionError> extracted = archiveExtractor.ExtractToDirectory(archive, extractDir);
+            if (extracted.Failure is { } extractionError)
+            {
+                await DeleteFailedStarterTemplateAsync(repo);
+
+                return new ForgejoError((int) HttpStatusCode.BadRequest, extractionError.Reason);
+            }
+
+            OneOf<Success, GitError> seeded =
+                await git.SeedRepositoryFromDirectoryAsync(repo.CloneUrl, extractDir);
+            if (seeded.Failure is { } gitError)
+            {
+                await DeleteFailedStarterTemplateAsync(repo);
+
+                return new ForgejoError((int) HttpStatusCode.BadGateway, gitError.Reason);
+            }
+
+            return repo;
+        }
+        finally
+        {
+            TryDelete(extractDir);
+        }
+    }
+
+    private async ValueTask DeleteFailedStarterTemplateAsync(ForgejoRepo repo)
+    {
+        string[] ownerAndName = repo.FullName.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (ownerAndName.Length != 2)
+        {
+            logger.LogError("Could not remove failed starter repository with unexpected name {Repo}", repo.FullName);
+
+            return;
+        }
+
+        OneOf<Success, ForgejoError> deleted =
+            await forgejo.DeleteRepoAsync(ownerAndName[0], ownerAndName[1]);
+        deleted.Switch(
+            success => { },
+            error => logger.LogWarning("Could not remove failed starter repository {Repo}: {Reason}",
+                                       repo.FullName, error.Reason));
     }
 
     /// <summary>
@@ -252,6 +332,12 @@ internal sealed class RepoProvisioningService(
     private async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> SeedFromArchiveAsync(
         Assignment assignment, string repoOwner, string repoName)
     {
+        if (!string.IsNullOrWhiteSpace(assignment.StarterTemplateRepoUrl))
+        {
+            return await SeedByMigrateAsync(assignment, repoOwner, repoName,
+                                            assignment.StarterTemplateRepoUrl);
+        }
+
         if (string.IsNullOrEmpty(assignment.ArchivePath) || !File.Exists(assignment.ArchivePath))
         {
             return new ProvisioningError("starter archive is missing");
@@ -368,14 +454,15 @@ internal sealed class RepoProvisioningService(
     }
 
     internal async ValueTask<OneOf<ForgejoRepo, ProvisioningError>> SeedByMigrateAsync(
-        Assignment assignment, string org, string repoName)
+        Assignment assignment, string org, string repoName, string? sourceUrlOverride = null)
     {
-        if (string.IsNullOrWhiteSpace(assignment.StarterRepoUrl))
+        string? starterRepoUrl = sourceUrlOverride ?? assignment.StarterRepoUrl;
+        if (string.IsNullOrWhiteSpace(starterRepoUrl))
         {
             return new ProvisioningError("missing copy source repository URL");
         }
 
-        string sourceUrl = assignment.StarterRepoUrl;
+        string sourceUrl = starterRepoUrl;
         string? authUsername = null;
         string? authPassword = null;
         if (TryParseOwnerRepo(sourceUrl, out string sourceOwner, out string sourceRepo)

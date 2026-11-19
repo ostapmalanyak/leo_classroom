@@ -9,7 +9,7 @@ set -eu
 : "${KEYCLOAK_FRONTEND_CLIENT_ID:?KEYCLOAK_FRONTEND_CLIENT_ID is required}"
 : "${FORGEJO_URL:?FORGEJO_URL is required}"
 KEYCLOAK_FLOW="${KEYCLOAK_FLOW:-implicit}"
-SESSION_TIMEOUT_MINUTES="${SESSION_TIMEOUT_MINUTES:-360}"
+SESSION_TIMEOUT_MINUTES="${SESSION_TIMEOUT_MINUTES:-180}"
 # backendOrigin stays empty: Caddy serves the SPA and proxies /api on the same origin, so the browser talks
 # to its own origin and no CORS preflight is involved.
 cat > /srv/config.json <<JSON

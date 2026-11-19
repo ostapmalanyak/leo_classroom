@@ -6,10 +6,11 @@ the Forgejo data from the restic offsite repository produced by the `backup` con
 
 ## What compose can and cannot destroy
 
-`forgejo_data`, `forgejo_db_data`, `backend_db_data` and `caddy_data` are declared `external: true` in
-`compose.yaml`. Compose neither creates nor removes them, so `podman compose down -v` leaves them intact and
-only the regenerable volumes (`caddy_config`, `backend_downloads`) go. Destroying data now takes an
-explicit `podman volume rm`, which is the only place in these runbooks that names one.
+`forgejo_data`, `forgejo_db_data`, `backend_db_data`, `backend_starter_archives` and `caddy_data` are
+declared `external: true` in `compose.yaml`. Compose neither creates nor removes them, so
+`podman compose down -v` leaves them intact and only the regenerable volumes (`caddy_config`,
+`backend_downloads`) go. Destroying data now takes an explicit `podman volume rm`, which is the only
+place in these runbooks that names one.
 
 ## Inputs
 
@@ -43,7 +44,17 @@ explicit `podman volume rm`, which is the only place in these runbooks that name
    `forgejo_data` volume. It is `external: true`, so it survives every compose command - restoring into it
    means overwriting its contents, not recreating it. (If the snapshot was produced by `forgejo dump`
    instead, follow Forgejo's restore-from-dump steps: unzip and place `repos/`, `data/`, and `app.ini`.)
-6. **Start services:** `podman compose up -d` (the `migrator` runs first; the backend's schema guard then
+6. **Restore starter archives:** extract `starter-archives-<stamp>.tar.gz` from the same restic snapshot as the
+   backend database, because assignment rows refer to these files by path:
+   ```sh
+   podman run --rm \
+     -v "${VOLUME_PREFIX:-leoclassrooms}_backend_starter_archives:/target" \
+     -v "$PWD/restore:/restore:ro" \
+     alpine:3.23 tar -xzf "/restore/<restic-path>/starter-archives-<stamp>.tar.gz" -C /target
+   ```
+   Replace the placeholder directory with the path beneath `./restore` shown by
+   `find ./restore -name 'starter-archives-*.tar.gz'` (omit the leading `./restore/` and the file name).
+7. **Start services:** `podman compose up -d` (the `migrator` runs first; the backend's schema guard then
    verifies the live schema matches the build).
 
 ## Verification checklist (sign-off)

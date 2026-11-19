@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using LeoClassroom.Endpoints;
 using LeoClassroom.Services;
 using LeoClassroom.Persistence.Model;
 using LeoClassroom.Persistence.Util;
@@ -105,6 +106,62 @@ public sealed class StudentAssignmentEndpointTests(WebApiTestFixture fixture) : 
         var response = await ApiClient.GetAsync($"api/assignments/{_assignmentId}/info", TestCancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task StarterArchive_IsAvailableToMemberAndForbiddenToOutsider()
+    {
+        string archiveDirectory = Path.Combine(StarterArchiveStoragePath, "assignments");
+        Directory.CreateDirectory(archiveDirectory);
+        string archivePath = Path.Combine(archiveDirectory, "starter.zip");
+        byte[] archive = [0x50, 0x4b, 0x03, 0x04, 0x01];
+        await File.WriteAllBytesAsync(archivePath, archive, TestCancellationToken);
+        await ModifyDatabaseContentAsync(async context =>
+        {
+            Assignment assignment = await context.Assignments.SingleAsync(
+                row => row.Id == _assignmentId, TestCancellationToken);
+            assignment.StarterSourceKind = StarterSourceKind.Archive;
+            assignment.ArchivePath = archivePath;
+            await context.SaveChangesAsync(TestCancellationToken);
+        });
+
+        AuthenticateAsStudent(MemberIf);
+        var download = await ApiClient.GetAsync(
+            $"api/assignments/{_assignmentId}/starter-archive", TestCancellationToken);
+
+        download.StatusCode.Should().Be(HttpStatusCode.OK);
+        download.Content.Headers.ContentType?.MediaType.Should().Be("application/zip");
+        (await download.Content.ReadAsByteArrayAsync(TestCancellationToken)).Should().Equal(archive);
+
+        var info = await ApiClient.GetFromJsonAsync<AssignmentInfoDto>(
+            $"api/assignments/{_assignmentId}/info", JsonOptions, TestCancellationToken);
+        info!.DownloadOnly.Should().BeTrue();
+        var accept = await ApiClient.PostAsync(
+            $"api/assignments/{_assignmentId}/accept", null, TestCancellationToken);
+        accept.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        using (JsonDocument body = JsonDocument.Parse(
+                   await accept.Content.ReadAsStringAsync(TestCancellationToken)))
+        {
+            body.RootElement.GetProperty("status").GetString().Should().Be(nameof(SubmissionStatus.DownloadOnly));
+            body.RootElement.GetProperty("repoUrl").ValueKind.Should().Be(JsonValueKind.Null);
+        }
+
+        var duplicateAccept = await ApiClient.PostAsync(
+            $"api/assignments/{_assignmentId}/accept", null, TestCancellationToken);
+        duplicateAccept.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        await ModifyDatabaseContentAsync(async context =>
+        {
+            Acceptance acceptance = await context.Acceptances.SingleAsync(
+                row => row.AssignmentId == _assignmentId, TestCancellationToken);
+            acceptance.Status.Should().Be(SubmissionStatus.DownloadOnly);
+            acceptance.RepoUrl.Should().BeNull();
+        });
+
+        AuthenticateAsStudent(OutsiderIf);
+        var forbidden = await ApiClient.GetAsync(
+            $"api/assignments/{_assignmentId}/starter-archive", TestCancellationToken);
+        forbidden.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

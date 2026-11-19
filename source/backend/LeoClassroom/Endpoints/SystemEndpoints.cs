@@ -10,7 +10,7 @@ public static class SystemEndpoints
     /// <summary>
     ///     The API version the teacher CLI pins against; bump on a breaking contract change
     /// </summary>
-    public const string ApiVersion = "1";
+    public const string ApiVersion = "2";
 
     extension(IEndpointRouteBuilder app)
     {

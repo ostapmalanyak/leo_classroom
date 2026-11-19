@@ -3,9 +3,12 @@ using LeoClassroom.Services.Forgejo;
 using LeoClassroom.Persistence.Repositories;
 using LeoClassroom.Persistence.Util;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using OneOf;
 using OneOf.Types;
+using LeoClassroom.Services.Util;
+using LeoClassroom.Shared;
 
 namespace LeoClassroom.Test;
 
@@ -20,6 +23,7 @@ public sealed class DeletionCascadeTests
     private readonly IAcceptanceRepository _acceptances = Substitute.For<IAcceptanceRepository>();
     private readonly ICourseRepository _courses = Substitute.For<ICourseRepository>();
     private readonly IForgejoClient _forgejo = Substitute.For<IForgejoClient>();
+    private readonly IStarterArchiveStorage _starterArchives = Substitute.For<IStarterArchiveStorage>();
     private readonly DeletionCascade _sut;
 
     public DeletionCascadeTests()
@@ -35,6 +39,8 @@ public sealed class DeletionCascadeTests
 
         _assignments.GetIdsByCoursesAsync(Arg.Any<IReadOnlyCollection<long>>())
                     .Returns(new ValueTask<IReadOnlyCollection<long>>([]));
+        _assignments.GetExternalResourcesByIdsAsync(Arg.Any<IReadOnlyCollection<long>>())
+                    .Returns(new ValueTask<IReadOnlyCollection<AssignmentExternalResources>>([]));
         _acceptances.GetByAssignmentsAsync(Arg.Any<IReadOnlyCollection<long>>())
                     .Returns(new ValueTask<IReadOnlyCollection<AcceptanceRepoRef>>([]));
         _courses.GetForgejoOrgsAsync(Arg.Any<IReadOnlyCollection<long>>())
@@ -43,11 +49,34 @@ public sealed class DeletionCascadeTests
         _assignments.DeleteByIdsAsync(Arg.Any<IReadOnlyCollection<long>>()).Returns(new ValueTask<int>(0));
         _courses.DeleteByIdsAsync(Arg.Any<IReadOnlyCollection<long>>()).Returns(new ValueTask<int>(0));
 
-        _sut = new DeletionCascade(_uow, _forgejo, Substitute.For<ILogger<DeletionCascade>>());
+        var forgejoSettings = Options.Create(new ForgejoSettings
+        {
+            BaseUrl = "http://forgejo.test",
+            AdminToken = "token",
+            WebhookSecret = "secret",
+            WebhookTargetUrl = "http://api.test"
+        });
+        _sut = new DeletionCascade(_uow, _forgejo, _starterArchives, forgejoSettings,
+                                  Substitute.For<ILogger<DeletionCascade>>());
     }
 
     private static AcceptanceRepoRef Acceptance(long id, long assignmentId = 1) =>
         new(id, 99, assignmentId, "org", $"repo-{id}");
+
+    [Fact]
+    public async Task DeleteAcceptancesAsync_DownloadOnlyAcceptanceDoesNotDeleteARepository()
+    {
+        _acceptances.DeleteByIdsAsync(Arg.Any<IReadOnlyCollection<long>>()).Returns(new ValueTask<int>(1));
+
+        CascadeResult result = await _sut.DeleteAcceptancesAsync([
+            Acceptance(1) with { Status = SubmissionStatus.DownloadOnly }
+        ]);
+
+        await _forgejo.DidNotReceive().DeleteRepoAsync(Arg.Any<string>(), Arg.Any<string>());
+        result.Repositories.Should().Be(0);
+        result.Acceptances.Should().Be(1);
+        result.ForgejoFailures.Should().Be(0);
+    }
 
     [Fact]
     public async Task DeleteAcceptancesAsync_RemovesTheRepositoryBeforeTheRowThatNamesIt()

@@ -7,12 +7,15 @@ import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { MatInput } from '@angular/material/input';
+import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
+import { firstValueFrom } from 'rxjs';
 import { Instant } from '@js-joda/core';
 import { CourseDetail } from '../../course-detail/course-detail';
 import { CourseIcon } from '../../shared/course-icon/course-icon';
+import { DeleteAssignmentDialog } from '../../assignments/delete-assignment-dialog/delete-assignment-dialog';
 import { AssignmentService, DeadlineKind, SubmissionStatus } from '../../../core/services/assignment-service';
 import {
   CourseParticipant, CourseService, CourseTeacherParticipant
@@ -113,6 +116,7 @@ export class CourseAssignments implements OnInit {
   private readonly me = inject(MeService);
   protected readonly session = inject(SessionService);
   private readonly snackbar = inject(SnackbarService);
+  private readonly dialog = inject(MatDialog);
 
   /** Bound from the route parameter (withComponentInputBinding). */
   public readonly courseId = input.required<string>();
@@ -338,7 +342,7 @@ export class CourseAssignments implements OnInit {
 
     this.assignments.update(assignments => assignments.map(assignment =>
       assignment.id === row.id
-        ? { ...assignment, accepted: true, status: assignment.status ?? SubmissionStatus.Provisioning }
+        ? { ...assignment, accepted: true, status: result.status ?? SubmissionStatus.Provisioning }
         : assignment));
     this.snackbar.show('Assignment accepted');
   }
@@ -466,6 +470,32 @@ export class CourseAssignments implements OnInit {
     } catch {
       this.snackbar.show('Could not copy the link');
     }
+  }
+
+  protected async deleteAssignment(assignment: CourseAssignment): Promise<void> {
+    const confirmation = this.dialog.open(DeleteAssignmentDialog, {
+      width: '26rem',
+      maxWidth: '92%',
+      ariaLabelledBy: 'delete-assignment-title',
+      ariaModal: true,
+      data: { title: assignment.title }
+    });
+    const confirmed = await firstValueFrom(confirmation.afterClosed());
+    if (confirmed !== 'delete') {
+      return;
+    }
+
+    const result = await this.assignmentService.remove(assignment.id);
+    if (result !== 'ok') {
+      this.snackbar.show(result === 'forbidden'
+        ? 'You are not allowed to delete this assignment'
+        : 'Could not delete the assignment');
+
+      return;
+    }
+
+    this.assignments.update(assignments => assignments.filter(item => item.id !== assignment.id));
+    this.snackbar.show('Assignment deleted');
   }
 
   protected async publish(assignmentId: number): Promise<void> {

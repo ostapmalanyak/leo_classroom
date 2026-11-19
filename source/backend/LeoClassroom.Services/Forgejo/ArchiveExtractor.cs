@@ -9,9 +9,12 @@ namespace LeoClassroom.Services.Forgejo;
 
 public readonly record struct ExtractionError(string Reason);
 
+public sealed record ArchiveContentPreview(IReadOnlyCollection<string> Entries);
+
 public interface IArchiveExtractor
 {
     public OneOf<Success, ExtractionError> ExtractToDirectory(Stream archive, string destinationRoot);
+    public OneOf<ArchiveContentPreview, ExtractionError> Preview(Stream archive);
 }
 
 internal sealed class ArchiveExtractor(IOptions<ArchiveLimits> limits, ILogger<ArchiveExtractor> logger)
@@ -89,6 +92,40 @@ internal sealed class ArchiveExtractor(IOptions<ArchiveLimits> limits, ILogger<A
         }
 
         return WriteEntries(entries, promotionPrefix, root, caps);
+    }
+
+    public OneOf<ArchiveContentPreview, ExtractionError> Preview(Stream archive)
+    {
+        string previewRoot = Path.Combine(Path.GetTempPath(), $"leo-archive-preview-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(previewRoot);
+
+        try
+        {
+            OneOf<Success, ExtractionError> extracted = ExtractToDirectory(archive, previewRoot);
+            if (extracted.Failure is { } rejected)
+            {
+                return rejected;
+            }
+
+            string[] entries = Directory.EnumerateFileSystemEntries(previewRoot, "*", SearchOption.AllDirectories)
+                .Select(path =>
+                {
+                    string relative = Path.GetRelativePath(previewRoot, path).Replace('\\', '/');
+
+                    return Directory.Exists(path) ? $"{relative}/" : relative;
+                })
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+
+            return new ArchiveContentPreview(entries);
+        }
+        finally
+        {
+            if (Directory.Exists(previewRoot))
+            {
+                Directory.Delete(previewRoot, recursive: true);
+            }
+        }
     }
 
     private OneOf<Success, ExtractionError> WriteEntries(List<IArchiveEntry> entries, string? promotionPrefix,

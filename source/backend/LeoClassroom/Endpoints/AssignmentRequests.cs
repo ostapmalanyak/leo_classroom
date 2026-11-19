@@ -18,7 +18,8 @@ public sealed record AssignmentUpdateRequest(
     Instant? AutoDeleteOn,
     DownloadSnapshotMode DownloadSnapshotMode,
     bool IsPublished = true,
-    Instant? PublishAt = null) : IAssignmentFields
+    Instant? PublishAt = null,
+    string? StarterArchiveUploadId = null) : IAssignmentFields
 {
     public AssignmentSettings ToSettings() => new(
         Title, Description, HintsInstructions, Deadline, DeadlineKind, HardDeadlineRevokesRead,
@@ -45,7 +46,8 @@ public sealed record AssignmentCreateRequest(
     Instant? AutoDeleteOn,
     DownloadSnapshotMode DownloadSnapshotMode,
     bool IsPublished = true,
-    Instant? PublishAt = null) : IAssignmentFields
+    Instant? PublishAt = null,
+    string? StarterArchiveUploadId = null) : IAssignmentFields
 {
     public AssignmentSettings ToSettings() => new(
         Title, Description, HintsInstructions, Deadline, DeadlineKind, HardDeadlineRevokesRead,
@@ -56,7 +58,27 @@ public sealed record AssignmentCreateRequest(
         public Validator(IClock clock)
         {
             RuleFor(r => r.CourseId).GreaterThan(0);
-            AssignmentRules.Apply(this, clock);
+            RuleFor(r => r.StarterArchiveUploadId)
+                .NotEmpty()
+                .When(r => r.StarterSourceKind == StarterSourceKind.Archive)
+                .WithMessage("Upload and confirm a ZIP archive for an archive starter.");
+            RuleFor(r => r.StarterArchiveUploadId)
+                .Must(id => Guid.TryParseExact(id, "N", out _))
+                .When(r => !string.IsNullOrEmpty(r.StarterArchiveUploadId))
+                .WithMessage("The confirmed ZIP upload is invalid. Upload it again.");
+            RuleFor(r => r.StarterArchiveUploadId)
+                .Empty()
+                .When(r => r.StarterSourceKind == StarterSourceKind.DescriptionOnly)
+                .WithMessage("A ZIP upload can only be used with an archive, copy, or fork starter.");
+            RuleFor(r => r.StarterRepoUrl)
+                .Empty()
+                .When(r => r.StarterSourceKind == StarterSourceKind.Archive)
+                .WithMessage("A standalone archive starter does not use a repository URL.");
+            RuleFor(r => r.StarterRepoUrl)
+                .Empty()
+                .When(r => !string.IsNullOrEmpty(r.StarterArchiveUploadId))
+                .WithMessage("Choose either a repository URL or a ZIP upload, not both.");
+            AssignmentRules.Apply(this, clock, r => string.IsNullOrEmpty(r.StarterArchiveUploadId));
         }
     }
 }
@@ -65,7 +87,9 @@ internal static class AssignmentRules
 {
     private const int MaxTitleLength = 200;
 
-    public static void Apply<T>(AbstractValidator<T> validator, IClock clock) where T : IAssignmentFields
+    public static void Apply<T>(AbstractValidator<T> validator, IClock clock,
+                                Func<T, bool>? repositoryUrlRequired = null)
+        where T : IAssignmentFields
     {
         validator.RuleFor(r => r.Title).NotEmpty().MaximumLength(MaxTitleLength);
         validator.RuleFor(r => r.Deadline)
@@ -80,13 +104,14 @@ internal static class AssignmentRules
                  .WithMessage("The deadline has passed. Pick a date in the future.");
         // a hidden assignment may wait for an explicit publish (no date), but a date must still lie ahead
         validator.RuleFor(r => r.PublishAt)
-                 .GreaterThan(SystemClock.Instance.GetCurrentInstant())
+                 .GreaterThan(clock.GetCurrentInstant())
                  .When(r => !r.IsPublished && r.PublishAt != null)
                  .WithMessage("The publish date has passed. Pick a date in the future.");
         validator.RuleFor(r => r.StarterRepoUrl)
                  .NotEmpty()
                  .Must(BeAnAbsoluteHttpUrl)
-                 .When(r => r.StarterSourceKind is StarterSourceKind.ForkOwnRepo or StarterSourceKind.CopyRepo)
+                 .When(r => (r.StarterSourceKind is StarterSourceKind.ForkOwnRepo or StarterSourceKind.CopyRepo)
+                            && (repositoryUrlRequired?.Invoke(r) ?? true))
                  .WithMessage("An absolute http(s) starter repository URL is required for fork/copy starter sources.");
         // a fork is created under the student's own account, so the student owns it and no collaborator change
         // can take their write access away - a hard deadline would be silently unenforceable
