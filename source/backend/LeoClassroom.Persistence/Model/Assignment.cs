@@ -17,6 +17,7 @@ public class Assignment
     public StarterSourceKind StarterSourceKind { get; set; }
     public string? StarterRepoUrl { get; set; }
     public string? ArchivePath { get; set; }
+    public string? StarterTemplateRepoUrl { get; set; }
     public string? ReadmeMarkdown { get; set; }
     public bool AutoDeleteEnabled { get; set; }
     public Instant? AutoDeleteOn { get; set; }

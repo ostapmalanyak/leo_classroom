@@ -28,7 +28,9 @@ public interface IAcceptanceRepository
 ///     The identity of an acceptance and of the Forgejo repository behind it, which has to be read before the row
 ///     is deleted because the repository lives outside the database
 /// </summary>
-public sealed record AcceptanceRepoRef(long Id, long StudentId, long AssignmentId, string RepoOwner, string RepoName);
+public sealed record AcceptanceRepoRef(
+    long Id, long StudentId, long AssignmentId, string RepoOwner, string RepoName,
+    SubmissionStatus Status = SubmissionStatus.Ready);
 
 internal sealed class AcceptanceRepository(DbSet<Acceptance> acceptances) : IAcceptanceRepository
 {
@@ -89,7 +91,7 @@ internal sealed class AcceptanceRepository(DbSet<Acceptance> acceptances) : IAcc
             await acceptances.AsNoTracking()
                              .Where(a => a.StudentId == studentId || assignmentIds.Contains(a.AssignmentId))
                              .Select(a => new AcceptanceRepoRef(a.Id, a.StudentId, a.AssignmentId, a.RepoOwner,
-                                                                a.RepoName))
+                                                                a.RepoName, a.Status))
                              .ToListAsync();
 
         return refs.AsReadOnly();
@@ -102,7 +104,7 @@ internal sealed class AcceptanceRepository(DbSet<Acceptance> acceptances) : IAcc
             await acceptances.AsNoTracking()
                              .Where(a => assignmentIds.Contains(a.AssignmentId))
                              .Select(a => new AcceptanceRepoRef(a.Id, a.StudentId, a.AssignmentId, a.RepoOwner,
-                                                                a.RepoName))
+                                                                a.RepoName, a.Status))
                              .ToListAsync();
 
         return refs.AsReadOnly();

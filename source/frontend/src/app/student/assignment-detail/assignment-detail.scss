@@ -33,6 +33,29 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.starter-download {
+  align-items: center;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-card);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-3);
+
+  h2 {
+    color: var(--color-text-strong);
+    font-size: var(--font-size-sm);
+    margin: 0;
+  }
+
+  p {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    margin: var(--space-1) 0 0;
+  }
+}
+
 /* the one next step */
 .next {
   display: flex;
