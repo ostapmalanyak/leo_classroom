@@ -94,13 +94,15 @@ public static class ServicesSetup
 
     private static void ConfigureForgejo(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<StarterArchiveSettings>(configuration.GetSection(StarterArchiveSettings.SectionKey));
+        services.AddTransient<ForgejoTransportHandler>();
         services.AddTransient<ForgejoAuthHandler>();
         services.AddHttpClient<IForgejoClient, ForgejoClient>((sp, client) =>
                 {
                     ForgejoSettings settings = sp.GetRequiredService<IOptions<ForgejoSettings>>().Value;
                     client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
                 })
+                // outermost, so a transport failure anywhere below it becomes a ForgejoError, not a 500
+                .AddHttpMessageHandler<ForgejoTransportHandler>()
                 .AddHttpMessageHandler<ForgejoAuthHandler>();
 
         services.AddSingleton<IArchiveExtractor, ArchiveExtractor>();

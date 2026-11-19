@@ -5,6 +5,7 @@ using LeoClassroom.Persistence.Model;
 using LeoClassroom.Persistence.Util;
 using LeoClassroom.Shared;
 using OneOf;
+using Microsoft.Extensions.Options;
 using OneOf.Types;
 using System.Globalization;
 
@@ -17,12 +18,19 @@ public interface ISubmissionReviewService
     public ValueTask<OneOf<Success<FeedbackPr>, NotFound, Forbidden, ForgejoError>> OpenFeedbackPrAsync(long acceptanceId);
     public ValueTask<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>> GetAnalyticsAsync(
         long acceptanceId);
+
+    /// <summary>
+    ///     Counts every submission's own commits, for the overview of a whole assignment
+    /// </summary>
+    public ValueTask<OneOf<IReadOnlyCollection<CommitSummaryView>, NotFound, Forbidden>> GetCommitSummaryAsync(
+        long assignmentId);
 }
 
 internal sealed class SubmissionReviewService(
     IUnitOfWork uow,
     ICurrentUser currentUser,
     IForgejoClient forgejo,
+    IOptions<ForgejoSettings> forgejoSettings,
     ILogger<SubmissionReviewService> logger) : ISubmissionReviewService
 {
     public async ValueTask<OneOf<Success<FeedbackPr>, NotFound, Forbidden, ForgejoError>> OpenFeedbackPrAsync(
@@ -129,45 +137,143 @@ internal sealed class SubmissionReviewService(
             return new NotFound();
         }
 
+        OneOf<IReadOnlyList<CommitAnalyticsEntry>, NotFound, ForgejoError> commits =
+            await GetStudentCommitsAsync(acceptance, acceptance.Assignment);
+
+        return commits.Match<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>>(
+            entries => ToAnalyticsView(acceptance.Analytics, entries),
+            notFound => notFound,
+            error => error);
+    }
+
+    public async ValueTask<OneOf<IReadOnlyCollection<CommitSummaryView>, NotFound, Forbidden>> GetCommitSummaryAsync(
+        long assignmentId)
+    {
+        Assignment? assignment = await uow.AssignmentRepository.GetWithTeachersAsync(assignmentId);
+        if (assignment is null)
+        {
+            return new NotFound();
+        }
+        if (!IsTeacherOf(assignment))
+        {
+            return new Forbidden();
+        }
+
+        IReadOnlyCollection<Acceptance> acceptances =
+            await uow.AcceptanceRepository.GetByAssignmentWithStudentAsync(assignmentId);
+
+        // one listing per repository; a few at a time, so a whole class neither runs serially nor floods Forgejo
+        using var gate = new SemaphoreSlim(SummaryConcurrency);
+        CommitSummaryView[] summaries = await Task.WhenAll(acceptances.Select(async acceptance =>
+        {
+            await gate.WaitAsync();
+            try
+            {
+                return await SummarizeAsync(acceptance, assignment);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }));
+
+        return summaries;
+    }
+
+    private const int SummaryConcurrency = 4;
+
+    private async Task<CommitSummaryView> SummarizeAsync(Acceptance acceptance, Assignment assignment)
+    {
+        if (acceptance.Status != SubmissionStatus.Ready)
+        {
+            return new CommitSummaryView(acceptance.Id, null, null);
+        }
+
+        OneOf<IReadOnlyList<CommitAnalyticsEntry>, NotFound, ForgejoError> commits =
+            await GetStudentCommitsAsync(acceptance, assignment);
+
+        // one repository Forgejo cannot answer for leaves its row without counts instead of failing the class
+        return commits.Match(
+            entries => new CommitSummaryView(acceptance.Id, entries.Count, entries.Count(entry => entry.Late)),
+            notFound => new CommitSummaryView(acceptance.Id, null, null),
+            error => new CommitSummaryView(acceptance.Id, null, null));
+    }
+
+    private static CommitAnalyticsView ToAnalyticsView(CommitAnalytics rollup,
+                                                       IReadOnlyList<CommitAnalyticsEntry> entries)
+    {
+        // pushes only exist as webhook events, so the ratio uses the commits those same pushes carried
+        double commitsPerPush = rollup.PushCount > 0
+            ? (double) rollup.CommitCount / rollup.PushCount
+            : 0;
+        // derived from the commits rather than the push rollup, so days worked before pushes were tracked count too
+        int activeDays = entries.Select(entry => entry.At.InZone(Const.TimeZone).Date).Distinct().Count();
+
+        return new CommitAnalyticsView(rollup.PushCount, entries.Count, commitsPerPush, rollup.FirstPushAt,
+                                       rollup.LastPushAt, activeDays, entries);
+    }
+
+    /// <summary>
+    ///     Lists the commits that are the student's own work
+    /// </summary>
+    /// <remarks>
+    ///     A copied or forked starter brings the teacher's whole history along, so only commits made after the
+    ///     student accepted count. Of those, the bot's seeding and anything a teacher of the assignment authored
+    ///     are left out too. A commit whose e-mail Forgejo cannot link to an account counts as the student's: in a
+    ///     student repository that is almost always the student committing with a private address.
+    /// </remarks>
+    private async ValueTask<OneOf<IReadOnlyList<CommitAnalyticsEntry>, NotFound, ForgejoError>>
+        GetStudentCommitsAsync(Acceptance acceptance, Assignment assignment)
+    {
         OneOf<IReadOnlyCollection<ForgejoCommit>, NotFound, ForgejoError> commits =
             await forgejo.GetAllCommitsAsync(acceptance.RepoOwner, acceptance.RepoName);
 
-        return await commits.Match<ValueTask<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>>>(
-            forgejoCommits =>
-            {
-                Instant? deadline = acceptance.Assignment.Deadline;
-                List<CommitAnalyticsEntry> entries = [];
-                foreach (ForgejoCommit commit in forgejoCommits)
-                {
-                    if (string.Equals(commit.Author?.Login, "leo-classroom-bot", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    if (!DateTimeOffset.TryParse(commit.Details.Author.Date, CultureInfo.InvariantCulture,
-                                                 DateTimeStyles.RoundtripKind, out DateTimeOffset parsed))
-                    {
-                        return ValueTask.FromResult<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>>(
-                            new ForgejoError(502, $"Forgejo returned an invalid commit date for {commit.Sha}"));
-                    }
-
-                    Instant at = Instant.FromDateTimeOffset(parsed);
-                    entries.Add(new CommitAnalyticsEntry(
-                        commit.Sha, at, deadline is not null && at > deadline.Value));
-                }
-
-                CommitAnalytics rollup = acceptance.Analytics;
-                double commitsPerPush = rollup.PushCount > 0
-                    ? (double)entries.Count / rollup.PushCount
-                    : 0;
-
-                return ValueTask.FromResult<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>>(
-                        new CommitAnalyticsView(rollup.PushCount, entries.Count, commitsPerPush,
-                                                rollup.FirstPushAt, rollup.LastPushAt, rollup.ActiveDayCount, entries));
-                },
-                notFound => ValueTask.FromResult<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>>(notFound),
-                error => ValueTask.FromResult<OneOf<CommitAnalyticsView, NotFound, Forbidden, ForgejoError>>(error));
+        return commits.Match<OneOf<IReadOnlyList<CommitAnalyticsEntry>, NotFound, ForgejoError>>(
+            found => FilterStudentCommits(found, acceptance, assignment),
+            notFound => notFound,
+            error => error);
     }
+
+    private OneOf<IReadOnlyList<CommitAnalyticsEntry>, NotFound, ForgejoError> FilterStudentCommits(
+        IReadOnlyCollection<ForgejoCommit> commits, Acceptance acceptance, Assignment assignment)
+    {
+        var excludedAuthors = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { forgejoSettings.Value.BotName };
+        excludedAuthors.Add(assignment.Owner.StudentId);
+        excludedAuthors.UnionWith(assignment.CoTeachers.Select(teacher => teacher.StudentId));
+
+        Instant? deadline = assignment.Deadline;
+        List<CommitAnalyticsEntry> entries = [];
+        foreach (ForgejoCommit commit in commits)
+        {
+            if (commit.Author?.Login is { } login && excludedAuthors.Contains(login))
+            {
+                continue;
+            }
+            if (ParseInstant(commit.Details.Author.Date) is not { } authoredAt)
+            {
+                return new ForgejoError(502, $"Forgejo returned an invalid commit date for {commit.Sha}");
+            }
+
+            // the committer date moves when a commit is recreated (rebase, amend), the author date does not; a
+            // starter commit keeps both, so either one predating the acceptance would do - committer is stricter
+            Instant committedAt = ParseInstant(commit.Details.Committer?.Date) ?? authoredAt;
+            if (committedAt <= acceptance.AcceptedAt)
+            {
+                continue;
+            }
+
+            entries.Add(new CommitAnalyticsEntry(commit.Sha, authoredAt,
+                                                 deadline is not null && authoredAt > deadline.Value));
+        }
+
+        return entries;
+    }
+
+    private static Instant? ParseInstant(string? value) =>
+        DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind,
+                                out DateTimeOffset parsed)
+            ? Instant.FromDateTimeOffset(parsed)
+            : null;
 
     private async ValueTask<OneOf<Success<FeedbackPr>, NotFound, Forbidden, ForgejoError>> StoreAndReturnAsync(
         Acceptance acceptance, ForgejoPullRequest pr)

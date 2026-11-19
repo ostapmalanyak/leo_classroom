@@ -63,7 +63,7 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
 
     private async Task<CourseDto> CreateCourseAsOwnerAsync(string title = "Algorithms")
     {
-        AuthenticateAsTeacher(OwnerIf);
+        AuthenticateAsTeacher(OwnerIf, "Course", "Owner");
         var response = await ApiClient.PostAsJsonAsync("api/courses", ValidCreateRequest(title), JsonOptions,
                                                        TestCancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -326,7 +326,7 @@ public sealed class CourseEndpointTests(WebApiTestFixture fixture) : WebApiTestB
     public async Task GetCourseParticipants_StudentMember_ReturnsNamesWithoutStudentNumbers()
     {
         CourseDto course = await CreateCourseAsOwnerAsync();
-        AuthenticateAsStudent(StudentIf);
+        AuthenticateAsStudent(StudentIf, "5AHIF", "Roster", "Student");
 
         var response = await ApiClient.GetAsync($"api/courses/{course.Id}/participants", TestCancellationToken);
 

@@ -4,15 +4,14 @@ import { MatIcon } from '@angular/material/icon';
 import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import {
-  Assignment, AssignmentService, DeadlineKind, FeedbackState, StudentSubmission, SubmissionStatus
+  Assignment, AssignmentService, CommitSummary, DeadlineKind, FeedbackState, StudentSubmission, SubmissionStatus
 } from '../../../core/services/assignment-service';
 import { CourseService } from '../../../core/services/course-service';
 import { NowService } from '../../../core/services/now-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
-import { relativeDue, timestampLabel } from '../../../core/util/assignment-state';
 import { DeadlineTimeline } from '../../shared/deadline-timeline/deadline-timeline';
 
-type BadgeTone = 'neutral' | 'accent' | 'warning' | 'success' | 'danger';
+type BadgeTone = 'neutral' | 'danger';
 
 interface StudentRow {
   acceptanceId: number | null;
@@ -20,9 +19,9 @@ interface StudentRow {
   name: string;
   studentNumber: string | null;
   initials: string;
+  /** The student's own commits; null when they could not be counted (still being set up, Forgejo unreachable). */
   commits: number | null;
-  pushedLabel: string;
-  pushedTitle: string;
+  lateCommits: number | null;
   badge: { label: string; tone: BadgeTone; icon: string | null } | null;
   action: { label: string; kind: 'feedback' | 'repository' } | null;
   repoUrl: string | null;
@@ -82,9 +81,8 @@ export class AssignmentStudents implements OnInit {
   protected readonly acceptedCount = computed(() => this.acceptedRows().length);
   protected readonly totalCount = computed(() => this.rows().length);
   protected readonly toReviewCount = computed(() => this.acceptedRows().filter(row => row.needsReview).length);
-  protected readonly lateCount = computed(() => (this.isSoft()
-    ? this.acceptedRows().filter(row => row.badge?.label === 'Submitted late').length
-    : 0));
+  /** How many students have at least one commit after the deadline. */
+  protected readonly lateCount = computed(() => this.acceptedRows().filter(row => (row.lateCommits ?? 0) > 0).length);
 
   /** The first few avatars of the people who have not accepted, for the collapsed group. */
   protected readonly pendingPreview = computed(() => this.pendingRows().slice(0, AVATAR_STACK));
@@ -185,16 +183,10 @@ export class AssignmentStudents implements OnInit {
       return;
     }
 
-    const counts = new Map<number, number>();
-    await Promise.all(submissions.map(async submission => {
-      if (submission.status === SubmissionStatus.DownloadOnly) {
-        return;
-      }
-      const analytics = await this.service.getAnalytics(submission.acceptanceId);
-      if (analytics !== null && analytics !== 'forbidden') {
-        counts.set(submission.acceptanceId, analytics.commitCount);
-      }
-    }));
+    // one request for the whole class; without it the rows still render, just without commit counts
+    const summary = await this.service.getCommitSummary(Number(this.id()));
+    const counts = new Map<number, CommitSummary>(
+      summary === null || summary === 'forbidden' ? [] : summary.map(entry => [entry.acceptanceId, entry]));
 
     const accepted = submissions.map(submission => this.toRow(submission, counts));
     const knownIds = new Set(accepted.map(row => row.studentId));
@@ -209,8 +201,8 @@ export class AssignmentStudents implements OnInit {
     this.rows.set([...accepted, ...missing]);
   }
 
-  private toRow(submission: StudentSubmission, counts: Map<number, number>): StudentRow {
-    const now = this.clock.now();
+  private toRow(submission: StudentSubmission, counts: Map<number, CommitSummary>): StudentRow {
+    const summary = counts.get(submission.acceptanceId);
 
     return {
       acceptanceId: submission.acceptanceId,
@@ -218,9 +210,8 @@ export class AssignmentStudents implements OnInit {
       name: `${submission.lastName} ${submission.firstName}`,
       studentNumber: submission.studentNumber,
       initials: this.initialsOf(submission.firstName, submission.lastName),
-      commits: counts.get(submission.acceptanceId) ?? null,
-      pushedLabel: submission.lastPushAt === null ? 'no push yet' : `pushed ${relativeDue(submission.lastPushAt, now)}`,
-      pushedTitle: submission.lastPushAt === null ? '' : timestampLabel(submission.lastPushAt),
+      commits: summary?.commitCount ?? null,
+      lateCommits: summary?.lateCommitCount ?? null,
       badge: this.badgeOf(submission),
       action: this.actionOf(submission),
       repoUrl: submission.repoUrl,
@@ -237,8 +228,7 @@ export class AssignmentStudents implements OnInit {
       studentNumber: null,
       initials: this.initialsOf(firstName, lastName),
       commits: null,
-      pushedLabel: '',
-      pushedTitle: '',
+      lateCommits: null,
       badge: null,
       action: null,
       repoUrl: null,
@@ -247,30 +237,16 @@ export class AssignmentStudents implements OnInit {
     };
   }
 
-  /** At most one badge per row, and none when there is nothing to say. */
+  /**
+   * Only a repository that is not usable yet gets a badge: progress and lateness are told by the
+   * commit counts, and whether feedback was given by the Review button.
+   */
   private badgeOf(submission: StudentSubmission): { label: string; tone: BadgeTone; icon: string | null } | null {
-    const deadline = this.deadline();
-    const pushed = submission.lastPushAt;
-    const late = deadline !== null && pushed !== null && pushed.isAfter(deadline);
-
-    // A hard deadline never labels anybody late: after it passes, nothing can be pushed at all.
-    if (late && this.isSoft()) {
-      return { label: 'Submitted late', tone: 'warning', icon: 'hourglass_bottom' };
-    }
-    if (submission.feedbackState !== FeedbackState.None) {
-      return { label: 'Reviewed', tone: 'success', icon: null };
-    }
     if (submission.status === SubmissionStatus.Failed) {
       return { label: 'Setup failed', tone: 'danger', icon: null };
     }
     if (submission.status === SubmissionStatus.Provisioning) {
       return { label: 'Setting up', tone: 'neutral', icon: null };
-    }
-    if (submission.status === SubmissionStatus.DownloadOnly) {
-      return { label: 'Accepted', tone: 'neutral', icon: null };
-    }
-    if (pushed !== null) {
-      return { label: 'Submitted', tone: 'accent', icon: null };
     }
 
     return null;

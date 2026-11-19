@@ -53,6 +53,11 @@ public sealed record CommitAnalyticsView(
 
 public sealed record CommitAnalyticsEntry(string Sha, Instant At, bool Late);
 
+/// <summary>
+///     One submission's own commits, counted for the assignment overview; null where Forgejo could not be asked
+/// </summary>
+public sealed record CommitSummaryView(long AcceptanceId, int? CommitCount, int? LateCommitCount);
+
 public sealed record AuditEventView(
     long Id,
     Instant At,

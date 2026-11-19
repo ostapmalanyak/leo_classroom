@@ -27,7 +27,7 @@ public sealed record AssignmentUpdateRequest(
 
     public sealed class Validator : AbstractValidator<AssignmentUpdateRequest>
     {
-        public Validator() => AssignmentRules.Apply(this);
+        public Validator(IClock clock) => AssignmentRules.Apply(this, clock);
     }
 }
 
@@ -55,30 +55,10 @@ public sealed record AssignmentCreateRequest(
 
     public sealed class Validator : AbstractValidator<AssignmentCreateRequest>
     {
-        public Validator()
+        public Validator(IClock clock)
         {
             RuleFor(r => r.CourseId).GreaterThan(0);
-            RuleFor(r => r.StarterArchiveUploadId)
-                .NotEmpty()
-                .When(r => r.StarterSourceKind == StarterSourceKind.Archive)
-                .WithMessage("Upload and confirm a ZIP archive for an archive starter.");
-            RuleFor(r => r.StarterArchiveUploadId)
-                .Must(id => Guid.TryParseExact(id, "N", out _))
-                .When(r => !string.IsNullOrEmpty(r.StarterArchiveUploadId))
-                .WithMessage("The confirmed ZIP upload is invalid. Upload it again.");
-            RuleFor(r => r.StarterArchiveUploadId)
-                .Empty()
-                .When(r => r.StarterSourceKind == StarterSourceKind.DescriptionOnly)
-                .WithMessage("A ZIP upload can only be used with an archive, copy, or fork starter.");
-            RuleFor(r => r.StarterRepoUrl)
-                .Empty()
-                .When(r => r.StarterSourceKind == StarterSourceKind.Archive)
-                .WithMessage("A standalone archive starter does not use a repository URL.");
-            RuleFor(r => r.StarterRepoUrl)
-                .Empty()
-                .When(r => !string.IsNullOrEmpty(r.StarterArchiveUploadId))
-                .WithMessage("Choose either a repository URL or a ZIP upload, not both.");
-            AssignmentRules.Apply(this, r => string.IsNullOrEmpty(r.StarterArchiveUploadId));
+            AssignmentRules.Apply(this, clock);
         }
     }
 }
@@ -87,8 +67,7 @@ internal static class AssignmentRules
 {
     private const int MaxTitleLength = 200;
 
-    public static void Apply<T>(AbstractValidator<T> validator, Func<T, bool>? repositoryUrlRequired = null)
-        where T : IAssignmentFields
+    public static void Apply<T>(AbstractValidator<T> validator, IClock clock) where T : IAssignmentFields
     {
         validator.RuleFor(r => r.Title).NotEmpty().MaximumLength(MaxTitleLength);
         validator.RuleFor(r => r.Deadline)
@@ -98,7 +77,7 @@ internal static class AssignmentRules
         // The form refuses a date that has already passed; the API refuses it too, so no
         // client can create an assignment that is born expired.
         validator.RuleFor(r => r.Deadline)
-                 .GreaterThan(SystemClock.Instance.GetCurrentInstant())
+                 .GreaterThan(clock.GetCurrentInstant())
                  .When(r => r.DeadlineKind != DeadlineKind.None && r.Deadline != null)
                  .WithMessage("The deadline has passed. Pick a date in the future.");
         // a hidden assignment may wait for an explicit publish (no date), but a date must still lie ahead

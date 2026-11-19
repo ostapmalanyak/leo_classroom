@@ -166,6 +166,17 @@ export class AssignmentService extends BackendServiceBase {
     }
   }
 
+  /** Every submission's own commit counts for one assignment, fetched in one request for the overview. */
+  public async getCommitSummary(assignmentId: number): Promise<CommitSummary[] | 'forbidden' | null> {
+    try {
+      const response = await firstValueFrom(this.http.get<unknown>(this.buildUrl(`${assignmentId}/commit-summary`)));
+
+      return commitSummaryZod.array().parse(response);
+    } catch (error) {
+      return this.mapReadError(error);
+    }
+  }
+
   public async openFeedbackPr(acceptanceId: number): Promise<FeedbackPr | 'forbidden' | 'not-found' | null> {
     try {
       const response = await firstValueFrom(
@@ -351,6 +362,14 @@ const commitAnalyticsZod = z.object({
   }).array()
 });
 export type CommitAnalytics = z.infer<typeof commitAnalyticsZod>;
+
+// null counts mean Forgejo could not be asked about that repository (still being set up, or unreachable)
+const commitSummaryZod = z.object({
+  acceptanceId: z.int(),
+  commitCount: z.int().nullable(),
+  lateCommitCount: z.int().nullable()
+});
+export type CommitSummary = z.infer<typeof commitSummaryZod>;
 
 const feedbackPrZod = z.object({
   number: z.int(),
