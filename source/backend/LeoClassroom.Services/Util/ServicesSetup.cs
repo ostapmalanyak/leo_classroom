@@ -44,7 +44,7 @@ public static class ServicesSetup
         services.AddScoped<IAuditRetentionService, AuditRetentionService>();
         services.Configure<AuditSettings>(configuration.GetSection(AuditSettings.SectionKey));
 
-        services.ConfigureForgejo();
+        services.ConfigureForgejo(configuration);
         services.ConfigureLdap();
         services.ConfigureNotifications(configuration);
         services.ConfigureMoodle(configuration);
@@ -92,8 +92,9 @@ public static class ServicesSetup
         services.AddScoped<ILdapSyncService, LdapSyncService>();
     }
 
-    private static void ConfigureForgejo(this IServiceCollection services)
+    private static void ConfigureForgejo(this IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<StarterArchiveSettings>(configuration.GetSection(StarterArchiveSettings.SectionKey));
         services.AddTransient<ForgejoAuthHandler>();
         services.AddHttpClient<IForgejoClient, ForgejoClient>((sp, client) =>
                 {
@@ -103,6 +104,7 @@ public static class ServicesSetup
                 .AddHttpMessageHandler<ForgejoAuthHandler>();
 
         services.AddSingleton<IArchiveExtractor, ArchiveExtractor>();
+        services.AddSingleton<IStarterArchiveStorage, StarterArchiveStorage>();
         services.AddScoped<IGitService, GitService>();
         services.AddScoped<IReconciliationService, ReconciliationService>();
         services.AddScoped<IRepoProvisioningService, RepoProvisioningService>();
