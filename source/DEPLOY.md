@@ -134,11 +134,12 @@ podman compose config >/dev/null && echo "compose file OK"
 
 ## 3b. Create the persistent volumes
 
-`forgejo_data`, `forgejo_db_data`, `backend_db_data` and `caddy_data` are declared `external: true`, so
-compose will not create them — and, more to the point, no compose command can delete them. Create them once:
+`forgejo_data`, `forgejo_db_data`, `backend_db_data`, `backend_starter_archives` and `caddy_data` are
+declared `external: true`, so compose will not create them — and, more to the point, no compose command can
+delete them. Create them once:
 
 ```sh
-for v in forgejo_data forgejo_db_data backend_db_data caddy_data; do
+for v in forgejo_data forgejo_db_data backend_db_data backend_starter_archives caddy_data; do
   podman volume create "${VOLUME_PREFIX:-leoclassrooms}_$v"
 done
 podman volume ls
@@ -154,10 +155,10 @@ name is the directory name. So there is nothing to migrate: the existing volumes
 and the stack picks them straight back up. Confirm before the first `up` with the new file:
 
 ```sh
-podman volume ls --format '{{.Name}}' | grep -E '_(forgejo_data|forgejo_db_data|backend_db_data|caddy_data)$'
+podman volume ls --format '{{.Name}}' | grep -E '_(forgejo_data|forgejo_db_data|backend_db_data|backend_starter_archives|caddy_data)$'
 ```
 
-Four names, all sharing one prefix. If that prefix is not `leoclassrooms`, put it in `.env` as
+Five names, all sharing one prefix. If that prefix is not `leoclassrooms`, put it in `.env` as
 `VOLUME_PREFIX=` before starting; if you skip that, compose looks for volumes that do not exist and stops —
 loudly, without touching the ones you have.
 

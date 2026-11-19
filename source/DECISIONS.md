@@ -4,6 +4,30 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-19 — ZIP starters distinguish downloads from repository sources
+
+**Status:** accepted.
+
+A teacher selects **Archive**, uploads a ZIP and reviews the safely inspected file list before confirming it.
+This is download-only: the ZIP is retained on persistent storage and assigned students can download it without
+accepting. Students may also accept the assignment to record participation, but acceptance does not create or
+queue a Forgejo repository.
+
+For **Copy repository** and **Fork own repository**, the teacher can instead upload a ZIP in place of a source
+URL. The server creates a private repository in the course's Forgejo organisation from the checked ZIP, then
+uses the existing copy/fork workflow to provision each student's repository when they accept. These uploads
+are temporary and are removed after the source repository is seeded; students do not get a separate ZIP
+download for these assignment types. The server uses the bounded archive extractor, so the browser never
+extracts untrusted paths.
+
+The persistent archive volume is included in backup and restore, and deleting an assignment removes any
+downloadable ZIP or generated starter repository associated with it. Existing archive assignments that already
+have a starter repository keep their current provisioning behavior.
+
+**What would change it:** a need for a preview that shows rendered file contents rather than paths.
+
+---
+
 ## 2026-11-18 — Hidden assignments: one flag, one transition
 
 **Status:** accepted.
