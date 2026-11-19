@@ -101,6 +101,7 @@
                     <mat-menu #cardMenu="matMenu">
                       <a mat-menu-item [routerLink]="['/assignments', assignment.id, 'edit']">Edit</a>
                       <button type="button" mat-menu-item (click)="copyStudentLink(assignment.id)">Copy student link</button>
+                      <button type="button" mat-menu-item (click)="deleteAssignment(assignment)">Delete assignment</button>
                     </mat-menu>
                   } @else {
                     <span>{{ assignment.accepted ? (assignment.status ?? 'Accepted') : 'Not accepted yet' }}</span>
@@ -135,6 +136,7 @@
                   <mat-menu #hiddenMenu="matMenu">
                     <a mat-menu-item [routerLink]="['/assignments', assignment.id, 'edit']">Edit</a>
                     <button type="button" mat-menu-item (click)="copyStudentLink(assignment.id)">Copy student link</button>
+                    <button type="button" mat-menu-item (click)="deleteAssignment(assignment)">Delete assignment</button>
                   </mat-menu>
                 </div>
               </mat-card-content>

@@ -36,6 +36,7 @@ public static class StudentAssignmentEndpoints
             mine.MapGet("/mine", GetMyAssignmentsAsync);
             mine.MapGet("/{id:long:min(1)}/info", GetAssignmentInfoAsync);
             mine.MapGet("/{id:long:min(1)}/submission", GetSubmissionAsync);
+            mine.MapGet("/{id:long:min(1)}/starter-archive", GetStarterArchiveAsync);
             mine.MapPost("/{id:long:min(1)}/accept", AcceptAssignmentAsync);
             mine.MapPost("/{id:long:min(1)}/feedback/read", ConfirmFeedbackReadAsync);
             mine.MapPost("/{id:long:min(1)}/retry", RetryProvisioningAsync);
@@ -62,6 +63,17 @@ public static class StudentAssignmentEndpoints
         return result.ToOk(SubmissionDto.FromView);
     }
 
+    private static async ValueTask<Results<PhysicalFileHttpResult, NotFound, ProblemHttpResult>>
+        GetStarterArchiveAsync([FromRoute] long id, [FromServices] IStudentAssignmentService service)
+    {
+        var result = await service.GetStarterArchiveAsync(id);
+
+        return result.Match<Results<PhysicalFileHttpResult, NotFound, ProblemHttpResult>>(
+            archive => TypedResults.PhysicalFile(archive.Path, "application/zip", archive.FileName),
+            _ => TypedResults.NotFound(),
+            _ => ApiResults.Forbidden());
+    }
+
     private static async ValueTask<AcceptResult> AcceptAssignmentAsync(
         [FromRoute] long id, [FromServices] IStudentAssignmentService service,
         [FromServices] ITransactionProvider transaction, [FromServices] IProvisioningQueue queue)
@@ -74,7 +86,10 @@ public static class StudentAssignmentEndpoints
         async ValueTask<AcceptResult> OnAcceptedAsync(ServiceSuccess success)
         {
             await transaction.CommitAsync();
-            await queue.EnqueueAsync(success.Value.Id);
+            if (success.Value.Status == SubmissionStatus.Provisioning)
+            {
+                await queue.EnqueueAsync(success.Value.Id);
+            }
 
             return TypedResults.Accepted((string?) null, SubmissionDto.FromAcceptance(success.Value));
         }
@@ -88,6 +103,7 @@ public static class StudentAssignmentEndpoints
 
         static ValueTask<AcceptResult> OnConflictAsync(Services.Forgejo.AlreadyExists alreadyExists) =>
             ValueTask.FromResult<AcceptResult>(TypedResults.Conflict());
+
     }
 
     private static async ValueTask<Results<NoContent, NotFound>> ConfirmFeedbackReadAsync(
@@ -136,11 +152,15 @@ public static class StudentAssignmentEndpoints
 }
 
 public sealed record AssignmentInfoDto(
-    long Id, string Title, string? HintsInstructions, Instant? Deadline, DeadlineKind DeadlineKind, bool Accepted)
+    long Id, string Title, string? HintsInstructions, Instant? Deadline, DeadlineKind DeadlineKind,
+    bool Accepted, bool HasStarterArchive, bool DownloadOnly)
 {
     public static AssignmentInfoDto FromView(StudentAssignmentView view) => new(
         view.Assignment.Id, view.Assignment.Title, view.Assignment.HintsInstructions, view.Assignment.Deadline,
-        view.Assignment.DeadlineKind, view.Acceptance is not null);
+        view.Assignment.DeadlineKind, view.Acceptance is not null,
+        view.Assignment.StarterSourceKind == StarterSourceKind.Archive && view.Assignment.ArchivePath is not null,
+        view.Assignment.StarterSourceKind == StarterSourceKind.Archive
+        && view.Assignment.StarterTemplateRepoUrl is null);
 }
 
 public sealed record SubmissionDto(

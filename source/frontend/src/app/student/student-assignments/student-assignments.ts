@@ -232,7 +232,9 @@ export class StudentAssignments implements OnInit {
     }
 
     this.all.update(assignments => assignments.map(assignment =>
-      assignment.id === row.id ? { ...assignment, accepted: true } : assignment));
+      assignment.id === row.id
+        ? { ...assignment, accepted: true, status: result.status }
+        : assignment));
     this.snackbar.show('Assignment accepted');
   }
 

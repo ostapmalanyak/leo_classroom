@@ -37,6 +37,10 @@ internal sealed class SubmissionReviewService(
         {
             return new Forbidden();
         }
+        if (acceptance.Status == SubmissionStatus.DownloadOnly)
+        {
+            return new NotFound();
+        }
 
         OneOf<ForgejoRepo, NotFound, ForgejoError> repo =
             await forgejo.GetRepoAsync(acceptance.RepoOwner, acceptance.RepoName);
@@ -119,6 +123,10 @@ internal sealed class SubmissionReviewService(
         if (!IsTeacherOf(acceptance.Assignment))
         {
             return new Forbidden();
+        }
+        if (acceptance.Status == SubmissionStatus.DownloadOnly)
+        {
+            return new NotFound();
         }
 
         OneOf<IReadOnlyCollection<ForgejoCommit>, NotFound, ForgejoError> commits =

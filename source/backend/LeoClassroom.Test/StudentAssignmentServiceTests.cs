@@ -22,6 +22,7 @@ public sealed class StudentAssignmentServiceTests
     private readonly IAcceptanceRepository _acceptanceRepo = Substitute.For<IAcceptanceRepository>();
     private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly IStarterArchiveStorage _starterArchives = Substitute.For<IStarterArchiveStorage>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly StudentAssignmentService _sut;
 
@@ -34,7 +35,7 @@ public sealed class StudentAssignmentServiceTests
         _userRepo.GetIdByStudentIdAsync(StudentNumber).Returns(new ValueTask<long?>(StudentLocalId));
         _clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 6, 13, 12, 0));
 
-        _sut = new StudentAssignmentService(_uow, _currentUser, _clock,
+        _sut = new StudentAssignmentService(_uow, _currentUser, _starterArchives, _clock,
                                             Substitute.For<ILogger<StudentAssignmentService>>());
     }
 
@@ -72,6 +73,27 @@ public sealed class StudentAssignmentServiceTests
 
         result.ShouldBe<Success<Acceptance>>().Value.RepoOwner.Should().Be(StudentNumber);
         _acceptanceRepo.Received(1).Add(Arg.Is<Acceptance>(a => a.RepoOwner == StudentNumber));
+    }
+
+    [Fact]
+    public async Task Accept_DownloadOnlyArchive_RecordsAcceptanceWithoutRepositoryProvisioning()
+    {
+        Assignment assignment = AssignmentInCourse();
+        assignment.StarterSourceKind = StarterSourceKind.Archive;
+        assignment.ArchivePath = "/archives/assignments/starter.zip";
+        _assignmentRepo.GetByIdAsync(AssignmentId).Returns(new ValueTask<Assignment?>(assignment));
+        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId, Arg.Any<Instant>())
+                       .Returns(new ValueTask<bool>(true));
+
+        var result = await _sut.AcceptAsync(AssignmentId);
+
+        Acceptance acceptance = result.ShouldBe<Success<Acceptance>>().Value;
+        acceptance.Status.Should().Be(SubmissionStatus.DownloadOnly);
+        acceptance.RepoOwner.Should().BeEmpty();
+        acceptance.RepoName.Should().BeEmpty();
+        _acceptanceRepo.Received(1).Add(Arg.Is<Acceptance>(row =>
+            row.Status == SubmissionStatus.DownloadOnly && row.RepoOwner == "" && row.RepoName == ""));
+        await _uow.Received(1).SaveChangesAsync();
     }
 
     [Fact]
@@ -115,6 +137,39 @@ public sealed class StudentAssignmentServiceTests
         var result = await _sut.GetForStudentAsync(AssignmentId);
 
         result.ShouldBe<NotFound>();
+    }
+
+    [Fact]
+    public async Task GetStarterArchive_AssignedStudentGetsArchiveDownload()
+    {
+        Assignment assignment = AssignmentInCourse();
+        assignment.ArchivePath = "/archives/assignments/starter.zip";
+        assignment.StarterSourceKind = StarterSourceKind.Archive;
+        _assignmentRepo.GetByIdAsync(AssignmentId).Returns(new ValueTask<Assignment?>(assignment));
+        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId, Arg.Any<Instant>())
+                       .Returns(new ValueTask<bool>(true));
+        var archive = new StarterArchiveDownload(assignment.ArchivePath, "algorithms-starter.zip");
+        _starterArchives.Find(assignment.ArchivePath, "algorithms-starter.zip").Returns(archive);
+
+        var result = await _sut.GetStarterArchiveAsync(AssignmentId);
+
+        result.ShouldBe<StarterArchiveDownload>().Should().Be(archive);
+    }
+
+    [Fact]
+    public async Task GetStarterArchive_NonMemberCannotResolveArchivePath()
+    {
+        Assignment assignment = AssignmentInCourse();
+        assignment.ArchivePath = "/archives/assignments/starter.zip";
+        assignment.StarterSourceKind = StarterSourceKind.Archive;
+        _assignmentRepo.GetByIdAsync(AssignmentId).Returns(new ValueTask<Assignment?>(assignment));
+        _assignmentRepo.IsStudentAssignedAsync(AssignmentId, StudentLocalId, Arg.Any<Instant>())
+                       .Returns(new ValueTask<bool>(false));
+
+        var result = await _sut.GetStarterArchiveAsync(AssignmentId);
+
+        result.ShouldBe<Forbidden>();
+        _starterArchives.DidNotReceive().Find(Arg.Any<string?>(), Arg.Any<string>());
     }
 
     [Fact]
