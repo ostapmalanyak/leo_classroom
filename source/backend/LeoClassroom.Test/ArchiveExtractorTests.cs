@@ -71,6 +71,16 @@ public sealed class ArchiveExtractorTests : IDisposable
     }
 
     [Fact]
+    public void Preview_ReturnsPromotedPaths()
+    {
+        using MemoryStream zip = Zip(("proj/a.txt", Text("a")), ("proj/sub/b.txt", Text("b")));
+
+        ArchiveContentPreview preview = Build().Preview(zip).ShouldBe<ArchiveContentPreview>();
+
+        preview.Entries.Should().Contain(["a.txt", "sub/", "sub/b.txt"]);
+    }
+
+    [Fact]
     public void PathTraversal_IsRejected_AndNothingWritten()
     {
         using MemoryStream zip = Zip(("../evil.txt", Text("x")), ("ok.txt", Text("y")));
