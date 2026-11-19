@@ -46,7 +46,8 @@ public enum SubmissionStatus
 {
     Provisioning = 1,
     Ready = 2,
-    Failed = 3
+    Failed = 3,
+    DownloadOnly = 4
 }
 
 public enum DownloadSnapshotMode
