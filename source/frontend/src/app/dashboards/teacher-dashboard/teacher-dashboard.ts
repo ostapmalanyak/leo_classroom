@@ -18,6 +18,7 @@ import { ChooseCourseDialog } from './choose-course-dialog/choose-course-dialog'
 import { MyRostersDialog } from './my-rosters-dialog/my-rosters-dialog';
 import { ClosingAssignment, ClosingSoonList } from './closing-soon/closing-soon';
 import { OverviewTile } from './overview-tile/overview-tile';
+import { GitLoginStrip } from '../../shared/git-login-strip/git-login-strip';
 
 interface TeacherCourse {
   id: number;
@@ -44,7 +45,8 @@ interface TeacherPastDue {
  */
 @Component({
   selector: 'app-teacher-dashboard',
-  imports: [MatCard, MatCardContent, MatIcon, MatProgressBar, ActionCard, ClosingSoonList, OverviewTile, RouterLink],
+  imports: [MatCard, MatCardContent, MatIcon, MatProgressBar, ActionCard, ClosingSoonList, OverviewTile, RouterLink,
+    GitLoginStrip],
   templateUrl: './teacher-dashboard.html',
   styleUrl: './teacher-dashboard.scss'
 })

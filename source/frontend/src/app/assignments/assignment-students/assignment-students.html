@@ -1,5 +1,5 @@
 <div class="page">
-  @if (loading()) {
+  @if (showLoading()) {
     <mat-progress-bar mode="indeterminate" />
   }
 
@@ -53,6 +53,8 @@
         <span class="summary__late">{{ lateCount() }} late</span>
       }
     </p>
+
+    <app-git-login-step audience="teacher" [collapsible]="true" />
 
     <ul class="rows">
       @for (row of acceptedRows(); track row.studentId) {

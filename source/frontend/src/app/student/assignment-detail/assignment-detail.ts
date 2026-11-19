@@ -1,4 +1,6 @@
-import { Component, computed, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
+import {
+  Component, computed, inject, input, InputSignal, OnDestroy, OnInit, signal, viewChild, WritableSignal
+} from '@angular/core';
 import { Instant } from '@js-joda/core';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
@@ -10,6 +12,7 @@ import { NowService } from '../../../core/services/now-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 import { relativeDue } from '../../../core/util/assignment-state';
 import { DeadlineTimeline } from '../../shared/deadline-timeline/deadline-timeline';
+import { GitLoginStep } from '../../shared/git-login-step/git-login-step';
 import { MarkdownView } from '../../shared/markdown-view/markdown-view';
 
 /** What the student has to do next; only one of them is ever on screen. */
@@ -21,11 +24,11 @@ type Step = 'archive' | 'accept' | 'clone' | 'push' | 'feedback';
  */
 @Component({
   selector: 'app-assignment-detail',
-  imports: [MatButton, MatIcon, MatProgressBar, DeadlineTimeline, MarkdownView],
+  imports: [MatButton, MatIcon, MatProgressBar, DeadlineTimeline, GitLoginStep, MarkdownView],
   templateUrl: './assignment-detail.html',
   styleUrl: './assignment-detail.scss'
 })
-export class StudentAssignmentDetail implements OnInit {
+export class StudentAssignmentDetail implements OnInit, OnDestroy {
   private readonly service = inject(AssignmentService);
   private readonly snackbar = inject(SnackbarService);
   private readonly clock = inject(NowService);
@@ -43,6 +46,10 @@ export class StudentAssignmentDetail implements OnInit {
   protected readonly lastPushAt: WritableSignal<number | null> = signal(null);
   protected readonly copied: WritableSignal<boolean> = signal(false);
   protected readonly instructionsOpen: WritableSignal<boolean> = signal(false);
+  protected readonly provisioning: WritableSignal<boolean> = signal(false);
+
+  private poll: ReturnType<typeof setInterval> | null = null;
+  private static readonly POLL_MS = 2000;
 
   protected readonly DeadlineKind = DeadlineKind;
   protected readonly SubmissionStatus = SubmissionStatus;
@@ -65,12 +72,37 @@ export class StudentAssignmentDetail implements OnInit {
 
   protected readonly hasPushed = computed(() => this.lastPushAt() !== null);
 
+  /** The login step only matters once there is a repository to clone from. */
+  protected readonly needsGitLogin = computed(() => this.step() !== 'accept' && this.step() !== 'archive');
+
+  private readonly gitStep = viewChild(GitLoginStep);
+
+  /** Unlocked once git remembers the password, or once the student chose to type it by hand. */
+  protected readonly gitReady = computed(() => this.gitStep()?.ready() ?? true);
+
+  private readonly gitAuthorized = computed(() => this.gitStep()?.authorized() ?? false);
+
+  /** Lock while the login is still missing, an open lock while it is only unconfirmed, nothing afterwards. */
+  protected readonly gitIcon = computed<string | null>(() => {
+    if (!this.gitReady()) {
+      return 'lock';
+    }
+
+    return this.gitAuthorized() ? null : 'lock_open';
+  });
+
   protected readonly step = computed<Step>(() => {
     if (this.downloadOnly()) {
       return this.accepted() ? 'archive' : 'accept';
     }
     const submission = this.submission();
     if (!this.accepted() || submission === null) {
+      return 'accept';
+    }
+
+    // Until the backend has finished the repository there is nothing to clone yet, so the page keeps
+    // the set-up state (and its progress bar) on screen instead of an empty git command.
+    if (submission.status !== SubmissionStatus.Ready) {
       return 'accept';
     }
     if (submission.feedbackState !== FeedbackState.None) {
@@ -125,9 +157,9 @@ export class StudentAssignmentDetail implements OnInit {
     this.info.set(info);
     await this.loadCourseTitle();
 
-    if (info.accepted) {
-      await this.refreshSubmission();
-    }
+    // Always look at the submission: the acceptance may have been started somewhere else, and the
+    // page has to show the set-up bar instead of the clone step until the repository exists.
+    await this.refreshSubmission();
   }
 
   protected async handleAccept(): Promise<void> {
@@ -141,9 +173,61 @@ export class StudentAssignmentDetail implements OnInit {
 
       return;
     }
+
     this.submission.set(result);
-    this.info.update(current => (current === null ? current : { ...current, accepted: true }));
     this.instructionsOpen.set(false);
+    this.applyStatus(result);
+  }
+
+  /** The backend provisions in the background, so the page asks until it is done. */
+  private startPolling(): void {
+    this.stopPolling();
+    this.poll = setInterval(() => void this.checkProvisioning(), StudentAssignmentDetail.POLL_MS);
+  }
+
+  private stopPolling(): void {
+    if (this.poll !== null) {
+      clearInterval(this.poll);
+      this.poll = null;
+    }
+  }
+
+  private async checkProvisioning(): Promise<void> {
+    const submission = await this.service.getSubmission(Number(this.id()));
+    if (submission === 'forbidden' || submission === null) {
+      return;
+    }
+
+    this.submission.set(submission);
+    this.applyStatus(submission);
+  }
+
+  /**
+   * Mirrors the backend status onto the screen. A page opened (or reloaded) while the repository is
+   * still being created has to pick the provisioning state up by itself, otherwise it would show a
+   * clone command for a repository that does not exist yet.
+   */
+  private applyStatus(submission: Submission): void {
+    if (submission.status === SubmissionStatus.Provisioning) {
+      this.provisioning.set(true);
+      if (this.poll === null) {
+        this.startPolling();
+      }
+
+      return;
+    }
+
+    this.stopPolling();
+    this.provisioning.set(false);
+    this.failed.set(submission.status === SubmissionStatus.Failed);
+
+    if (submission.status === SubmissionStatus.Ready) {
+      this.info.update(current => (current === null ? current : { ...current, accepted: true }));
+    }
+  }
+
+  public ngOnDestroy(): void {
+    this.stopPolling();
   }
 
   protected async handleStarterArchiveDownload(): Promise<void> {
@@ -210,8 +294,10 @@ export class StudentAssignmentDetail implements OnInit {
 
   private async refreshSubmission(): Promise<void> {
     const submission = await this.service.getSubmission(Number(this.id()));
-    if (submission !== 'forbidden' && submission !== null) {
-      this.submission.set(submission);
+    if (submission === 'forbidden' || submission === null) {
+      return;
     }
+    this.submission.set(submission);
+    this.applyStatus(submission);
   }
 }

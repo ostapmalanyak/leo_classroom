@@ -3,3 +3,8 @@
 :root {
   @include tokens.custom-properties;
 }
+
+// No media query on purpose: the theme is chosen, not inherited from the operating system.
+:root[data-theme='light'] {
+  @include tokens.light-custom-properties;
+}

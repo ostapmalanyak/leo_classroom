@@ -632,6 +632,15 @@ mat-card.mat-mdc-card {
   --mdc-linear-progress-track-color: var(--color-bg-hover);
 }
 
+// An indeterminate bar that never sweeps when the reader asked for less motion: the status text
+// next to it already says what is happening.
+@media (prefers-reduced-motion: reduce) {
+  .mat-mdc-progress-bar .mdc-linear-progress__bar-inner {
+    animation: none;
+    inline-size: 100%;
+  }
+}
+
 .mat-mdc-checkbox,
 .mat-mdc-slide-toggle {
   --mdc-checkbox-selected-icon-color: var(--color-accent);
@@ -1403,7 +1412,7 @@ app-markdown-view .markdown-body {
   aspect-ratio: 1;
   background: var(--color-warning-bg);
   block-size: 2rem;
-  border: 1px solid var(--color-warning-border);
+  border: var(--border-width) solid var(--color-warning-border);
   border-radius: 50%;
   box-sizing: border-box;
   color: var(--color-warning-text);
@@ -1426,9 +1435,9 @@ app-markdown-view .markdown-body {
 
 .help__tip {
   background: var(--color-warning-bg);
-  border: 1px solid var(--color-warning-border);
+  border: var(--border-width) solid var(--color-warning-border);
   border-radius: 0.75rem;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 30%);
   box-sizing: border-box;
   color: var(--color-warning-text);
   display: none;

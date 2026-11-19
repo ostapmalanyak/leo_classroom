@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
+import { GitLoginStep } from '../shared/git-login-step/git-login-step';
 
 interface CliBinary {
   platform: string;
@@ -11,7 +12,7 @@ interface CliBinary {
 
 @Component({
   selector: 'app-cli-download',
-  imports: [MatCardModule, MatButton, MatIcon],
+  imports: [MatCardModule, MatButton, MatIcon, GitLoginStep],
   templateUrl: './cli-download.html',
   styleUrl: './cli-download.scss'
 })

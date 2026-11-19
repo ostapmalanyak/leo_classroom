@@ -621,6 +621,15 @@ namespace LeoClassroom.Persistence.Migrations
                     b.Property<Instant?>("GitCredentialIssuedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Instant?>("GitSetupAuthorizedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("GitSetupConfiguredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("GitSetupToken")
+                        .HasColumnType("text");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasColumnType("text");

@@ -1,4 +1,6 @@
-import { Component, computed, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
+import {
+  Component, computed, DestroyRef, inject, input, InputSignal, OnInit, signal, WritableSignal
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
 import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
@@ -11,6 +13,7 @@ import { NowService } from '../../../core/services/now-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 import { relativeDue, timestampLabel } from '../../../core/util/assignment-state';
 import { DeadlineTimeline } from '../../shared/deadline-timeline/deadline-timeline';
+import { GitLoginStep } from '../../shared/git-login-step/git-login-step';
 
 type BadgeTone = 'neutral' | 'accent' | 'warning' | 'success' | 'danger';
 
@@ -39,7 +42,7 @@ const AVATAR_STACK = 3;
  */
 @Component({
   selector: 'app-assignment-students',
-  imports: [MatIcon, MatMenu, MatMenuItem, MatMenuTrigger, MatProgressBar, DeadlineTimeline],
+  imports: [MatIcon, MatMenu, MatMenuItem, MatMenuTrigger, MatProgressBar, DeadlineTimeline, GitLoginStep],
   templateUrl: './assignment-students.html',
   styleUrl: './assignment-students.scss'
 })
@@ -49,10 +52,14 @@ export class AssignmentStudents implements OnInit {
   private readonly snackbar = inject(SnackbarService);
   private readonly router = inject(Router);
   private readonly clock = inject(NowService);
+  private readonly destroyRef = inject(DestroyRef);
+  private loadingTimer: ReturnType<typeof setTimeout> | null = null;
 
   public readonly id: InputSignal<string> = input.required<string>();
 
   protected readonly loading: WritableSignal<boolean> = signal(false);
+  /** Only a load that actually takes a moment earns a bar; anything faster would just flash. */
+  protected readonly showLoading: WritableSignal<boolean> = signal(false);
   protected readonly assignment: WritableSignal<Assignment | null> = signal(null);
   protected readonly courseTitle: WritableSignal<string> = signal('');
   protected readonly rows: WritableSignal<StudentRow[]> = signal([]);
@@ -60,6 +67,12 @@ export class AssignmentStudents implements OnInit {
   protected readonly pendingOpen: WritableSignal<boolean> = signal(false);
 
   protected readonly DeadlineKind = DeadlineKind;
+
+  private static readonly BAR_DELAY_MS = 300;
+
+  public constructor() {
+    this.destroyRef.onDestroy(() => this.clearLoadingTimer());
+  }
 
   protected readonly studentUrl = computed(() => `${window.location.origin}/my-assignments/${this.id()}`);
   protected readonly title = computed(() => this.assignment()?.title ?? '');
@@ -176,9 +189,9 @@ export class AssignmentStudents implements OnInit {
   }
 
   private async reload(): Promise<void> {
-    this.loading.set(true);
+    this.beginLoading();
     const submissions = await this.service.getStudents(Number(this.id()));
-    this.loading.set(false);
+    this.endLoading();
     if (submissions === null) {
       this.snackbar.show('Could not load the student list');
 
@@ -207,6 +220,29 @@ export class AssignmentStudents implements OnInit {
         .map(participant => this.toUnacceptedRow(participant.id, participant.firstName, participant.lastName));
 
     this.rows.set([...accepted, ...missing]);
+  }
+
+  private beginLoading(): void {
+    this.loading.set(true);
+    this.clearLoadingTimer();
+    this.loadingTimer = setTimeout(() => {
+      if (this.loading()) {
+        this.showLoading.set(true);
+      }
+    }, AssignmentStudents.BAR_DELAY_MS);
+  }
+
+  private endLoading(): void {
+    this.loading.set(false);
+    this.showLoading.set(false);
+    this.clearLoadingTimer();
+  }
+
+  private clearLoadingTimer(): void {
+    if (this.loadingTimer !== null) {
+      clearTimeout(this.loadingTimer);
+      this.loadingTimer = null;
+    }
   }
 
   private toRow(submission: StudentSubmission, counts: Map<number, number>): StudentRow {

@@ -2,7 +2,7 @@ import { Injectable, OnDestroy, signal, Signal } from '@angular/core';
 import { Instant } from '@js-joda/core';
 
 /**
- * The one clock the assignment UI reads. Relative times ("in 5 h") are wrong the moment they are
+ * The one clock the assignment UI reads. Relative times ("in 5 hours") are wrong the moment they are
  * rendered, so every screen listens to a tick instead of sampling `Instant.now()` once.
  */
 @Injectable({ providedIn: 'root' })

@@ -10,6 +10,8 @@ public interface IUserRepository
     public ValueTask<bool> ExistsActiveTeacherAsync(long id);
     public void Add(User user);
     public ValueTask<User?> GetTrackedByStudentIdAsync(string studentId);
+    public ValueTask<User?> GetTrackedByStudentIdIgnoreCaseAsync(string studentId);
+    public ValueTask<User?> GetTrackedByGitSetupTokenAsync(string token);
     public ValueTask<long?> GetIdByStudentIdAsync(string studentId);
     public ValueTask<IReadOnlyCollection<User>> GetAllTrackedAsync();
     public ValueTask<User?> GetTrackedByIdAsync(long id);
@@ -44,6 +46,12 @@ internal sealed class UserRepository(DbSet<User> users) : IUserRepository
                    .AnyAsync(u => u.Id == id && u.State == UserState.Active && u.Role == Role.Teacher);
 
     public void Add(User user) => users.Add(user);
+
+    public async ValueTask<User?> GetTrackedByStudentIdIgnoreCaseAsync(string studentId) =>
+        await users.SingleOrDefaultAsync(user => user.StudentId.ToLower() == studentId.ToLower());
+
+    public async ValueTask<User?> GetTrackedByGitSetupTokenAsync(string token) =>
+        await users.SingleOrDefaultAsync(user => user.GitSetupToken == token);
 
     public async ValueTask<User?> GetTrackedByStudentIdAsync(string studentId) =>
         await users.FirstOrDefaultAsync(u => u.StudentId == studentId);

@@ -211,7 +211,7 @@ export function dueUrgency(deadline: Instant | null, now: Instant = Instant.now(
 
 /**
  * True when the deadline is still ahead of us but inside the next few hours. Used for the
- * "due in 24 h" counters, which care about the distance and not about the colour.
+ * "due in 24 hours" counters, which care about the distance and not about the colour.
  */
 export function dueWithinHours(deadline: Instant | null, hours: number, now: Instant = Instant.now()): boolean {
   if (deadline === null || deadline.isBefore(now)) {
@@ -271,8 +271,13 @@ export function timestampLabel(instant: Instant | null): string {
     `${months[local.monthValue() - 1]}, ${hour}:${minute}`;
 }
 
+/** "1 hour", "3 hours": a unit name never appears on its own. */
+function count(value: number, unit: string): string {
+  return `${value} ${value === 1 ? unit : `${unit}s`}`;
+}
+
 /**
- * "in 5 h", "in 8 days", "34 days ago".
+ * "in 5 hours", "in 8 days", "34 days ago".
  *
  * Under a day people think in hours, above that in calendar days: 17 Nov to 25 Nov is eight
  * days, not nine, however many hours are in between.
@@ -285,21 +290,32 @@ export function relativeDue(deadline: Instant | null, now: Instant = Instant.now
   const minutes = now.until(deadline, ChronoUnit.MINUTES);
   const magnitude = Math.abs(minutes);
 
+  if (magnitude < 1) {
+    if (minutes < 0) {
+      return 'just now';
+    }
+    const seconds = Math.max(1, Math.abs(now.until(deadline, ChronoUnit.SECONDS)));
+
+    return `in ${count(seconds, 'second')}`;
+  }
+
   if (magnitude < 60) {
-    return minutes < 0 ? 'just now' : `in ${Math.max(1, magnitude)} min`;
+    const count_ = Math.max(1, magnitude);
+
+    return minutes < 0 ? `${count(count_, 'minute')} ago` : `in ${count(count_, 'minute')}`;
   }
 
   if (magnitude < 24 * 60) {
     const hours = Math.floor(magnitude / 60);
 
-    return minutes < 0 ? `${hours} h ago` : `in ${hours} h`;
+    return minutes < 0 ? `${count(hours, 'hour')} ago` : `in ${count(hours, 'hour')}`;
   }
 
   const days = calendarDaysBetween(now, deadline);
 
   if (days === 0) {
     // Only reachable through a clock skew; treating it as "today" beats "in 0 days".
-    return minutes < 0 ? 'today' : 'in 24 h';
+    return minutes < 0 ? 'today' : 'in 24 hours';
   }
 
   const label = `${Math.abs(days)} ${Math.abs(days) === 1 ? 'day' : 'days'}`;
@@ -377,7 +393,7 @@ export const dueBucketLabels: Record<DueBucket, string> = {
   none: 'No due date'
 };
 
-/** "in 2 h" style text for the last push, so "already handed in" is visible at a glance. */
+/** "in 2 hours" style text for the last push, so "already handed in" is visible at a glance. */
 export function lastPushLabel(lastPushAt: Instant | null, now: Instant): string {
   if (lastPushAt === null) {
     return 'No commits yet';

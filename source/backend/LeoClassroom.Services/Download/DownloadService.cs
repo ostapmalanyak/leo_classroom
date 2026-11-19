@@ -16,7 +16,9 @@ public sealed record DownloadJobView(
     string? Error,
     Instant CreatedAt,
     Instant? CompletedAt,
-    Instant? ExpiresAt);
+    Instant? ExpiresAt,
+    string? FileName,
+    long? SizeBytes);
 
 public sealed record DownloadArtifact(string Path, string FileName);
 
@@ -62,8 +64,18 @@ internal sealed class DownloadService(IUnitOfWork uow, ICurrentUser currentUser,
         OneOf<DownloadJob, NotFound, Forbidden> gated = await LoadGatedJobAsync(assignmentId, jobId);
 
         return gated.Match<OneOf<DownloadJobView, NotFound, Forbidden>>(
-            job => new DownloadJobView(job.Id, job.AssignmentId, job.Status, job.Mode, job.Notes, job.Error,
-                                       job.CreatedAt, job.CompletedAt, job.ExpiresAt),
+            job =>
+            {
+                // The zip lives on disk, so the page can name it and size it before anything is downloaded.
+                FileInfo? artifact = job is { Status: DownloadJobStatus.Ready, ArtifactPath: not null } &&
+                                     File.Exists(job.ArtifactPath)
+                    ? new FileInfo(job.ArtifactPath)
+                    : null;
+
+                return new DownloadJobView(job.Id, job.AssignmentId, job.Status, job.Mode, job.Notes, job.Error,
+                                           job.CreatedAt, job.CompletedAt, job.ExpiresAt,
+                                           artifact?.Name, artifact?.Length);
+            },
             notFound => notFound,
             forbidden => forbidden);
     }

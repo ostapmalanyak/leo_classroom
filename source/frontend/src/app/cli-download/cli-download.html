@@ -9,6 +9,8 @@
 
 <p class="version">Targets backend API version <strong>{{ apiVersion }}</strong>.</p>
 
+<app-git-login-step audience="teacher" />
+
 <div class="downloads">
   @for (b of binaries; track b.rid) {
     <mat-card>
