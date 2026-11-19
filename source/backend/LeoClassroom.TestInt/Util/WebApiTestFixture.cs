@@ -28,6 +28,7 @@ public sealed class WebApiTestFixture : IAsyncLifetime
     }
 
     public TestAuthState AuthState => Factory.AuthState;
+    public string StarterArchiveStoragePath => Factory.StarterArchiveStoragePath;
 
     private WebAppFactory Factory
     {
@@ -49,6 +50,10 @@ public sealed class WebApiTestFixture : IAsyncLifetime
         await Factory.DisposeAsync();
         await _postgresContainer.StopAsync();
         await _postgresContainer.DisposeAsync();
+        if (Directory.Exists(Factory.StarterArchiveStoragePath))
+        {
+            Directory.Delete(Factory.StarterArchiveStoragePath, recursive: true);
+        }
     }
 
     public async ValueTask RestoreDatabaseAsync(Func<DatabaseContext, ValueTask> seedDataImporter)

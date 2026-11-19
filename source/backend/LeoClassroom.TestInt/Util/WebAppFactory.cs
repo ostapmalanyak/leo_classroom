@@ -13,6 +13,9 @@ namespace LeoClassroom.TestInt.Util;
 
 internal sealed class WebAppFactory(string connectionString) : WebApplicationFactory<Program>
 {
+    public string StarterArchiveStoragePath { get; } =
+        Path.Combine(Path.GetTempPath(), $"leo-test-starter-archives-{Guid.NewGuid():N}");
+
     public const string WebhookSecret = "test-webhook-secret";
 
     /// <summary>The username the tests authenticate as when they need administrator rights</summary>
@@ -43,6 +46,7 @@ internal sealed class WebAppFactory(string connectionString) : WebApplicationFac
                 ["Moodle:OutboxDrainSeconds"] = "3600",
                 ["Download:DrainSeconds"] = "3600",
                 ["Download:ArtifactStoragePath"] = Path.Combine(Path.GetTempPath(), "leo-test-downloads"),
+                ["StarterArchive:StoragePath"] = StarterArchiveStoragePath,
                 ["Startup:VerifySchemaOnStartup"] = "false",
                 // the realm has no administrator role; this application names its admins by username
                 ["Keycloak:AdminUsers:0"] = AdminStudentId
