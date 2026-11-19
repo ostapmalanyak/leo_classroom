@@ -60,6 +60,85 @@ public sealed class RepoProvisioningServiceTests
     }
 
     [Fact]
+    public async Task SeedByMigrateAsync_ArchiveTemplate_UsesInternalAuthenticatedCloneUrl()
+    {
+        const string templateUrl = "http://forgejo:3000/course/starter.git";
+        var forgejo = Substitute.For<IForgejoClient>();
+        ForgejoRepo template = CreateRepo("course/starter", templateUrl);
+        ForgejoRepo copied = CreateRepo("students/copy", "http://forgejo:3000/students/copy.git");
+        forgejo.GetRepoAsync("course", "starter")
+               .Returns(new ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>>(template));
+        forgejo.MigrateRepoAsync(templateUrl, "students", "copy", true, BotName, AdminToken)
+               .Returns(new ValueTask<OneOf<Success<ForgejoRepo>, ForgejoError>>(new Success<ForgejoRepo>(copied)));
+
+        RepoProvisioningService service = CreateService(forgejo);
+        Assignment assignment = new()
+        {
+            Title = "Archive exercise",
+            Slug = "archive-exercise",
+            StarterSourceKind = StarterSourceKind.Archive,
+            StarterTemplateRepoUrl = templateUrl
+        };
+
+        var result = await service.SeedByMigrateAsync(assignment, "students", "copy", templateUrl);
+
+        result.ShouldBe<ForgejoRepo>().Should().Be(copied);
+        await forgejo.Received(1).MigrateRepoAsync(templateUrl, "students", "copy", true, BotName, AdminToken);
+    }
+
+    [Fact]
+    public async Task CreateArchiveStarterAsync_CreatesAndSeedsPrivateCourseTemplate()
+    {
+        const long courseId = 56;
+        const string org = "course-org";
+        string archivePath = Path.GetTempFileName();
+        await File.WriteAllTextAsync(archivePath, "zip", TestContext.Current.CancellationToken);
+        try
+        {
+            var uow = Substitute.For<IUnitOfWork>();
+            var courses = Substitute.For<ICourseRepository>();
+            uow.CourseRepository.Returns(courses);
+            courses.GetTrackedByIdAsync(courseId).Returns(new ValueTask<Course?>(new Course
+            {
+                Id = courseId,
+                Title = "Course",
+                Owner = new User { StudentId = "teacher", FirstName = "Teach", LastName = "Er" },
+                ForgejoOrg = org
+            }));
+
+            var forgejo = Substitute.For<IForgejoClient>();
+            ForgejoRepo template = CreateRepo($"{org}/starter", $"http://forgejo:3000/{org}/starter.git");
+            forgejo.EnsureOrgAsync(org).Returns(new ValueTask<OneOf<Success, ForgejoError>>(new Success()));
+            forgejo.EnsureTeamAsync(org, ForgejoNaming.TeachersTeamName, CollaboratorPermission.Admin)
+                   .Returns(new ValueTask<OneOf<Success<long>, ForgejoError>>(new Success<long>(42)));
+            forgejo.IsTeamMemberAsync(42, "teacher").Returns(new ValueTask<OneOf<bool, ForgejoError>>(true));
+            forgejo.CreateOrgRepoAsync(org, Arg.Any<string>(), false, true)
+                   .Returns(new ValueTask<OneOf<Success<ForgejoRepo>, AlreadyExists, ForgejoError>>(
+                       new Success<ForgejoRepo>(template)));
+            var extractor = Substitute.For<IArchiveExtractor>();
+            extractor.ExtractToDirectory(Arg.Any<Stream>(), Arg.Any<string>()).Returns(new Success());
+            var git = Substitute.For<IGitService>();
+            git.SeedRepositoryFromDirectoryAsync(template.CloneUrl, Arg.Any<string>(), Arg.Any<CancellationToken>())
+               .Returns(new ValueTask<OneOf<Success, GitError>>(new Success()));
+
+            RepoProvisioningService service = CreateService(forgejo, uow, git: git, archiveExtractor: extractor);
+
+            var result = await service.CreateArchiveStarterAsync(courseId, "Archive exercise", archivePath);
+
+            result.ShouldBe<ForgejoRepo>().Should().Be(template);
+            await forgejo.Received(1).CreateOrgRepoAsync(
+                org, Arg.Is<string>(name => name.StartsWith("starter-archive-exercise-", StringComparison.Ordinal)),
+                false, true);
+            await git.Received(1).SeedRepositoryFromDirectoryAsync(
+                template.CloneUrl, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            File.Delete(archivePath);
+        }
+    }
+
+    [Fact]
     public async Task ProvisionAcceptanceAsync_FailedCourseSetup_StoresFailureReason()
     {
         const long acceptanceId = 12;
