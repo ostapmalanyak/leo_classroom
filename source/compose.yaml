@@ -225,6 +225,9 @@ services:
       FORGEJO__database__NAME: ${FORGEJO_DB_NAME}
       FORGEJO__database__USER: ${FORGEJO_DB_USER}
       FORGEJO__database__PASSWD__FILE: /run/secrets/forgejo_db_password
+      # Git tokens from the browser login live a year, so students sign in once (default is 1 h and the
+      # libsecret helper does not keep the refresh token).
+      FORGEJO__oauth2__ACCESS_TOKEN_EXPIRATION_TIME: "31536000"
       # Confidential OIDC client secret for Keycloak SSO (consumed by `forgejo admin auth add-oauth`).
       FORGEJO__oauth2_client__OPENID_CONNECT_SCOPES: "openid email profile"
       FORGEJO__service__ENABLE_OPENID_SIGNIN: "false"
