@@ -123,7 +123,7 @@
   gap: var(--space-4);
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
 
-  @media (max-width: 24rem) {
+  @media (width <= 24rem) {
     .course-card {
       gap: 1rem;
       padding: 1rem;
@@ -181,7 +181,6 @@
   }
 
   &__menu-button {
-    align-items: center;
     background: transparent;
     border: none;
     box-shadow: none;
@@ -201,6 +200,7 @@
     transform: translateY(-50%);
     width: 2rem;
     z-index: 1;
+
     --mat-icon-button-state-layer-color: transparent;
     --mat-icon-button-ripple-color: transparent;
 

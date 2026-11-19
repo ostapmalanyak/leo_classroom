@@ -22,6 +22,10 @@ internal sealed class LateFlaggingConsumer(IUnitOfWork uow, ILogger<LateFlagging
         {
             return;
         }
+        if (!await StudentPushes.IsByStudentAsync(uow, acceptance, envelope))
+        {
+            return;
+        }
 
         Assignment? assignment = await uow.AssignmentRepository.GetByIdAsync(acceptance.AssignmentId);
         if (assignment is null || assignment.DeadlineKind != DeadlineKind.Soft || assignment.Deadline is null)

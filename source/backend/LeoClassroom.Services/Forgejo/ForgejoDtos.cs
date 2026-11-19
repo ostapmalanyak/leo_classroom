@@ -51,7 +51,8 @@ public sealed record ForgejoCommit(
     ForgejoUser? Author);
 
 public sealed record ForgejoCommitDetails(
-    [property: JsonPropertyName("author")] ForgejoCommitAuthor Author);
+    [property: JsonPropertyName("author")] ForgejoCommitAuthor Author,
+    [property: JsonPropertyName("committer")] ForgejoCommitAuthor? Committer = null);
 
 public sealed record ForgejoCommitAuthor(
     [property: JsonPropertyName("date")] string Date);

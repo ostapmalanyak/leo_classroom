@@ -36,15 +36,15 @@ foreach ((string dn, bool teacher) in distinguishedNames)
 {
     var principal = new ClaimsPrincipal(new ClaimsIdentity(
         [new Claim("preferred_username", "IF001"), new Claim("ldap_entry_dn", dn)], "test"));
-    var roles = AuthClaims.ReadRoles(principal, new HashSet<string>());
+    var roles = AuthClaims.ReadRoles(principal, new HashSet<string>(), new HashSet<string>());
     Check(roles.Contains(Role.Teacher) == teacher, $"Incorrect teacher role for {dn}");
 }
 var admin = new ClaimsPrincipal(new ClaimsIdentity([new Claim("preferred_username", "admin")], "test"));
-Check(AuthClaims.ReadRoles(admin, new HashSet<string> { "admin" }).Contains(Role.Admin), "Configured admin lost role");
+Check(AuthClaims.ReadRoles(admin, new HashSet<string> { "admin" }, new HashSet<string>()).Contains(Role.Admin), "Configured admin lost role");
 var incoming = new ClaimsPrincipal(new ClaimsIdentity(
     [new Claim("preferred_username", "IF001"), new Claim("ldap_entry_dn", "CN=IF001,OU=Students,DC=school"),
      new Claim(ClaimTypes.Role, "admin")], "test"));
-var transformation = new LeoRoleClaimsTransformation(new HashSet<string> { "admin" });
+var transformation = new LeoRoleClaimsTransformation(new HashSet<string> { "admin" }, new HashSet<string>());
 ClaimsPrincipal transformed = await transformation.TransformAsync(incoming);
 Check(!transformed.IsInRole("admin") && transformed.IsInRole("student"), "Incoming role bypassed LDAP derivation");
 Check(incoming.IsInRole("admin"), "Transformation mutated the authentication principal");

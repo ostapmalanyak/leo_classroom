@@ -108,5 +108,10 @@ internal sealed class ProvisioningWorker(
             logger.LogError("Startup provisioning sweep failed: {ExceptionType}: {Exception}",
                             ex.GetType().Name, Redact(ex.ToString()));
         }
+        catch (Exception) when (cancellationToken.IsCancellationRequested)
+        {
+            // the host is stopping: the remaining stuck acceptances are swept again on the next start
+            return;
+        }
     }
 }

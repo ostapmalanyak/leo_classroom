@@ -15,11 +15,13 @@ $color-on-accent: #000;
 $color-danger-bg: #860707;
 $color-danger-border: #bc2727;
 $color-danger-text: #fef2f2;
+
 // Error text sits on the dark surface, not on the maroon danger background, so it needs its own light red.
 $color-danger-strong: #fca5a5;
 $color-success-border: #1f6e3c;
 $color-success-bg: #1d462c;
 $color-success-text: #aef0c2;
+
 // The remaining semantic triples and the urgency scale live here as well, so a state looks
 // the same on every page instead of only where it was introduced.
 $color-warning-bg: #3a2a08;
@@ -36,6 +38,7 @@ $color-neutral-border: #445161;
 $color-neutral-text: #cbd5e1;
 $color-border-subtle: #1f2833;
 $color-text-subtle: #9aabbf;
+
 // One urgency scale for every deadline on every screen. It ramps from quiet grey over
 // yellow to orange and orange-red, and only a deadline that has passed is red. Every step
 // keeps at least 4.5:1 against the card surface.

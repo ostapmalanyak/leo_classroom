@@ -30,6 +30,8 @@ public sealed class WebApiTestFixture : IAsyncLifetime
     public TestAuthState AuthState => Factory.AuthState;
     public string StarterArchiveStoragePath => Factory.StarterArchiveStoragePath;
 
+    public void ForgetProvisionedUser(string studentId) => Factory.ForgetProvisionedUser(studentId);
+
     private WebAppFactory Factory
     {
         get => field ?? throw new InvalidOperationException("Factory not created");

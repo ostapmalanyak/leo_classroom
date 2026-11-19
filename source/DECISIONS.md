@@ -55,6 +55,33 @@ publish times to the minute (then the job interval, or a per-assignment Quartz t
 
 ---
 
+
+## 2026-11-18 — Commit activity counts only the student's own work
+
+**Status:** accepted.
+
+**Which commits count.** A copied or forked starter brings the teacher's whole history into the student's
+repository, so a commit counts only when it was committed after the student accepted, and not when its
+Forgejo author is the bot or a teacher of the assignment. A commit whose e-mail Forgejo cannot link to any
+account still counts: in a student repository that is almost always the student committing with a private
+address, and dropping it would hide real work. Active days are the distinct Vienna dates of those commits,
+so they are right for work done before pushes were tracked.
+
+**Which pushes count.** Push webhooks only count when the pusher is the student - the bot seeding a
+repository and a teacher pushing into it neither hand anything in, flag it late, nor add to its activity.
+Pushes, and commits per push, exist only as webhook events and cannot be recovered for the time before
+Forgejo delivered them.
+
+**Forgejo has to be allowed to call the backend.** Forgejo refuses webhook targets on private networks
+unless `webhook.ALLOWED_HOST_LIST` names them, which silently dropped every push event; compose allows
+exactly the `backend` host. Changing the backend's service name means changing that setting too.
+
+**The overview asks once.** The submissions page loads every submission's commit and late-commit counts in
+one request (`/api/assignments/{id}/commit-summary`) instead of one analytics call per student. A repository
+Forgejo cannot answer for leaves only its own row without counts.
+
+---
+
 ## 2026-11-17 — The bar carries the work, the page carries the content
 
 **Status:** accepted.

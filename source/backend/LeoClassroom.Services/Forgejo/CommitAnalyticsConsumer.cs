@@ -23,6 +23,10 @@ internal sealed class CommitAnalyticsConsumer(IUnitOfWork uow, ILogger<CommitAna
         {
             return;
         }
+        if (!await StudentPushes.IsByStudentAsync(uow, acceptance, envelope))
+        {
+            return;
+        }
 
         PushDetails push = ForgejoPushPayload.Parse(envelope.Payload);
         CommitAnalytics rollup = acceptance.Analytics;

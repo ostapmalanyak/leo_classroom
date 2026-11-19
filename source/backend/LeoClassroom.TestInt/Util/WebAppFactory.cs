@@ -1,4 +1,6 @@
 using LeoClassroom.Persistence.Util;
+using LeoClassroom.Services.Auth;
+using LeoClassroom.Services.Forgejo;
 using LeoClassroom.Shared;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -52,13 +54,32 @@ internal sealed class WebAppFactory(string connectionString) : WebApplicationFac
                 ["Keycloak:AdminUsers:0"] = AdminStudentId
             });
         });
+        // the realm has no administrator role; this application names its admins by username. Program.cs reads
+        // the Keycloak settings before the host is built, which only UseSetting reaches in time - a value added
+        // in ConfigureAppConfiguration would leave the role transformation without any admin.
+        builder.UseSetting("Keycloak:AdminUsers:0", AdminStudentId);
         builder.ConfigureTestServices(services =>
         {
             SetTestDbContext(services);
             SetTestClock(services);
             SetTestAuthentication(services);
+            SetFakeForgejo(services);
         });
     }
+
+    private static void SetFakeForgejo(IServiceCollection services)
+    {
+        // the typed client is registered under its interface's name; this only swaps its innermost handler
+        services.AddHttpClient(nameof(IForgejoClient))
+                .ConfigurePrimaryHttpMessageHandler(() => new FakeForgejoHandler());
+    }
+
+    /// <summary>
+    ///     Drops what the provisioning cache remembers about a caller. Each test wipes the database, but the cache
+    ///     lives as long as the host, so without this a caller seen by an earlier test is never provisioned again.
+    /// </summary>
+    public void ForgetProvisionedUser(string studentId) =>
+        Services.GetRequiredService<IUserProvisioningCache>().Forget(studentId);
 
     private void SetTestAuthentication(IServiceCollection services)
     {

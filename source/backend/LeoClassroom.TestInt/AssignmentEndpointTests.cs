@@ -237,7 +237,7 @@ public sealed class AssignmentEndpointTests(WebApiTestFixture fixture) : WebApiT
             starterSourceKind, null, null, false, null, DownloadSnapshotMode.Deadline,
             StarterArchiveUploadId: Guid.NewGuid().ToString("N"));
 
-        new AssignmentCreateRequest.Validator().Validate(request).IsValid.Should().BeTrue();
+        new AssignmentCreateRequest.Validator(SystemClock.Instance).Validate(request).IsValid.Should().BeTrue();
     }
 
     [Fact]

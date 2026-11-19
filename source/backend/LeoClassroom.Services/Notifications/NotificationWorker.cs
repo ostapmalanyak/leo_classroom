@@ -92,6 +92,12 @@ internal sealed class NotificationWorker(
             {
                 logger.LogError(ex, "Notification outbox drain failed");
             }
+            catch (Exception) when (stoppingToken.IsCancellationRequested)
+            {
+                // the host is stopping: abandon the in-flight drain instead of crashing shutdown; the rows it
+                // was working on are picked up again on the next start
+                return;
+            }
 
             try
             {
