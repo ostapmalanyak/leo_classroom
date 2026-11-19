@@ -30,13 +30,14 @@ public sealed class EndpointGraphTests
     private const string UnreachableDatabase = "Host=127.0.0.1;Port=1;Database=none;Username=x;Password=y";
 
     [Theory]
-    [InlineData("accept", false, true)]
-    [InlineData("retry", false, true)]
-    [InlineData("retry", false, false)]
-    [InlineData("accept", true, true)]
-    [InlineData("retry", true, true)]
+    [InlineData("accept", false, true, SubmissionStatus.Provisioning)]
+    [InlineData("retry", false, true, SubmissionStatus.Provisioning)]
+    [InlineData("retry", false, false, SubmissionStatus.Provisioning)]
+    [InlineData("accept", true, true, SubmissionStatus.Provisioning)]
+    [InlineData("retry", true, true, SubmissionStatus.Provisioning)]
+    [InlineData("accept", false, false, SubmissionStatus.DownloadOnly)]
     public async Task SubmissionQueue_IsWrittenOnlyAfterSuccessfulCommit(
-        string operation, bool commitFails, bool needsProvisioning)
+        string operation, bool commitFails, bool needsProvisioning, SubmissionStatus acceptanceStatus)
     {
         var transaction = Substitute.For<ITransactionProvider>();
         var queue = Substitute.For<IProvisioningQueue>();
@@ -46,9 +47,10 @@ public sealed class EndpointGraphTests
         var acceptance = new Acceptance
         {
             Id = 5, AssignmentId = 1, RepoOwner = "course", RepoName = "submission",
-            Status = SubmissionStatus.Provisioning
+            Status = acceptanceStatus
         };
-        OneOf<Success<Acceptance>, NotFound, Forbidden, AlreadyExists> accepted = new Success<Acceptance>(acceptance);
+        OneOf<Success<Acceptance>, NotFound, Forbidden, AlreadyExists> accepted =
+            new Success<Acceptance>(acceptance);
         service.AcceptAsync(1).Returns(ValueTask.FromResult(accepted));
         OneOf<AcceptanceRetry, NotFound> retry = new AcceptanceRetry(acceptance, needsProvisioning);
         service.RetryAsync(1).Returns(ValueTask.FromResult(retry));
@@ -88,7 +90,10 @@ public sealed class EndpointGraphTests
                                               TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(commitFails ? HttpStatusCode.InternalServerError : HttpStatusCode.Accepted);
-        await queue.Received(!commitFails && (operation == "accept" || needsProvisioning) ? 1 : 0).EnqueueAsync(5);
+        bool shouldEnqueue = operation == "accept"
+            ? acceptanceStatus == SubmissionStatus.Provisioning
+            : needsProvisioning;
+        await queue.Received(!commitFails && shouldEnqueue ? 1 : 0).EnqueueAsync(5);
     }
 
     [Fact]
