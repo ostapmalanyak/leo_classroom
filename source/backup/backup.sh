@@ -29,6 +29,10 @@ if [ -d /forgejo-data ]; then
   echo "backup: archiving forgejo data volume"
   tar -czf "$WORK/forgejo-data-${STAMP}.tar.gz" -C /forgejo-data .
 fi
+if [ -d /starter-archives ]; then
+  echo "backup: archiving starter archives volume"
+  tar -czf "$WORK/starter-archives-${STAMP}.tar.gz" -C /starter-archives .
+fi
 echo "backup: restic snapshot to $RESTIC_REPOSITORY"
 restic snapshots >/dev/null 2>&1 || restic init
 restic backup --tag leo-classroom "$WORK"
