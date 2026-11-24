@@ -84,6 +84,15 @@ export class GitLoginStep implements OnInit, OnDestroy {
   /** Only students may step past the login and type the password by hand. */
   public readonly allowSkip = input(false);
 
+  /**
+   * Assignment pages pass true: once the setup is known to be done there is nothing left to say, and the step
+   * should not greet the student on every assignment. The account page keeps it, which is where it is looked for.
+   */
+  public readonly hideWhenDone = input(false);
+
+  /** Fold away by itself after half a minute, so a visit never ends in a step nobody asked for. */
+  public readonly autoClose = input(true);
+
   private readonly service = inject(GitSetupService);
   private readonly snackbar = inject(SnackbarService);
   private readonly destroyRef = inject(DestroyRef);
@@ -111,7 +120,10 @@ export class GitLoginStep implements OnInit, OnDestroy {
   protected readonly distros = Object.entries(DISTROS).map(([id, entry]) => ({ id: id as Distro, ...entry }));
 
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private autoCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  private autoCloseStarted = false;
   private static readonly POLL_MS = 3000;
+  private static readonly AUTO_CLOSE_MS = 30_000;
 
   /**
    * True once the step stops holding the next one back: the user confirmed the commands ran, the backend has
@@ -126,6 +138,13 @@ export class GitLoginStep implements OnInit, OnDestroy {
 
   /** True only when the backend confirmed it; skipping deliberately does not claim this. */
   public readonly authorized = computed(() => this.setup()?.authorized === true);
+
+  /** The setup is done, by the user's word or by proof: nothing left for an assignment page to show. */
+  public readonly settled = computed(() => {
+    const setup = this.setup();
+
+    return setup !== null && (setup.configured || setup.authorized);
+  });
 
   protected readonly phase = computed<Phase>(() => {
     const setup = this.setup();
@@ -171,7 +190,10 @@ export class GitLoginStep implements OnInit, OnDestroy {
     : 'Git still asks for your password? Fix it once.');
 
   public constructor() {
-    this.destroyRef.onDestroy(() => this.stopPolling());
+    this.destroyRef.onDestroy(() => {
+      this.stopPolling();
+      this.clearAutoClose();
+    });
   }
 
   public ngOnInit(): void {
@@ -187,6 +209,7 @@ export class GitLoginStep implements OnInit, OnDestroy {
   protected expand(): void {
     this.dismissed.set(false);
     this.expanded.set(true);
+    this.restartAutoClose();
   }
 
   /** "Not now": the step folds back into the one line that reopens it, for this visit only. */
@@ -197,18 +220,22 @@ export class GitLoginStep implements OnInit, OnDestroy {
 
   protected selectDistro(distro: Distro): void {
     this.distro.set(distro);
+    this.restartAutoClose();
   }
 
   protected toggleCommands(): void {
+    this.restartAutoClose();
     this.showCommands.update((open) => !open);
   }
 
   protected toggleMac(): void {
     this.mac.update((open) => !open);
+    this.restartAutoClose();
   }
 
   protected toggleStillAsked(): void {
     this.stillAsked.update((open) => !open);
+    this.restartAutoClose();
   }
 
   protected skip(): void {
@@ -220,6 +247,7 @@ export class GitLoginStep implements OnInit, OnDestroy {
     try {
       await navigator.clipboard.writeText(this.command());
       this.copied.set(true);
+      this.restartAutoClose();
       setTimeout(() => this.copied.set(false), 2000);
     } catch {
       this.snackbar.show('Could not copy the commands');
@@ -258,6 +286,12 @@ export class GitLoginStep implements OnInit, OnDestroy {
     const setup = await this.service.get();
     this.setup.set(setup);
 
+    // One full half-minute from the first answer, not from every poll: the clock restarts on interaction only.
+    if (!this.autoCloseStarted && setup !== null) {
+      this.autoCloseStarted = true;
+      this.restartAutoClose();
+    }
+
     // Keep asking until the backend confirms it. A null answer is a transient failure (a restart, a dropped
     // connection), not a reason to leave the page without a step.
     if (setup?.authorized === true) {
@@ -282,6 +316,28 @@ export class GitLoginStep implements OnInit, OnDestroy {
 
     if (setup?.authorized !== true) {
       this.schedulePoll();
+    }
+  }
+
+  /** The step is not a dialog: after half a minute it folds into the line that reopens it. */
+  private restartAutoClose(): void {
+    this.clearAutoClose();
+    if (!this.autoClose() || this.windowsDevice) {
+      return;
+    }
+
+    this.autoCloseTimer = setTimeout(() => {
+      this.autoCloseTimer = null;
+      if (!this.dismissed() && this.phase() !== 'authorized') {
+        this.dismiss();
+      }
+    }, GitLoginStep.AUTO_CLOSE_MS);
+  }
+
+  private clearAutoClose(): void {
+    if (this.autoCloseTimer !== null) {
+      clearTimeout(this.autoCloseTimer);
+      this.autoCloseTimer = null;
     }
   }
 

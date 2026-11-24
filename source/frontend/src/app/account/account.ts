@@ -8,10 +8,11 @@ import { IssuedGitCredential, Me, MeService } from '../../core/services/me-servi
 import { SnackbarService } from '../../core/services/snackbar-service';
 import { SessionService } from '../../core/auth/session-service';
 import { forgejoOrigin } from '../../core/auth/auth-config';
+import { GitLoginStep } from '../shared/git-login-step/git-login-step';
 
 @Component({
   selector: 'app-account',
-  imports: [MatButton, MatProgressBar, MatIcon, DatePipe],
+  imports: [MatButton, MatProgressBar, MatIcon, DatePipe, GitLoginStep],
   templateUrl: './account.html',
   styleUrl: './account.scss'
 })

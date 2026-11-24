@@ -11,8 +11,8 @@
   }
 
   @default {
-    @if (windowsDevice) {
-      <!-- Nothing to do on Windows: Git Credential Manager keeps the password after the first prompt. -->
+    @if (windowsDevice || (hideWhenDone() && settled())) {
+      <!-- Nothing to do on Windows, and once set up there is nothing left to say on an assignment page. -->
     } @else if (dismissed() || (collapsible() && !expanded())) {
       <button type="button" class="git-line" (click)="expand()">{{ mutedLine() }}</button>
     } @else {

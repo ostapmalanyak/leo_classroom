@@ -35,7 +35,7 @@
   }
 
   @if (needsGitLogin()) {
-    <app-git-login-step audience="student" [allowSkip]="true" />
+    <app-git-login-step audience="student" [allowSkip]="true" [hideWhenDone]="true" />
   }
 
   @switch (step()) {
