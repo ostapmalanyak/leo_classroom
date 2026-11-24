@@ -31,6 +31,25 @@ export class Account implements OnInit {
   protected readonly neverIssued = computed(() => this.me()?.gitCredentialIssuedAt === null);
   protected readonly forgejoOrigin = signal(forgejoOrigin());
 
+  protected readonly roles = computed(() => this.me()?.roles ?? []);
+
+  /** When the password was last generated, for the status pill beside the heading. */
+  protected readonly issuedAt = computed(() => this.asDate(this.me()?.gitCredentialIssuedAt ?? null));
+
+  /** The avatar letters: two initials from the display name, or the student id when there is no name. */
+  protected readonly initials = computed(() => {
+    const name = (this.identity()?.displayName ?? this.me()?.studentId ?? '').trim();
+    const parts = name.split(/\s+/).filter((part) => part.length > 0);
+
+    if (parts.length === 0) {
+      return '?';
+    }
+
+    return parts.length === 1
+      ? parts[0].slice(0, 2).toUpperCase()
+      : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  });
+
   public async ngOnInit(): Promise<void> {
     await this.meService.load();
 

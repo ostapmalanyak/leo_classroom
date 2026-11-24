@@ -1,75 +1,105 @@
-<h1>My account</h1>
+<header class="account__intro">
+  <h1>My account</h1>
+  <p class="account__lead">Who you are here, and the git credential this app manages for you.</p>
+</header>
 
 @if (loading()) {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
 }
 
 <section class="account">
-  <div class="card">
-    <h2>Who you are</h2>
-    <dl class="facts">
-      <dt>Name</dt>
-      <dd>{{ identity()?.displayName ?? '—' }}</dd>
-      <dt>Username</dt>
-      <dd><code>{{ me()?.studentId ?? identity()?.studentId ?? '—' }}</code></dd>
-      <dt>Class</dt>
-      <dd>{{ me()?.schoolClass ?? '—' }}</dd>
-      <dt>Roles</dt>
-      <dd>{{ (me()?.roles ?? []).join(', ') || '—' }}</dd>
-    </dl>
-  </div>
+  <article class="card account__profile">
+    <span class="account__avatar" aria-hidden="true">{{ initials() }}</span>
+
+    <div class="account__who">
+      <h2 class="account__name">{{ identity()?.displayName ?? me()?.studentId ?? '—' }}</h2>
+      <p class="account__meta">
+        <code>{{ me()?.studentId ?? identity()?.studentId ?? '—' }}</code>
+        @if (me()?.schoolClass) {
+          <span aria-hidden="true">·</span>
+          <span>{{ me()?.schoolClass }}</span>
+        }
+      </p>
+
+      @if (roles().length > 0) {
+        <ul class="account__roles">
+          @for (role of roles(); track role) {
+            <li class="pill">{{ role }}</li>
+          }
+        </ul>
+      }
+    </div>
+  </article>
 
   @if (issued(); as credential) {
-    <div class="credential">
+    <article class="card credential">
       <p class="credential__warning">
-        <mat-icon>warning</mat-icon>
+        <mat-icon aria-hidden="true">warning</mat-icon>
         <span>
           Write this password down now. It is shown this one time and is <strong>not stored anywhere</strong> —
           if you lose it you cannot look it up, you can only generate a new one.
         </span>
       </p>
 
-      <h2>Your git password</h2>
-
-      <div class="secret">
-        <span>Username</span>
-        <code>{{ credential.username }}</code>
-        <button mat-stroked-button (click)="copy(credential.username)">Copy</button>
+      <div class="secrets">
+        <div class="secret">
+          <span class="secret__label">Username</span>
+          <code class="secret__value">{{ credential.username }}</code>
+          <button mat-stroked-button type="button" (click)="copy(credential.username)">Copy</button>
+        </div>
+        <div class="secret">
+          <span class="secret__label">Password</span>
+          <code class="secret__value">{{ credential.password }}</code>
+          <button mat-stroked-button type="button" (click)="copy(credential.password)">Copy</button>
+        </div>
       </div>
-      <div class="secret">
-        <span>Password</span>
-        <code>{{ credential.password }}</code>
-        <button mat-stroked-button (click)="copy(credential.password)">Copy</button>
-      </div>
 
-      <h3>Signing in to Forgejo</h3>
-      <p>
-        Open Forgejo, choose <strong>Sign in</strong>, and enter the username and password above. You can
-        change the password there afterwards if you prefer one you can remember — this app will not know
-        about it, and generating a new one here always overrides it.
-      </p>
-
-      <h3>Cloning and pushing your repository</h3>
-      <p>When git asks for a username and password, use exactly the two values above.</p>
-      <pre>git clone &lt;your repository URL&gt;
+      <ol class="steps">
+        <li>
+          <h3>Sign in to Forgejo</h3>
+          <p>
+            Open Forgejo, choose <strong>Sign in</strong>, and enter the username and password above. You can
+            change the password there afterwards if you prefer one you can remember — this app will not know
+            about it, and generating a new one here always overrides it.
+          </p>
+        </li>
+        <li>
+          <h3>Clone, then push</h3>
+          <p>When git asks for a username and password, use exactly the two values above.</p>
+          <pre><code>git clone &lt;your repository URL&gt;
 cd &lt;folder&gt;
 # ...work...
 git add -A
 git commit -m "my changes"
-git push</pre>
-
-      <h3>So you only type it once</h3>
-      <p>Let git remember it for you:</p>
-      <pre>git config --global credential.helper store</pre>
-      <p>
-        The next push asks once and then remembers. On Windows use
-        <code>manager</code> instead of <code>store</code> to keep it in the Windows Credential Manager.
-      </p>
-    </div>
+git push</code></pre>
+        </li>
+        <li>
+          <h3>Type it only once</h3>
+          <p>Let git remember it for you:</p>
+          <pre><code>git config --global credential.helper store</code></pre>
+          <p>
+            The next push asks once and then remembers. On Windows use <code>manager</code> instead of
+            <code>store</code> to keep it in the Windows Credential Manager.
+          </p>
+        </li>
+      </ol>
+    </article>
   }
 
-  <div class="card">
-    <h2>Git access</h2>
+  <article class="card account__section">
+    <div class="account__head">
+      <h2>Git password</h2>
+
+      @if (me()?.gitCredentialManaged === false) {
+        <span class="pill">School login</span>
+      } @else {
+        @if (issuedAt(); as generated) {
+          <span class="pill pill--success">Generated {{ generated | date: 'd MMM yyyy' }}</span>
+        } @else {
+          <span class="pill pill--warning">Not generated yet</span>
+        }
+      }
+    </div>
 
     @if (me()?.gitCredentialManaged === false) {
       <p>
@@ -77,12 +107,6 @@ git push</pre>
         your usual school credentials.
       </p>
     } @else {
-      @if (asDate(me()?.gitCredentialIssuedAt ?? null); as issuedAt) {
-        <p>A git password was last generated on <strong>{{ issuedAt | date: 'medium' }}</strong>.</p>
-      } @else {
-        <p>You have not generated a git password yet.</p>
-      }
-
       <p>
         Forgot it, or think someone else has seen it? Generating a new one immediately replaces the old one,
         which stops working.
@@ -91,7 +115,9 @@ git push</pre>
         Generate a new password
       </button>
     }
-  </div>
+  </article>
 
-  <app-git-login-step [autoClose]="false" />
+  <article class="card account__section account__git">
+    <app-git-login-step [autoClose]="false" />
+  </article>
 </section>
