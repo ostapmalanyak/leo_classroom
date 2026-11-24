@@ -118,14 +118,16 @@ export class GitLoginStep implements OnInit, OnDestroy {
       return '';
     }
 
-    // `H` keeps every line short enough to read without wrapping, and the config keys stay identical.
+    // The host is written out in every line instead of a shell variable: `H=...` is a shell assignment and
+    // fish rejects it. A literal works in bash, zsh, fish, sh and Windows Git Bash alike.
+    const key = `credential.${setup.host}`;
+
     return [
-      `H=${setup.host}`,
-      `git config --global credential.$H.oauthClientId ${setup.clientId}`,
-      'git config --global credential.$H.oauthAuthURL /login/oauth/authorize',
-      'git config --global credential.$H.oauthTokenURL /login/oauth/access_token',
-      `git config --global --add credential.$H.helper ${DISTROS[this.distro()].keychain}`,
-      'git config --global --add credential.$H.helper oauth'
+      `git config --global ${key}.oauthClientId ${setup.clientId}`,
+      `git config --global ${key}.oauthAuthURL /login/oauth/authorize`,
+      `git config --global ${key}.oauthTokenURL /login/oauth/access_token`,
+      `git config --global --add ${key}.helper ${DISTROS[this.distro()].keychain}`,
+      `git config --global --add ${key}.helper oauth`
     ].join('\n');
   });
 
