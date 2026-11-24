@@ -1,124 +1,241 @@
 @use "../abstracts/mixins" as mixins;
 
-// The account page reads as one column of cards: who you are, the password this app can hand out, and the
-// one-time git login. Headings sit inside their card, so the page needs no sub-navigation to stay legible.
+// Settings layout in the shape people know from GitHub: a sticky rail with who you are and the sections,
+// and one panel per section whose settings are rows separated by hairlines. Panels keep the app's card
+// surface, so the page still belongs to the rest of the site.
 
-.account__intro {
-  max-width: var(--container-narrow);
-  margin-bottom: var(--space-5);
-
-  h1 {
-    margin: 0;
-  }
+.settings {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-6);
+  max-width: var(--container-max);
 }
 
-.account__lead {
-  margin: var(--space-1) 0 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  line-height: 1.5;
-}
-
-.account {
+.settings__rail {
+  position: sticky;
+  inset-block-start: var(--space-5);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  max-width: var(--container-narrow);
 }
 
-.account .card {
-  padding: var(--space-5);
-}
-
-/* The person: one circle with initials, then name, id and the roles as capsules. */
-.account__profile {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.account__avatar {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: 3.5rem;
-  block-size: 3.5rem;
-  border-radius: var(--radius-pill);
-  background-color: color-mix(in srgb, var(--color-accent) 16%, transparent);
-  color: var(--color-accent);
-  font-size: 1.25rem;
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.02em;
-}
-
-.account__who {
+.settings__person {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: var(--space-1);
   min-inline-size: 0;
 }
 
-.account__name {
-  margin: 0;
-  color: var(--color-text-strong);
-  font-size: var(--font-size-h2);
+.settings__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 4rem;
+  block-size: 4rem;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-pill);
+  background-color: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-accent);
+  font-size: 1.375rem;
   font-weight: var(--font-weight-semibold);
-  line-height: 1.2;
+  letter-spacing: 0.02em;
 }
 
-.account__meta {
+.settings__name {
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.3;
+}
+
+.settings__handle {
+  color: var(--color-text-subtle);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+}
+
+.settings__nav {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.settings__link {
+  display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
+  text-decoration: none;
+  transition: color var(--transition), background-color var(--transition);
 
-  code {
+  mat-icon {
+    flex: none;
+    font-size: 1.125rem;
+    inline-size: 1.125rem;
+    block-size: 1.125rem;
+  }
+
+  &:hover {
+    background-color: var(--color-bg-hover);
     color: var(--color-text);
-    font-family: var(--font-family-mono);
+  }
+
+  &:focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.125rem;
   }
 }
 
-.account__roles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: var(--space-1) 0 0;
-  padding: 0;
-  list-style: none;
+.settings__link--active {
+  background-color: var(--color-bg-input);
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-medium);
+
+  mat-icon {
+    color: var(--color-accent);
+  }
 }
 
-/* A card heading with its state on the same line: the pill answers "is this set up?" without reading on. */
-.account__head {
+.settings__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-inline-size: 0;
+  max-inline-size: 52rem;
+}
+
+.settings__head {
+  h1 {
+    margin: 0;
+  }
+
+  p {
+    margin: var(--space-1) 0 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+  }
+}
+
+/* One section: a card with a heading and its settings rows. */
+.settings__panel {
+  @include mixins.surface;
+
+  padding: var(--space-5);
+  border: 0;
+  border-radius: var(--course-card-radius);
+  background-color: var(--color-bg-surface);
+  scroll-margin-block-start: 5rem;
+}
+
+.settings__panel-head {
+  margin-bottom: var(--space-4);
+
+  h2 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  p {
+    margin: var(--space-1) 0 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+  }
+}
+
+/* The step brings a smaller title of its own; in a panel it is a sibling of the other section headings. */
+.settings__panel--step .git-step__title {
+  font-size: 1.25rem;
+}
+
+.settings__title {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-3);
-
-  h2 {
-    margin: 0;
-  }
 }
 
-.account__section p {
-  margin: 0 0 var(--space-3);
+.settings__note {
+  margin: 0;
   color: var(--color-text-muted);
   line-height: 1.6;
 }
 
-.account__section p:last-child {
-  margin-bottom: 0;
+/* Setting rows: label on the left, value or control on the right, a hairline between. */
+.rows {
+  margin: 0;
+  border-block-start: var(--border-width) solid var(--color-border);
 }
 
-/* The freshly generated password: a warning strip inside a card that is otherwise an ordinary surface. */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding-block: var(--space-3);
+  border-block-end: var(--border-width) solid var(--color-border);
+
+  dt {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--color-text);
+    text-align: end;
+  }
+
+  code {
+    font-family: var(--font-family-mono);
+  }
+}
+
+.row--action {
+  align-items: center;
+}
+
+.row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-inline-size: 0;
+}
+
+.row__label {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.row__hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.account__roles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The freshly generated password: a warning strip and three steps, inside the panel it belongs to. */
 .credential {
+  margin-block-start: var(--space-4);
   border: var(--border-width) solid var(--color-danger-border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
 }
 
 .credential__warning {
@@ -177,7 +294,6 @@
   user-select: all;
 }
 
-/* Three numbered steps instead of a wall of prose. */
 .steps {
   display: flex;
   flex-direction: column;
@@ -204,7 +320,7 @@
   margin-bottom: 0;
 }
 
-.account pre {
+.settings pre {
   overflow-x: auto;
   margin: 0;
   border: var(--border-width) solid var(--color-border);
@@ -219,8 +335,38 @@
   }
 }
 
-/* The git login step already carries its own heading and hairline; inside a card both would be doubled up. */
-.account__git .git-step {
+/* The git login step carries its own heading; inside a panel a second heading and a hairline would double up. */
+.settings__panel--step .git-step {
   border-block-start: 0;
   padding-block-start: 0;
+}
+
+@media (max-width: 56rem) {
+  .settings {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .settings__rail {
+    position: static;
+  }
+
+  .settings__person {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
+  }
+
+  .settings__avatar {
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    margin-bottom: 0;
+    font-size: 1rem;
+  }
+
+  .settings__nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
 }
