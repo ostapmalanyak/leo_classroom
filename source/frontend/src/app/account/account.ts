@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, OnInit, signal, Signal, WritableSignal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, Signal, WritableSignal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { MatButton } from '@angular/material/button';
 import { MatProgressBar } from '@angular/material/progress-bar';
@@ -20,7 +20,6 @@ export class Account implements OnInit {
   private readonly meService = inject(MeService);
   private readonly session = inject(SessionService);
   private readonly snackbar = inject(SnackbarService);
-  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly me: Signal<Me | null> = this.meService.value;
   protected readonly identity = this.session.identity;
@@ -36,7 +35,7 @@ export class Account implements OnInit {
     { id: 'git-login', label: 'Git login', icon: 'terminal' }
   ] as const;
 
-  /** The panel whose heading last passed the top of the viewport; the rail marks it. */
+  /** The section the reader picked. The rail marks it until another is picked. */
   protected readonly active = signal<string>(this.sections[0].id);
 
   protected readonly neverIssued = computed(() => this.me()?.gitCredentialIssuedAt === null);
@@ -61,14 +60,7 @@ export class Account implements OnInit {
       : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   });
 
-  public constructor() {
-    this.destroyRef.onDestroy(() => window.removeEventListener('scroll', this.onScroll));
-  }
-
   public async ngOnInit(): Promise<void> {
-    window.addEventListener('scroll', this.onScroll, { passive: true });
-    this.onScroll();
-
     await this.meService.load();
 
     // first visit after provisioning: issue the credential straight away so the student leaves this page
@@ -78,20 +70,10 @@ export class Account implements OnInit {
     }
   }
 
-  private readonly onScroll = (): void => {
-    let current: string = this.sections[0].id;
-
-    for (const section of this.sections) {
-      const panel = document.getElementById(section.id);
-
-      // 10rem of slack: a panel counts as current once its heading is close to the top, not only when it touches it.
-      if (panel !== null && panel.getBoundingClientRect().top <= 160) {
-        current = section.id;
-      }
-    }
-
-    this.active.set(current);
-  };
+  protected goTo(id: string): void {
+    this.active.set(id);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   protected async reset(): Promise<void> {
     this.loading.set(true);

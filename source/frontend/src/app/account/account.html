@@ -8,13 +8,13 @@
 
     <nav class="settings__nav" aria-label="Account sections">
       @for (section of sections; track section.id) {
-        <a class="settings__link"
-           [class.settings__link--active]="active() === section.id"
-           [href]="'#' + section.id"
-           (click)="active.set(section.id)">
+        <button type="button"
+                class="settings__link"
+                [class.settings__link--active]="active() === section.id"
+                (click)="goTo(section.id)">
           <mat-icon aria-hidden="true">{{ section.icon }}</mat-icon>
           <span>{{ section.label }}</span>
-        </a>
+        </button>
       }
     </nav>
   </aside>
@@ -52,15 +52,13 @@
         </div>
         <div class="row">
           <dt>Roles</dt>
-          <dd>
-            @if (roles().length > 0) {
-              <ul class="account__roles">
-                @for (role of roles(); track role) {
-                  <li class="pill">{{ role }}</li>
-                }
-              </ul>
-            } @else {
+          <dd class="row__pills">
+            @if (roles().length === 0) {
               —
+            } @else {
+              @for (role of roles(); track role) {
+                <span class="pill">{{ role }}</span>
+              }
             }
           </dd>
         </div>
