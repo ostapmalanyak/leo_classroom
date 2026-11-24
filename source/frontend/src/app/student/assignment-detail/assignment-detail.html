@@ -84,7 +84,7 @@
         </p>
 
         <div class="code" [class.code--dim]="locked()">
-          <code class="code__text">{{ cloneDisplay() }}</code>
+          <code class="code__text">{{ cloneCommands() }}</code>
           <button type="button" class="code__copy" (click)="copyBlock(cloneCommands())"
                   [attr.aria-label]="copied() ? 'Copied' : 'Copy clone commands'">
             <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'content_copy' }}</mat-icon>

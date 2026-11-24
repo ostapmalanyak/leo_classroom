@@ -119,19 +119,9 @@ export class StudentAssignmentDetail implements OnInit, OnDestroy {
   });
 
   protected readonly cloneUrl = computed(() => this.submission()?.repoUrl ?? '');
-  protected readonly repoName = computed(() => {
-    const url = this.cloneUrl();
-    const name = url.split('/').pop() ?? '';
 
-    return name.endsWith('.git') ? name.slice(0, -4) : name;
-  });
-
-  protected readonly cloneCommands = computed(
-    () => `git clone ${this.cloneUrl()}\ncd ${this.repoName()}`);
-
-  /** The command line as the block shows it: a long URL keeps its head and tail. */
-  protected readonly cloneDisplay = computed(
-    () => `git clone ${this.shorten(this.cloneUrl())}\ncd ${this.repoName()}`);
+  /** The block shows and copies the same thing: the whole URL, never a shortened one. */
+  protected readonly cloneCommands = computed(() => `git clone ${this.cloneUrl()}`);
 
   /** A push that landed after a soft deadline still counts, and the row says so. */
   protected readonly pushedLate = computed(() => {
@@ -267,15 +257,6 @@ export class StudentAssignmentDetail implements OnInit, OnDestroy {
 
   protected toggleInstructions(): void {
     this.instructionsOpen.update(open => !open);
-  }
-
-  private shorten(url: string): string {
-    const limit = 52;
-    if (url.length <= limit) {
-      return url;
-    }
-
-    return `${url.slice(0, 26)}…${url.slice(-20)}`;
   }
 
   private async loadCourseTitle(): Promise<void> {

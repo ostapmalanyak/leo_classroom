@@ -1,0 +1,242 @@
+:host {
+  display: block;
+}
+
+/*
+ * One section in the page's own rhythm: a hairline above, a title with a quiet cost, the command, and the
+ * two small links that answer the two questions people actually have. No box, no new colour.
+ */
+.git-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-block-start: var(--space-4);
+  border-block-start: var(--border-width) solid var(--color-border);
+}
+
+.git-step__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  justify-content: space-between;
+}
+
+.git-step__title {
+  margin: 0;
+  color: var(--color-text-strong);
+  font-size: 1.0625rem;
+  font-weight: var(--font-weight-semibold);
+}
+
+.git-step__cost {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-sm);
+}
+
+/* The same code box the clone step uses, minus its corner button: copying is one button for both blocks. */
+.code {
+  position: relative;
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: var(--color-bg-code);
+}
+
+.code__text {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.git-step__hint,
+.git-step__note,
+.git-step__windows {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+/* The distribution choice is one segmented control: a single outline, the choice tinted inside it. */
+.git-step__distros {
+  align-self: flex-start;
+  display: inline-flex;
+  flex-wrap: wrap;
+  padding: 0.125rem;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+}
+
+.git-step__distro {
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.git-step__distro:hover {
+  color: var(--color-text-strong);
+}
+
+.git-step__distro--selected {
+  background-color: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-text-strong);
+}
+
+/* Two blocks, one copy button: install first, then the config that points git at Forgejo. */
+.git-step__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.git-step__group-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.git-step__group-label em {
+  font-style: normal;
+  color: var(--color-text-subtle);
+}
+
+.git-step__actions {
+  align-self: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-block-start: var(--space-1);
+}
+
+.git-step__copy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: none;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.git-step__copy:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text-strong);
+}
+
+.git-step__copy mat-icon {
+  font-size: 1rem;
+  inline-size: 1rem;
+  block-size: 1rem;
+  color: var(--color-text-subtle);
+}
+
+.git-step__copy:hover mat-icon {
+  color: var(--color-accent);
+}
+
+/* The step's own confirmation: quiet, but a real button - it is what moves the page on. */
+.git-step__confirm {
+  align-self: flex-start;
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: none;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.git-step__confirm:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-text-strong);
+}
+
+.git-step__confirm:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.git-step__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+}
+
+.git-step__links {
+  display: inline-flex;
+  gap: var(--space-3);
+  margin-inline-start: auto;
+}
+
+.git-step__link,
+.git-step__skip,
+.git-line {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-subtle);
+  text-align: start;
+  text-decoration: underline;
+  text-decoration-color: var(--color-border);
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.git-step__link:hover,
+.git-step__skip:hover,
+.git-line:hover {
+  color: var(--color-text);
+}
+
+.git-step__skip {
+  align-self: flex-start;
+}
+
+.git-line {
+  inline-size: 100%;
+  padding-block: var(--space-2);
+}
+
+.git-done {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-sm);
+}
+
+.git-done mat-icon {
+  font-size: 1rem;
+  inline-size: 1rem;
+  block-size: 1rem;
+  color: var(--color-success-text);
+}
+
+:focus-visible {
+  outline: 0.125rem solid var(--color-accent);
+  outline-offset: 0.125rem;
+  border-radius: var(--radius);
+}

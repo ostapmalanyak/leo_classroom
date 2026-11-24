@@ -39,12 +39,6 @@
 		reverse_proxy backend:8080
 	}
 
-	# The git login setup script. `curl | sh` carries no login, so this route is anonymous and
-	# identified only by the token in its path.
-	handle /git-setup/* {
-		reverse_proxy backend:8080
-	}
-
 	handle {
 		reverse_proxy frontend:80
 	}

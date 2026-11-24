@@ -4,6 +4,36 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-24 — The git login step shows the commands instead of a script piped into a shell
+
+**Status:** accepted.
+
+`app/shared/git-login-step` used to offer one line, `curl -fsSL …/git-setup/<token> | sh`, and the backend
+served that script anonymously. It now shows the setup itself, behind a copy button: a distribution choice
+(Fedora / Ubuntu / Arch) that selects the install line, one `Copy the setup commands` button that copies the
+install line plus the five `git config` lines, and a `Show the commands` disclosure that renders exactly what
+was copied. The install is the only part that prompts for sudo.
+
+The commands are collapsed by default on purpose. Six lines of `git config` on the page read as homework and
+bury the one thing to do; the button is the step, and the disclosure keeps it honest — nothing is downloaded,
+nothing is hidden that a user cannot read before pasting.
+
+Two reasons. First, piping a downloaded script into a shell is exactly the shape of thing students are taught
+not to run, and the school's own handout already spells the commands out — the page now matches it instead of
+hiding it. Second, the script only ever reported "configured", a fact the page had to be told anyway: the
+`Done, I ran it` button posts the same per-user token callback, while `authorized` still requires a real git
+operation to reach Forgejo. So the script, `IGitSetupService.GetScriptAsync` and the anonymous
+`GET /git-setup/{token}` route are gone; the done route stays.
+
+The distribution list is static and lives in the component. It covers what the school runs; a missing
+distribution falls back to the "Still asked?" note rather than to a guess.
+
+**What would change it:** a keychain helper that ships with git on every distribution (then the install line
+disappears and only the config remains), or a client-side way to pick the distribution, which a browser does
+not have.
+
+---
+
 ## 2026-11-19 — ZIP starters distinguish downloads from repository sources
 
 **Status:** accepted.
