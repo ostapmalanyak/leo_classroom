@@ -41,6 +41,9 @@ public interface IForgejoClient
     public ValueTask<OneOf<Success, ForgejoError>> CheckAdminAccessAsync();
 
     public ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>> GetRepoAsync(string owner, string repo);
+
+    public ValueTask<OneOf<IReadOnlyCollection<ForgejoTreeEntry>, NotFound, ForgejoError>> GetTreeAsync(
+        string owner, string repo, string reference);
     public ValueTask<OneOf<IReadOnlyCollection<ForgejoCommit>, NotFound, ForgejoError>> GetAllCommitsAsync(
         string owner, string repo);
     public ValueTask<OneOf<Success<ForgejoRepo>, AlreadyExists, ForgejoError>> CreateOrgRepoAsync(
@@ -299,6 +302,25 @@ internal sealed class ForgejoClient(
         }
 
         return (await ReadAsync<ForgejoRepo>(response))!;
+    }
+
+    public async ValueTask<OneOf<IReadOnlyCollection<ForgejoTreeEntry>, NotFound, ForgejoError>> GetTreeAsync(
+        string owner, string repo, string reference)
+    {
+        HttpResponseMessage response = await http.GetAsync(
+            $"api/v1/repos/{Escape(owner)}/{Escape(repo)}/git/trees/{Escape(reference)}?recursive=true&per_page=1000");
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return new NotFound();
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            return await ErrorAsync(response, "get tree");
+        }
+
+        ForgejoTree tree = (await ReadAsync<ForgejoTree>(response))!;
+
+        return tree.Tree.ToList().AsReadOnly();
     }
 
     public async ValueTask<OneOf<IReadOnlyCollection<ForgejoCommit>, NotFound, ForgejoError>> GetAllCommitsAsync(
