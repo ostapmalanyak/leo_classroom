@@ -36,6 +36,21 @@ const DISTROS: Record<Distro, DistroSetup> = {
 };
 
 /**
+ * Whether this browser runs on Windows. `userAgentData.platform` is the Chromium answer and survives user-agent
+ * reduction; `navigator.platform` covers the rest ("Win32" on Windows).
+ */
+function detectWindows(): boolean {
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
+
+  const uaData = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData;
+  const platform = uaData?.platform ?? navigator.platform;
+
+  return /^win/i.test(platform) || /Windows/i.test(navigator.userAgent);
+}
+
+/**
  * "First: log in to git once" — the step that makes git remember the Forgejo login.
  *
  * <para>
@@ -47,6 +62,10 @@ const DISTROS: Record<Distro, DistroSetup> = {
  * exactly what was copied. They are the whole setup, nothing hidden, and a student who would not pipe curl
  * into sh can still read and follow them. Since the page cannot see the user's computer, the step clears when
  * they say they ran it, and only a real git operation turns it into "Git login works".
+ * </para>
+ * <para>
+ * It stays out of the way: a close button folds it into the one line that reopens it, and on Windows it never
+ * renders at all, because Git Credential Manager keeps the password after the first prompt.
  * </para>
  */
 @Component({
@@ -69,10 +88,18 @@ export class GitLoginStep implements OnInit, OnDestroy {
   private readonly snackbar = inject(SnackbarService);
   private readonly destroyRef = inject(DestroyRef);
 
+  /**
+   * Windows needs none of this: Git Credential Manager stores the password after the first prompt. The browser
+   * is asked once, at construction, so the step never renders for a Windows visitor.
+   */
+  protected readonly windowsDevice = detectWindows();
+
   protected readonly setup = signal<GitSetup | null>(null);
   protected readonly skipped = signal(false);
   protected readonly expanded = signal(false);
-  protected readonly windows = signal(false);
+  protected readonly dismissed = signal(false);
+  /** macOS: same helper, installed with Homebrew; the keychain is `osxkeychain` instead of the libsecret path. */
+  protected readonly mac = signal(false);
   protected readonly stillAsked = signal(false);
   protected readonly copied = signal(false);
   protected readonly saving = signal(false);
@@ -93,7 +120,8 @@ export class GitLoginStep implements OnInit, OnDestroy {
   public readonly ready = computed(() => {
     const setup = this.setup();
 
-    return this.skipped() || (setup !== null && (setup.configured || setup.authorized));
+    return this.windowsDevice || this.skipped() ||
+      (setup !== null && (setup.configured || setup.authorized));
   });
 
   /** True only when the backend confirmed it; skipping deliberately does not claim this. */
@@ -157,7 +185,14 @@ export class GitLoginStep implements OnInit, OnDestroy {
   }
 
   protected expand(): void {
+    this.dismissed.set(false);
     this.expanded.set(true);
+  }
+
+  /** "Not now": the step folds back into the one line that reopens it, for this visit only. */
+  protected dismiss(): void {
+    this.dismissed.set(true);
+    this.showCommands.set(false);
   }
 
   protected selectDistro(distro: Distro): void {
@@ -168,8 +203,8 @@ export class GitLoginStep implements OnInit, OnDestroy {
     this.showCommands.update((open) => !open);
   }
 
-  protected toggleWindows(): void {
-    this.windows.update((open) => !open);
+  protected toggleMac(): void {
+    this.mac.update((open) => !open);
   }
 
   protected toggleStillAsked(): void {

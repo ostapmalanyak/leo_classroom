@@ -11,19 +11,27 @@
   }
 
   @default {
-    @if (collapsible() && !expanded()) {
+    @if (windowsDevice) {
+      <!-- Nothing to do on Windows: Git Credential Manager keeps the password after the first prompt. -->
+    } @else if (dismissed() || (collapsible() && !expanded())) {
       <button type="button" class="git-line" (click)="expand()">{{ mutedLine() }}</button>
     } @else {
       <section class="git-step" aria-labelledby="git-step-title">
         <div class="git-step__head">
           <h2 class="git-step__title" id="git-step-title">First: log in to git once</h2>
-          <span class="git-step__cost">takes 30 seconds</span>
+          <span class="git-step__head-end">
+            <span class="git-step__cost">takes 30 seconds</span>
+            <button type="button" class="git-step__close" (click)="dismiss()"
+                    aria-label="Hide this step">
+              <mat-icon aria-hidden="true">close</mat-icon>
+            </button>
+          </span>
         </div>
 
-        @if (windows()) {
+        @if (mac()) {
           <p class="git-step__windows">
-            Copy your git password from your Forgejo account page and paste it once when git asks.
-            Git Credential Manager remembers it.
+            On macOS install with <code>brew install git-credential-oauth</code>, then use
+            <code>osxkeychain</code> where the block above shows the libsecret path.
           </p>
         } @else {
           <p class="git-step__note">
@@ -71,7 +79,7 @@
           <p class="git-step__hint">
             Marked as set up on this computer. If git still asks for a password, copy the commands again.
           </p>
-        } @else if (!windows()) {
+        } @else if (!mac()) {
           <p class="git-step__hint">
             Paste into a terminal and press Enter — it works in bash, zsh and fish. The next git command opens
             your browser once: click Authorize there.
@@ -80,8 +88,8 @@
 
         <div class="git-step__foot">
           <span class="git-step__links">
-            <button type="button" class="git-step__link" (click)="toggleWindows()"
-                    [attr.aria-expanded]="windows()">Windows / macOS</button>
+            <button type="button" class="git-step__link" (click)="toggleMac()"
+                    [attr.aria-expanded]="mac()">macOS</button>
             <button type="button" class="git-step__link" (click)="toggleStillAsked()"
                     [attr.aria-expanded]="stillAsked()">Still asked?</button>
           </span>
@@ -93,7 +101,7 @@
           </div>
         }
 
-        @if (phase() === 'fresh' && !windows()) {
+        @if (phase() === 'fresh' && !mac()) {
           <button type="button" class="git-step__confirm" (click)="done()" [disabled]="saving()">
             Done, I ran it
           </button>
