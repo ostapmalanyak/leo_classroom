@@ -25,6 +25,7 @@ interface StudentRow {
   /** The student's own commits; null when they could not be counted (still being set up, Forgejo unreachable). */
   commits: number | null;
   lateCommits: number | null;
+  pushed: boolean;
   badge: { label: string; tone: BadgeTone; icon: string | null } | null;
   action: { label: string; kind: 'feedback' | 'repository' } | null;
   repoUrl: string | null;
@@ -96,6 +97,30 @@ export class AssignmentStudents implements OnInit {
   protected readonly toReviewCount = computed(() => this.acceptedRows().filter(row => row.needsReview).length);
   /** How many students have at least one commit after the deadline. */
   protected readonly lateCount = computed(() => this.acceptedRows().filter(row => (row.lateCommits ?? 0) > 0).length);
+
+  /**
+   * Every student falls into exactly one slice, so the slices add up to the whole class. A hard
+   * deadline takes write access away, so it has no late slice.
+   */
+  protected readonly slices = computed(() => {
+    const pushed = this.acceptedRows().filter(row => row.pushed);
+    const late = this.isHard() ? 0 : pushed.filter(row => (row.lateCommits ?? 0) > 0).length;
+    const total = this.totalCount();
+    let start = 0;
+
+    return [
+      { label: this.isHard() ? 'Pushed' : 'Pushed on time', count: pushed.length - late,
+        color: 'var(--color-success-text)' },
+      ...(this.isHard() ? [] : [{ label: 'Pushed late', count: late, color: 'var(--color-accent)' }]),
+      { label: 'Nothing pushed', count: total - pushed.length, color: 'var(--color-urgency-overdue)' }
+    ].map(slice => {
+      const share = total === 0 ? 0 : slice.count / total * 100;
+      const result = { ...slice, share, start, percent: Math.round(share) };
+      start += share;
+
+      return result;
+    });
+  });
 
   /** The first few avatars of the people who have not accepted, for the collapsed group. */
   protected readonly pendingPreview = computed(() => this.pendingRows().slice(0, AVATAR_STACK));
@@ -248,6 +273,8 @@ export class AssignmentStudents implements OnInit {
       initials: this.initialsOf(submission.firstName, submission.lastName),
       commits: summary?.commitCount ?? null,
       lateCommits: summary?.lateCommitCount ?? null,
+      // the own-commit count wins; the last push only stands in when commits could not be counted
+      pushed: summary?.commitCount != null ? summary.commitCount > 0 : submission.lastPushAt !== null,
       badge: this.badgeOf(submission),
       action: this.actionOf(submission),
       repoUrl: submission.repoUrl,
@@ -265,6 +292,7 @@ export class AssignmentStudents implements OnInit {
       initials: this.initialsOf(firstName, lastName),
       commits: null,
       lateCommits: null,
+      pushed: false,
       badge: null,
       action: null,
       repoUrl: null,

@@ -33,129 +33,165 @@
     </section>
   }
 
-  @if (nothingAccepted()) {
-    <section class="empty">
-      <mat-icon aria-hidden="true">group_off</mat-icon>
-      <p class="empty__text">No one has accepted yet</p>
-      <button type="button" class="btn btn--primary" (click)="copyLink()">
-        <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'link' }}</mat-icon>
-        {{ copied() ? 'Copied' : 'Copy student link' }}
-      </button>
-    </section>
-  } @else {
-    <p class="summary">
-      <span class="summary__count">{{ acceptedCount() }} of {{ totalCount() }}</span>
-      <span class="summary__label">accepted</span>
-      <span class="summary__dot" aria-hidden="true">·</span>
-      <span class="summary__review">{{ toReviewCount() }} to review</span>
-      @if (lateCount() > 0) {
-        <span class="summary__dot" aria-hidden="true">·</span>
-        <span class="summary__late">{{ lateCount() }} late</span>
-      }
-    </p>
-
-    <app-git-login-step audience="teacher" [collapsible]="true" />
-
-    <ul class="rows">
-      @for (row of acceptedRows(); track row.studentId) {
-        <li class="row">
-          <span class="row__avatar" aria-hidden="true">{{ row.initials }}</span>
-
-          <span class="row__text">
-            <span class="row__name">{{ row.name }}</span>
-          </span>
-
-          <!-- the student's own commits only: green once there is any, red while there is none -->
-          @if (row.commits !== null) {
-            <span class="pill" [class.pill--success]="row.commits > 0" [class.pill--danger]="row.commits === 0">
-              {{ row.commits }} {{ row.commits === 1 ? 'commit' : 'commits' }}
-            </span>
-          }
-          <!-- orange, as late commits are on the analytics page -->
-          @if (row.lateCommits !== null && row.lateCommits > 0) {
-            <span class="pill pill--accent">
-              <mat-icon aria-hidden="true">hourglass_bottom</mat-icon>
-              {{ row.lateCommits }} late
-            </span>
-          }
-
-          @if (row.badge; as badge) {
-            <span class="pill" [class]="'pill pill--' + badge.tone">
-              @if (badge.icon) {
-                <mat-icon aria-hidden="true">{{ badge.icon }}</mat-icon>
-              }
-              {{ badge.label }}
-            </span>
-          }
-
-          @if (row.action; as action) {
-            <button type="button" class="btn btn--primary row__action" (click)="runAction(row)">
-              {{ action.label }}
-            </button>
-          }
-
-          <button type="button" class="btn btn--icon" [matMenuTriggerFor]="rowMenu"
-                  [attr.aria-label]="'More actions for ' + row.name">
-            <mat-icon aria-hidden="true">more_horiz</mat-icon>
+  <div class="columns">
+    <div class="columns__main">
+      @if (nothingAccepted()) {
+        <section class="empty">
+          <mat-icon aria-hidden="true">group_off</mat-icon>
+          <p class="empty__text">No one has accepted yet</p>
+          <button type="button" class="btn btn--primary" (click)="copyLink()">
+            <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'link' }}</mat-icon>
+            {{ copied() ? 'Copied' : 'Copy student link' }}
           </button>
-          <mat-menu #rowMenu="matMenu">
-            <button type="button" mat-menu-item [disabled]="row.repoUrl === null" (click)="openRepository(row)">
-              Open repository
-            </button>
-            <button type="button" mat-menu-item [disabled]="row.acceptanceId === null" (click)="viewAnalytics(row)">
-              Analytics
-            </button>
-          </mat-menu>
-        </li>
-      }
-    </ul>
-
-    <section class="pending">
-      @if (everyoneAccepted()) {
-        <p class="pending__done">Everyone has accepted the homework.</p>
+        </section>
       } @else {
-        <button type="button" class="pending__toggle" (click)="togglePending()"
-                [attr.aria-expanded]="pendingOpen()">
-          <mat-icon aria-hidden="true">{{ pendingOpen() ? 'expand_more' : 'chevron_right' }}</mat-icon>
+        <p class="summary">
+          <span class="summary__count">{{ acceptedCount() }} of {{ totalCount() }}</span>
+          <span class="summary__label">accepted</span>
+          <span class="summary__dot" aria-hidden="true">·</span>
+          <span class="summary__review">{{ toReviewCount() }} to review</span>
+          @if (lateCount() > 0) {
+            <span class="summary__dot" aria-hidden="true">·</span>
+            <span class="summary__late">{{ lateCount() }} late</span>
+          }
+        </p>
 
-          <span class="pending__stack" aria-hidden="true">
-            @for (row of pendingPreview(); track row.studentId) {
-              <span class="pending__avatar">{{ row.initials }}</span>
-            }
-            @if (pendingMore() > 0) {
-              <span class="pending__more">+{{ pendingMore() }}</span>
-            }
-          </span>
+        <app-git-login-step audience="teacher" [collapsible]="true" />
 
-          <span class="pending__text">{{ pendingRows().length }} haven't accepted yet</span>
-        </button>
+        <ul class="rows">
+          @for (row of acceptedRows(); track row.studentId) {
+            <li class="row">
+              <span class="row__avatar" aria-hidden="true">{{ row.initials }}</span>
 
-        @if (isHard() && deadlinePassed()) {
-          <span class="chip chip--danger">
-            <mat-icon aria-hidden="true">lock</mat-icon>
-            Locked
-          </span>
-        } @else {
-          <button type="button" class="btn btn--secondary" (click)="remindAll()">Remind all</button>
-        }
+              <span class="row__text">
+                <span class="row__name">{{ row.name }}</span>
+              </span>
 
-        @if (pendingOpen()) {
-          <ul class="rows rows--pending">
-            @for (row of pendingRows(); track row.studentId) {
-              <li class="row">
-                <span class="row__avatar" aria-hidden="true">{{ row.initials }}</span>
-
-                <span class="row__text">
-                  <span class="row__name">{{ row.name }}</span>
-                  @if (row.studentNumber; as number) {
-                    <span class="row__meta">{{ number }}</span>
-                  }
+              <!-- the student's own commits only: green once there is any, red while there is none -->
+              @if (row.commits !== null) {
+                <span class="pill" [class.pill--success]="row.commits > 0" [class.pill--danger]="row.commits === 0">
+                  {{ row.commits }} {{ row.commits === 1 ? 'commit' : 'commits' }}
                 </span>
-              </li>
+              }
+              <!-- orange, as late commits are on the analytics page -->
+              @if (row.lateCommits !== null && row.lateCommits > 0) {
+                <span class="pill pill--accent">
+                  <mat-icon aria-hidden="true">hourglass_bottom</mat-icon>
+                  {{ row.lateCommits }} late
+                </span>
+              }
+
+              @if (row.badge; as badge) {
+                <span class="pill" [class]="'pill pill--' + badge.tone">
+                  @if (badge.icon) {
+                    <mat-icon aria-hidden="true">{{ badge.icon }}</mat-icon>
+                  }
+                  {{ badge.label }}
+                </span>
+              }
+
+              @if (row.action; as action) {
+                <button type="button" class="btn btn--primary row__action" (click)="runAction(row)">
+                  {{ action.label }}
+                </button>
+              }
+
+              <button type="button" class="btn btn--icon" [matMenuTriggerFor]="rowMenu"
+                      [attr.aria-label]="'More actions for ' + row.name">
+                <mat-icon aria-hidden="true">more_horiz</mat-icon>
+              </button>
+              <mat-menu #rowMenu="matMenu">
+                <button type="button" mat-menu-item [disabled]="row.repoUrl === null" (click)="openRepository(row)">
+                  Open repository
+                </button>
+                <button type="button" mat-menu-item [disabled]="row.acceptanceId === null" (click)="viewAnalytics(row)">
+                  Analytics
+                </button>
+              </mat-menu>
+            </li>
+          }
+        </ul>
+
+        <section class="pending">
+          @if (everyoneAccepted()) {
+            <p class="pending__done">Everyone has accepted the homework.</p>
+          } @else {
+            <button type="button" class="pending__toggle" (click)="togglePending()"
+                    [attr.aria-expanded]="pendingOpen()">
+              <mat-icon aria-hidden="true">{{ pendingOpen() ? 'expand_more' : 'chevron_right' }}</mat-icon>
+
+              <span class="pending__stack" aria-hidden="true">
+                @for (row of pendingPreview(); track row.studentId) {
+                  <span class="pending__avatar">{{ row.initials }}</span>
+                }
+                @if (pendingMore() > 0) {
+                  <span class="pending__more">+{{ pendingMore() }}</span>
+                }
+              </span>
+
+              <span class="pending__text">{{ pendingRows().length }} haven't accepted yet</span>
+            </button>
+
+            @if (isHard() && deadlinePassed()) {
+              <span class="chip chip--danger">
+                <mat-icon aria-hidden="true">lock</mat-icon>
+                Locked
+              </span>
+            } @else {
+              <button type="button" class="btn btn--secondary" (click)="remindAll()">Remind all</button>
             }
-          </ul>
-        }
+
+            @if (pendingOpen()) {
+              <ul class="rows rows--pending">
+                @for (row of pendingRows(); track row.studentId) {
+                  <li class="row">
+                    <span class="row__avatar" aria-hidden="true">{{ row.initials }}</span>
+
+                    <span class="row__text">
+                      <span class="row__name">{{ row.name }}</span>
+                      @if (row.studentNumber; as number) {
+                        <span class="row__meta">{{ number }}</span>
+                      }
+                    </span>
+                  </li>
+                }
+              </ul>
+            }
+          }
+        </section>
       }
-    </section>
-  }
+    </div>
+
+    <aside class="columns__side" aria-label="Submission chart">
+      @if (totalCount() > 0) {
+        <figure class="chart">
+          <!-- a circle as wide as its radius twice over: each dash is one wedge, with its own tooltip -->
+          <svg class="chart__pie" viewBox="0 0 100 100" role="img" aria-label="Submission status pie chart">
+            @for (slice of slices(); track slice.label) {
+              @if (slice.count > 0) {
+                <circle cx="50" cy="50" r="25" fill="none" stroke-width="50" pathLength="100"
+                        [style.stroke]="slice.color"
+                        [attr.stroke-dasharray]="slice.share + ' ' + (100 - slice.share)"
+                        [attr.stroke-dashoffset]="-slice.start">
+                  <title>{{ slice.label }}: {{ slice.percent }}%</title>
+                </circle>
+              }
+            }
+          </svg>
+          <figcaption>
+            <ul class="chart__legend">
+              @for (slice of slices(); track slice.label) {
+                <li>
+                  <span class="chart__swatch" [style.background]="slice.color" aria-hidden="true"></span>
+                  {{ slice.label }}: <strong>{{ slice.count }}</strong>
+                </li>
+              }
+            </ul>
+          </figcaption>
+        </figure>
+      } @else if (!loading()) {
+        <p class="pending__done">No students to chart yet.</p>
+      }
+    </aside>
+  </div>
 </div>
