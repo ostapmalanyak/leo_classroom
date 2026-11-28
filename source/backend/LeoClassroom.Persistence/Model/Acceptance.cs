@@ -17,12 +17,17 @@ public class Acceptance
     public string? RepoUrl { get; set; }
     public Instant? LastPushAt { get; set; }
     public Instant? LastCommitAt { get; set; }
-    public bool Late { get; set; }
-    public Instant? LateSince { get; set; }
     public FeedbackState FeedbackState { get; set; }
     public Instant? FeedbackReadAt { get; set; }
     public long? FeedbackPrNumber { get; set; }
     public CommitAnalytics Analytics { get; set; } = new();
+
+    /// <summary>
+    ///     Worked out on every read, never stored, so it follows a moved deadline. Only a soft deadline can be
+    ///     late. <c>AssignmentRepository</c> repeats this rule inside its queries.
+    /// </summary>
+    public bool IsLate(Assignment assignment) =>
+        assignment.DeadlineKind == DeadlineKind.Soft && assignment.Deadline is { } deadline && LastPushAt >= deadline;
 }
 
 public class CommitAnalytics

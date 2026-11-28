@@ -360,7 +360,6 @@ const studentSubmissionZod = z.object({
   lastPushAt: InstantSchema.nullable(),
   repoUrl: z.string().nullable(),
   late: z.boolean(),
-  lateSince: InstantSchema.nullable(),
   feedbackState: z.enum(FeedbackState),
   feedbackReadAt: InstantSchema.nullable(),
   feedbackPrNumber: z.int().nullable()
@@ -455,7 +454,6 @@ const submissionZod = z.object({
   status: z.enum(SubmissionStatus).nullable(),
   repoUrl: z.string().nullable(),
   late: z.boolean(),
-  lateSince: InstantSchema.nullable(),
   feedbackState: z.enum(FeedbackState),
   feedbackReadAt: InstantSchema.nullable()
 });

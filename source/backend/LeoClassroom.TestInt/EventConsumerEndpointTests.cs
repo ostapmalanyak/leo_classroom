@@ -79,7 +79,7 @@ public sealed class EventConsumerEndpointTests(WebApiTestFixture fixture) : WebA
     }
 
     [Fact]
-    public async Task PostDeadlinePush_FlagsAcceptanceLateAndUpdatesAnalytics()
+    public async Task PostDeadlinePush_RecordsThePushAndUpdatesAnalytics()
     {
         const string payload =
             """{"sender":{"login":"IF000050"},"after":"abc123","commits":[{},{}],"repository":{"name":"algo-a1-IF000050","owner":{"login":"algo-5"}}}""";
@@ -92,8 +92,13 @@ public sealed class EventConsumerEndpointTests(WebApiTestFixture fixture) : WebA
             stored = await ctx.Acceptances.AsNoTracking()
                               .SingleAsync(a => a.Id == _acceptanceId, TestCancellationToken));
 
-        stored!.Late.Should().BeTrue();
-        stored.LateSince.Should().Be(TestClock.GetCurrentInstant());
+        stored!.LastPushAt.Should().Be(TestClock.GetCurrentInstant());
+
+        // lateness is not stored, so check the query that derives it
+        AuthenticateAsTeacher(OwnerIf);
+        string students = await ApiClient.GetStringAsync($"api/assignments/{_assignmentId}/students",
+                                                         TestCancellationToken);
+        students.Should().MatchRegex("\"late\":\\s*true");
         stored.Analytics.PushCount.Should().Be(1);
         stored.Analytics.CommitCount.Should().Be(2);
     }
@@ -113,7 +118,6 @@ public sealed class EventConsumerEndpointTests(WebApiTestFixture fixture) : WebA
                               .SingleAsync(a => a.Id == _acceptanceId, TestCancellationToken));
 
         stored!.LastPushAt.Should().BeNull();
-        stored.Late.Should().BeFalse();
         stored.Analytics.PushCount.Should().Be(0);
     }
 

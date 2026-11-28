@@ -8,109 +8,30 @@ using NSubstitute;
 
 namespace LeoClassroom.Test;
 
-public sealed class LateFlaggingConsumerTests
+public sealed class AcceptanceLatenessTests
 {
-    private readonly IUnitOfWork _uow = Substitute.For<IUnitOfWork>();
-    private readonly IAcceptanceRepository _acceptanceRepo = Substitute.For<IAcceptanceRepository>();
-    private readonly IAssignmentRepository _assignmentRepo = Substitute.For<IAssignmentRepository>();
-    private readonly LateFlaggingConsumer _sut;
-
     private static readonly Instant Deadline = Instant.FromUtc(2026, 6, 13, 21, 59);
 
-    public LateFlaggingConsumerTests()
-    {
-        _uow.AcceptanceRepository.Returns(_acceptanceRepo);
-        PushTestStudent.Register(_uow);
-        _uow.AssignmentRepository.Returns(_assignmentRepo);
-        _sut = new LateFlaggingConsumer(_uow, Substitute.For<ILogger<LateFlaggingConsumer>>());
-    }
-
-    private static WebhookEnvelope Push(Instant receivedAt, Instant? committerDate = null) => new(
-        "push", "student", "course-7", "course-a-IF1", receivedAt, committerDate, "{}");
-
-    private Acceptance Setup(DeadlineKind kind, bool alreadyLate = false)
+    [Theory]
+    [InlineData(DeadlineKind.Soft, -1, false)]
+    [InlineData(DeadlineKind.Soft, 0, true)]
+    [InlineData(DeadlineKind.Soft, 1, true)]
+    [InlineData(DeadlineKind.Soft, null, false)]
+    [InlineData(DeadlineKind.Hard, 1, false)]
+    [InlineData(DeadlineKind.None, 1, false)]
+    public void IsLate_FollowsTheDeadline(DeadlineKind kind, int? secondsAfterDeadline, bool expected)
     {
         var acceptance = new Acceptance
         {
-            Id = 5, AssignmentId = 1, StudentId = 50, RepoOwner = "course-7", RepoName = "course-a-IF1",
-            Late = alreadyLate
+            RepoOwner = "course-7", RepoName = "course-a-IF1",
+            LastPushAt = secondsAfterDeadline is { } s ? Deadline.Plus(Duration.FromSeconds(s)) : null
         };
-        _acceptanceRepo.GetTrackedByRepoAsync("course-7", "course-a-IF1")
-                       .Returns(new ValueTask<Acceptance?>(acceptance));
-        _assignmentRepo.GetByIdAsync(1).Returns(new ValueTask<Assignment?>(new Assignment
+        var assignment = new Assignment
         {
             Id = 1, CourseId = 7, Title = "A", Slug = "a", DeadlineKind = kind, Deadline = Deadline
-        }));
+        };
 
-        return acceptance;
-    }
-
-    [Fact]
-    public async Task Push_AtOrAfterSoftDeadline_FlagsLate()
-    {
-        Acceptance acceptance = Setup(DeadlineKind.Soft);
-        Instant after = Deadline.Plus(Duration.FromMinutes(1));
-
-        await _sut.ConsumeAsync(Push(after));
-
-        acceptance.Late.Should().BeTrue();
-        acceptance.LateSince.Should().Be(after);
-        await _uow.Received(1).SaveChangesAsync();
-    }
-
-    [Fact]
-    public async Task Push_BeforeSoftDeadline_DoesNotFlag()
-    {
-        Acceptance acceptance = Setup(DeadlineKind.Soft);
-
-        await _sut.ConsumeAsync(Push(Deadline.Minus(Duration.FromMinutes(1))));
-
-        acceptance.Late.Should().BeFalse();
-        await _uow.DidNotReceive().SaveChangesAsync();
-    }
-
-    [Fact]
-    public async Task Push_AfterDeadline_WithEarlierCommitterDate_StillFlagsLate()
-    {
-        Acceptance acceptance = Setup(DeadlineKind.Soft);
-        Instant after = Deadline.Plus(Duration.FromHours(2));
-
-        await _sut.ConsumeAsync(Push(after, committerDate: Deadline.Minus(Duration.FromHours(5))));
-
-        acceptance.Late.Should().BeTrue();
-        acceptance.LateSince.Should().Be(after);
-    }
-
-    [Fact]
-    public async Task Push_OnHardDeadline_IsNotFlagged()
-    {
-        Acceptance acceptance = Setup(DeadlineKind.Hard);
-
-        await _sut.ConsumeAsync(Push(Deadline.Plus(Duration.FromHours(1))));
-
-        acceptance.Late.Should().BeFalse();
-        await _uow.DidNotReceive().SaveChangesAsync();
-    }
-
-    [Fact]
-    public async Task Push_WhenAlreadyLate_DoesNotResave()
-    {
-        Setup(DeadlineKind.Soft, alreadyLate: true);
-
-        await _sut.ConsumeAsync(Push(Deadline.Plus(Duration.FromHours(1))));
-
-        await _uow.DidNotReceive().SaveChangesAsync();
-    }
-
-    [Fact]
-    public async Task TeacherPushAfterSoftDeadline_DoesNotFlagTheStudentLate()
-    {
-        Acceptance acceptance = Setup(DeadlineKind.Soft);
-
-        await _sut.ConsumeAsync(Push(Deadline.Plus(Duration.FromHours(1))) with { Actor = "IF000020" });
-
-        acceptance.Late.Should().BeFalse();
-        await _uow.DidNotReceive().SaveChangesAsync();
+        acceptance.IsLate(assignment).Should().Be(expected);
     }
 }
 

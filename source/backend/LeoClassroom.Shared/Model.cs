@@ -37,7 +37,6 @@ public sealed record StudentSubmission(
     Instant? LastPushAt,
     string? RepoUrl,
     bool Late,
-    Instant? LateSince,
     FeedbackState FeedbackState,
     Instant? FeedbackReadAt,
     long? FeedbackPrNumber);

@@ -17,6 +17,7 @@ public interface IAssignmentRepository
     public ValueTask<bool> ExistsWithSlugInCourseAsync(string slug, long courseId);
     public ValueTask<bool> DeleteByIdAsync(long id);
     public ValueTask<IReadOnlyCollection<long>> GetIdsWithHardDeadlineAsync();
+    public ValueTask<IReadOnlyCollection<UpcomingDeadline>> GetUpcomingHardDeadlinesAsync(Instant now);
     public ValueTask<IReadOnlyCollection<StudentSubmission>?> GetStudentSubmissionsAsync(long id);
     public ValueTask<IReadOnlyCollection<long>> GetDueForAutoDeleteAsync(Instant now);
     public ValueTask<IReadOnlyCollection<long>> GetDueForPublishAsync(Instant now);
@@ -30,6 +31,8 @@ public interface IAssignmentRepository
 }
 
 public sealed record AssignmentExternalResources(string? ArchivePath, string? StarterTemplateRepoUrl);
+
+public sealed record UpcomingDeadline(long AssignmentId, Instant Deadline);
 
 internal sealed class AssignmentRepository(DbSet<Assignment> assignments) : IAssignmentRepository
 {
@@ -133,6 +136,16 @@ internal sealed class AssignmentRepository(DbSet<Assignment> assignments) : IAss
         return ids.AsReadOnly();
     }
 
+    public async ValueTask<IReadOnlyCollection<UpcomingDeadline>> GetUpcomingHardDeadlinesAsync(Instant now)
+    {
+        List<UpcomingDeadline> rows = await assignments.AsNoTracking()
+            .Where(a => a.DeadlineKind == DeadlineKind.Hard && a.Deadline != null && a.Deadline > now)
+            .Select(a => new UpcomingDeadline(a.Id, a.Deadline!.Value))
+            .ToListAsync();
+
+        return rows.AsReadOnly();
+    }
+
     public async ValueTask<IReadOnlyCollection<StudentSubmission>?> GetStudentSubmissionsAsync(long id)
     {
         if (!await assignments.AsNoTracking().AnyAsync(a => a.Id == id))
@@ -146,7 +159,9 @@ internal sealed class AssignmentRepository(DbSet<Assignment> assignments) : IAss
             .OrderBy(ac => ac.Student.LastName).ThenBy(ac => ac.Student.FirstName)
             .Select(ac => new StudentSubmission(ac.Id, ac.StudentId, ac.Student.StudentId, ac.Student.FirstName,
                         ac.Student.LastName, ac.Status, ac.LastCommitAt, ac.LastPushAt, ac.RepoUrl,
-                        ac.Late, ac.LateSince, ac.FeedbackState, ac.FeedbackReadAt, ac.FeedbackPrNumber))
+                        ac.Assignment.DeadlineKind == DeadlineKind.Soft && ac.Assignment.Deadline != null
+                        && ac.LastPushAt != null && ac.LastPushAt >= ac.Assignment.Deadline,
+                        ac.FeedbackState, ac.FeedbackReadAt, ac.FeedbackPrNumber))
             .ToListAsync();
 
         return rows.AsReadOnly();
@@ -186,7 +201,8 @@ internal sealed class AssignmentRepository(DbSet<Assignment> assignments) : IAss
                                      .Select(ac => (SubmissionStatus?)ac.Status).FirstOrDefault(),
                         a.Acceptances.Where(ac => ac.StudentId == studentId)
                                      .Select(ac => ac.LastPushAt).FirstOrDefault(),
-                        a.Acceptances.Any(ac => ac.StudentId == studentId && ac.Late),
+                        a.DeadlineKind == DeadlineKind.Soft && a.Deadline != null
+                        && a.Acceptances.Any(ac => ac.StudentId == studentId && ac.LastPushAt >= a.Deadline),
                         a.Acceptances.Where(ac => ac.StudentId == studentId)
                                      .Select(ac => (FeedbackState?)ac.FeedbackState).FirstOrDefault()
                         ?? FeedbackState.None))

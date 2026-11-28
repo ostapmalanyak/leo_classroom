@@ -112,13 +112,13 @@ public static class ServicesSetup
         services.AddSingleton<IStarterArchiveStorage, StarterArchiveStorage>();
         services.AddScoped<IGitService, GitService>();
         services.AddScoped<IReconciliationService, ReconciliationService>();
+        services.AddScoped<IDeadlineScheduler, DeadlineScheduler>();
         services.AddScoped<IRepoProvisioningService, RepoProvisioningService>();
         services.AddSingleton<IProvisioningQueue, ProvisioningQueue>();
         services.AddHostedService<ProvisioningWorker>();
         services.AddScoped<IWebhookDispatcher, WebhookDispatcher>();
         services.AddScoped<IWebhookService, WebhookService>();
         services.AddScoped<IWebhookConsumer, PushActivityConsumer>();
-        services.AddScoped<IWebhookConsumer, LateFlaggingConsumer>();
         services.AddScoped<IWebhookConsumer, CommitAnalyticsConsumer>();
         services.AddScoped<IWebhookConsumer, FeedbackReviewConsumer>();
         services.AddScoped<ISubmissionReviewService, SubmissionReviewService>();

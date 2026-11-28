@@ -3,6 +3,7 @@ using LeoClassroom.Services.Auth;
 using LeoClassroom.Services.Forgejo;
 using LeoClassroom.Services.Moodle;
 using LeoClassroom.Services.Notifications;
+using LeoClassroom.Services.Scheduling;
 using LeoClassroom.Services.Util;
 using LeoClassroom.Persistence.Model;
 using LeoClassroom.Persistence.Util;
@@ -53,6 +54,7 @@ internal sealed class AssignmentService(
     INotificationService notifications,
     IMoodleSyncService moodle,
     IClock clock,
+    IDeadlineScheduler deadlines,
     ILogger<AssignmentService> logger) : IAssignmentService
 {
     private const int AutoDeleteDefaultYears = 2;
@@ -112,6 +114,7 @@ internal sealed class AssignmentService(
         ApplyVisibility(assignment, settings);
         uow.AssignmentRepository.Add(assignment);
         await uow.SaveChangesAsync();
+        await ScheduleDeadlineAsync(assignment);
         await audit.RecordAsync(AuditAction.AssignmentCreated, "Assignment", assignment.Id.ToString(),
                                 new Dictionary<string, string> { ["courseId"] = courseId.ToString() });
         if (assignment.IsPublished)
@@ -151,6 +154,7 @@ internal sealed class AssignmentService(
 
         if (deadlineChanged)
         {
+            await ScheduleDeadlineAsync(assignment);
             OneOf<Success, NotFound, ForgejoError> reconcile = await reconciliation.ReconcileAsync(id);
             reconcile.Switch(
                 success => { },
@@ -332,6 +336,15 @@ internal sealed class AssignmentService(
         assignment.AutoDeleteOn = settings.AutoDeleteEnabled
             ? settings.AutoDeleteOn ?? DefaultAutoDeleteInstant()
             : null;
+    }
+
+    private async ValueTask ScheduleDeadlineAsync(Assignment assignment)
+    {
+        if (assignment.DeadlineKind == DeadlineKind.Hard && assignment.Deadline is { } deadline
+            && deadline > clock.GetCurrentInstant())
+        {
+            await deadlines.ScheduleAsync(assignment.Id, deadline);
+        }
     }
 
     private static void ApplyVisibility(Assignment assignment, AssignmentSettings settings)
