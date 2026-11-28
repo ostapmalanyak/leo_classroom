@@ -4,6 +4,20 @@ Choices that are not readable from the code, with the reasoning and what would c
 
 ---
 
+## 2026-11-27 — Lateness is derived, and a hard deadline has its own trigger
+
+**Status:** accepted.
+
+`Acceptance.Late` and `LateSince` are gone. A submission is late when the assignment has a soft deadline and the
+student's last push is at or after it, worked out on every read. A stored flag kept its old answer after a
+teacher moved the deadline. `LateSince` (the first late push) is not derivable and no client showed it.
+
+A hard deadline is enforced by a one-time Quartz trigger per assignment, firing one second after the deadline
+because Quartz may fire a few milliseconds early. The five-minute `DeadlineReconciliationJob` stays, but only
+as the safety net: it retries failed Forgejo calls and restores the in-memory triggers after a restart. A
+persistent Quartz job store would replace the second reason, at the price of its tables. If the backend is down
+at the deadline, access is revoked by the first sweep after it starts.
+
 ## 2026-11-19 — ZIP starters distinguish downloads from repository sources
 
 **Status:** accepted.

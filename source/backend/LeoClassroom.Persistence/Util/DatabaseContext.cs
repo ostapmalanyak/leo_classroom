@@ -131,7 +131,6 @@ public sealed class DatabaseContext(DbContextOptions<DatabaseContext> options) :
                   .HasConversion(new EnumToStringConverter<FeedbackState>())
                   .HasDefaultValue(FeedbackState.None);
         acceptance.OwnsOne(a => a.Analytics);
-        acceptance.HasIndex(a => a.Late);
         acceptance.HasOne(a => a.Assignment)
                   .WithMany(a => a.Acceptances)
                   .HasForeignKey(a => a.AssignmentId)

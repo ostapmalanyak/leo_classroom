@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { AssignmentService } from '../../../core/services/assignment-service';
 import { CourseService } from '../../../core/services/course-service';
 import { SessionService } from '../../../core/auth/session-service';
+import { NowService } from '../../../core/services/now-service';
 import { relativeDue, dueUrgency, DueUrgency, isHiddenNow } from '../../../core/util/assignment-state';
 
 /** An assignment that closes soon. */
@@ -34,14 +35,17 @@ export class NotificationBell implements OnInit {
   private readonly session = inject(SessionService);
 
   protected readonly closing = signal<ClosingAssignment[]>([]);
-  protected readonly now = signal(Instant.now());
+  protected readonly now = inject(NowService).now;
+
+  /** A deadline that has passed is history: it leaves the bell the moment it passes. */
+  private readonly upcoming = computed(() => this.closing().filter(item => item.deadline.isAfter(this.now())));
 
   /** The assignments that close within the next day. */
   protected readonly dueSoon = computed(() =>
-    this.closing().filter(item => this.minutesLeft(item.deadline) <= 24 * 60));
+    this.upcoming().filter(item => this.minutesLeft(item.deadline) <= 24 * 60));
 
   /** The next five of them, the nearest first. */
-  protected readonly listed = computed(() => this.closing().slice(0, 5));
+  protected readonly listed = computed(() => this.upcoming().slice(0, 5));
 
   public async ngOnInit(): Promise<void> {
     await this.load();
@@ -117,12 +121,8 @@ export class NotificationBell implements OnInit {
       }
     }
 
-    // A deadline that has passed is history: the bell is about what is still coming.
-    const now = Instant.now();
-    const upcoming = items.filter(item => item.deadline.isAfter(now));
-
     // The nearest deadline first: that is the order a teacher and a student work in.
-    upcoming.sort((left, right) => left.deadline.compareTo(right.deadline));
-    this.closing.set(upcoming);
+    items.sort((left, right) => left.deadline.compareTo(right.deadline));
+    this.closing.set(items);
   }
 }

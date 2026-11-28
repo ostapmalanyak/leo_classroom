@@ -24,6 +24,7 @@ import { CourseTeacherService } from '../../../core/services/course-teacher-serv
 import { MeService } from '../../../core/services/me-service';
 import { SessionService } from '../../../core/auth/session-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
+import { NowService } from '../../../core/services/now-service';
 import { UserRole, UserService, UserSummary } from '../../../core/services/user-service';
 import { Role } from '../../../core/auth/roles';
 import {
@@ -116,6 +117,7 @@ export class CourseAssignments implements OnInit {
   private readonly me = inject(MeService);
   protected readonly session = inject(SessionService);
   private readonly snackbar = inject(SnackbarService);
+  private readonly clock = inject(NowService);
   private readonly dialog = inject(MatDialog);
 
   /** Bound from the route parameter (withComponentInputBinding). */
@@ -139,7 +141,7 @@ export class CourseAssignments implements OnInit {
 
   /** Students see their work split by state, teachers see every assignment of the course. */
   protected readonly studentRows: Signal<StudentRow[]> = computed(() => {
-    const now = Instant.now();
+    const now = this.clock.now();
 
     return this.assignments().map(assignment => {
       const view = assignmentViewOf(studentAssignmentState({
@@ -235,7 +237,7 @@ export class CourseAssignments implements OnInit {
     const byDate = new Map<string, AssignmentDateGroup>();
     const noDate: CourseAssignment[] = [];
 
-    const now = Instant.now();
+    const now = this.clock.now();
     const hiddenByMoment = new Map<number, HiddenGroup>();
     const hiddenManual: CourseAssignment[] = [];
 

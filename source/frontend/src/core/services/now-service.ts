@@ -11,7 +11,7 @@ export class NowService implements OnDestroy {
 
   public readonly now: Signal<Instant> = this.current.asReadonly();
 
-  private readonly timer = setInterval(() => this.current.set(Instant.now()), 30_000);
+  private readonly timer = setInterval(() => this.current.set(Instant.now()), 1_000);
 
   public ngOnDestroy(): void {
     clearInterval(this.timer);

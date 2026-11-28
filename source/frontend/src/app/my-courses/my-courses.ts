@@ -16,6 +16,7 @@ import { SearchPaletteService } from '../../core/services/search-palette-service
 import { CourseOverview, CourseService } from '../../core/services/course-service';
 import { CourseManagementService } from '../../core/services/course-management-service';
 import { SnackbarService } from '../../core/services/snackbar-service';
+import { NowService } from '../../core/services/now-service';
 import { CreateCourseDialog } from './create-course-dialog/create-course-dialog';
 import { DeleteCourseDialog } from './delete-course-dialog/delete-course-dialog';
 
@@ -26,7 +27,8 @@ interface CourseTile {
   avatarUrl: string;
   /** The seed of the icon the backend draws for this course. */
   iconSeed: string | null;
-  open: number;
+  /** The deadlines of the visible assignments; which are still open is worked out when shown. */
+  deadlines: (Instant | null)[];
 }
 
 @Component({
@@ -48,6 +50,13 @@ export class MyCourses implements OnInit {
   protected readonly courses: WritableSignal<CourseTile[]> = signal([]);
 
   private assignmentsFailureNotified = false;
+  private readonly clock = inject(NowService);
+
+  protected openCount(course: CourseTile): number {
+    const now = this.clock.now();
+
+    return course.deadlines.filter(deadline => deadline === null || !deadline.isBefore(now)).length;
+  }
 
   public async ngOnInit(): Promise<void> {
     await this.loadCourses();
@@ -138,8 +147,8 @@ export class MyCourses implements OnInit {
       const assignments = [...mine.accepted, ...mine.unaccepted];
       this.courses.update(current => current.map(tile => ({
         ...tile,
-        open: assignments.filter(assignment => assignment.courseId === tile.id
-          && (assignment.deadline === null || !assignment.deadline.isBefore(now))).length
+        deadlines: assignments.filter(assignment => assignment.courseId === tile.id)
+                              .map(assignment => assignment.deadline)
       })));
 
       return;
@@ -176,8 +185,8 @@ export class MyCourses implements OnInit {
       title: course.title,
       avatarUrl: this.courseManagementService.avatarUrl(course.iconSeed ?? `legacy-${course.id}`),
       iconSeed: course.iconSeed ?? null,
-      open: assignments.filter(assignment => !isHiddenNow(assignment, now))
-                       .filter(assignment => assignment.deadline === null || !assignment.deadline.isBefore(now)).length
+      deadlines: assignments.filter(assignment => !isHiddenNow(assignment, now))
+                            .map(assignment => assignment.deadline)
     };
   }
 }

@@ -1,3 +1,4 @@
+using LeoClassroom.Services.Scheduling;
 using LeoClassroom.Services.Audit;
 using LeoClassroom.Services.Auth;
 using LeoClassroom.Services.Forgejo;
@@ -35,6 +36,7 @@ public sealed class AssignmentServiceTests
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
     private readonly IMoodleSyncService _moodle = Substitute.For<IMoodleSyncService>();
     private readonly IClock _clock = Substitute.For<IClock>();
+    private readonly IDeadlineScheduler _deadlines = Substitute.For<IDeadlineScheduler>();
     private readonly AssignmentService _sut;
 
     public AssignmentServiceTests()
@@ -55,12 +57,26 @@ public sealed class AssignmentServiceTests
                              new ForgejoUser(1, OwnerStudentId)));
 
         _sut = new AssignmentService(_uow, _currentUser, _reconciliation, _cascade, _forgejo, _audit, _notifications,
-                                     _moodle, _clock, Substitute.For<ILogger<AssignmentService>>());
+                                     _moodle, _clock, _deadlines,
+                                     Substitute.For<ILogger<AssignmentService>>());
     }
 
     private static AssignmentSettings Settings(DeadlineKind kind = DeadlineKind.None, Instant? deadline = null) =>
         new("Algorithms", null, null, deadline, kind, false, StarterSourceKind.DescriptionOnly, null, null,
             false, null, DownloadSnapshotMode.Deadline);
+
+    [Theory]
+    [InlineData(DeadlineKind.Hard, 1)]
+    [InlineData(DeadlineKind.Soft, 0)]
+    public async Task Create_SchedulesOnlyAHardDeadline(DeadlineKind kind, int expected)
+    {
+        _courseRepo.GetWithTeachersAsync(CourseId).Returns(new ValueTask<Course?>(CourseOwnedByCurrent()));
+        Instant deadline = Instant.FromUtc(2026, 6, 14, 12, 0);
+
+        await _sut.CreateAsync(CourseId, Settings(kind, deadline));
+
+        await _deadlines.Received(expected).ScheduleAsync(Arg.Any<long>(), deadline);
+    }
 
     private Course CourseOwnedByCurrent() => new()
     {

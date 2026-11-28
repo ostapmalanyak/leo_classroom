@@ -103,12 +103,6 @@ namespace LeoClassroom.Persistence.Migrations
                     b.Property<Instant?>("LastPushAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<bool>("Late")
-                        .HasColumnType("boolean");
-
-                    b.Property<Instant?>("LateSince")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("RepoName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -128,8 +122,6 @@ namespace LeoClassroom.Persistence.Migrations
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Late");
 
                     b.HasIndex("StudentId");
 

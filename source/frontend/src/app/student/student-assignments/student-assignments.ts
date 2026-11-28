@@ -8,6 +8,7 @@ import { Instant } from '@js-joda/core';
 import { AssignedAssignment, AssignmentService } from '../../../core/services/assignment-service';
 import { CourseService } from '../../../core/services/course-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
+import { NowService } from '../../../core/services/now-service';
 import {
   AssignmentView,
   assignmentViewOf,
@@ -52,6 +53,7 @@ export class StudentAssignments implements OnInit {
   private readonly service = inject(AssignmentService);
   private readonly courseService = inject(CourseService);
   private readonly snackbar = inject(SnackbarService);
+  private readonly clock = inject(NowService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -66,7 +68,7 @@ export class StudentAssignments implements OnInit {
 
   /** Every assignment with the state it is in, derived in one place so the tabs and the list agree. */
   protected readonly rows: Signal<AssignmentRow[]> = computed(() => {
-    const now = Instant.now();
+    const now = this.clock.now();
 
     return this.all().map(assignment => {
       const view = assignmentViewOf(studentAssignmentState({

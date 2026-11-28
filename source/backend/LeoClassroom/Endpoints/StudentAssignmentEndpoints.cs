@@ -165,7 +165,7 @@ public sealed record AssignmentInfoDto(
 
 public sealed record SubmissionDto(
     long AssignmentId, string Title, string? Description, Instant? Deadline, DeadlineKind DeadlineKind,
-    SubmissionStatus? Status, string? RepoUrl, string? FailureReason, bool Late, Instant? LateSince,
+    SubmissionStatus? Status, string? RepoUrl, string? FailureReason, bool Late,
     FeedbackState FeedbackState, Instant? FeedbackReadAt)
 {
     public static SubmissionDto FromView(StudentAssignmentView view) => new(
@@ -173,12 +173,12 @@ public sealed record SubmissionDto(
         view.Assignment.DeadlineKind, view.Acceptance?.Status,
         view.Acceptance?.Status == SubmissionStatus.Ready ? view.Acceptance.RepoUrl : null,
         view.Acceptance?.FailureReason,
-        view.Acceptance?.Late ?? false, view.Acceptance?.LateSince,
+        view.Acceptance?.IsLate(view.Assignment) ?? false,
         view.Acceptance?.FeedbackState ?? FeedbackState.None, view.Acceptance?.FeedbackReadAt);
 
     public static SubmissionDto FromAcceptance(Acceptance acceptance) => new(
         acceptance.AssignmentId, string.Empty, null, null, DeadlineKind.None, acceptance.Status,
         acceptance.Status == SubmissionStatus.Ready ? acceptance.RepoUrl : null,
         acceptance.FailureReason,
-        acceptance.Late, acceptance.LateSince, acceptance.FeedbackState, acceptance.FeedbackReadAt);
+        false, acceptance.FeedbackState, acceptance.FeedbackReadAt);
 }

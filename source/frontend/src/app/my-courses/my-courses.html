@@ -57,8 +57,8 @@
           }
         </span>
         <span class="course-card__meta">
-          @if (course.open !== null && course.open !== undefined && course.open > 0) {
-            {{ course.open }} open
+          @if (openCount(course) > 0) {
+            {{ openCount(course) }} open
           } @else {
             All caught up
           }
