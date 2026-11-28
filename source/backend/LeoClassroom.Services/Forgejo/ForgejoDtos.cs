@@ -43,7 +43,12 @@ public sealed record ForgejoRepo(
     [property: JsonPropertyName("full_name")] string FullName,
     [property: JsonPropertyName("clone_url")] string CloneUrl,
     [property: JsonPropertyName("html_url")] string HtmlUrl,
-    [property: JsonPropertyName("default_branch")] string? DefaultBranch);
+    [property: JsonPropertyName("default_branch")] string? DefaultBranch,
+    [property: JsonPropertyName("private")] bool Private = false);
+
+public sealed record ForgejoTree(IReadOnlyCollection<ForgejoTreeEntry> Tree);
+
+public sealed record ForgejoTreeEntry(string Path, string Type);
 
 public sealed record ForgejoCommit(
     string Sha,

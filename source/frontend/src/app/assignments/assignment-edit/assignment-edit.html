@@ -102,45 +102,17 @@
             </button>
           </div>
 
-          @if (needsRepoUrl()) {
-            @if (!isEditMode()) {
-              <div class="starter-grid" role="group" aria-label="Repository starter content">
-                <button class="starter" type="button" [class.is-active]="repoStarterMode() === 'repository'"
-                        (click)="setRepoStarterMode('repository')">
-                  <mat-icon aria-hidden="true">link</mat-icon>
-                  <span>Use a repository</span>
-                </button>
-                <button class="starter" type="button" [class.is-active]="repoStarterMode() === 'archive'"
-                        (click)="setRepoStarterMode('archive')">
-                  <mat-icon aria-hidden="true">upload_file</mat-icon>
-                  <span>Upload a ZIP</span>
-                </button>
-              </div>
-            }
-
-            @if (!usesArchiveUpload()) {
-              <div class="field">
-                <label class="field__label" for="field-url">
-                  {{ isForkRepo() ? 'Link to your repository' : 'Repository URL' }}
-                </label>
-                <input id="field-url" class="input" type="url" [class.input--invalid]="repoError() !== null"
-                       placeholder="https://forgejo.example/owner/template" [value]="starterRepoUrl()"
-                       (input)="starterRepoUrl.set($any($event.target).value)">
-                @if (repoError(); as error) {
-                  <p class="field__error" role="alert">
-                    <mat-icon aria-hidden="true">error</mat-icon>
-                    <span>{{ error }}</span>
-                  </p>
-                }
-              </div>
-            }
-
-            @if (isCopyRepo()) {
-              <app-markdown-editor label="README" [value]="readme()" (valueChange)="readme.set($event)" />
-            }
+          @if (isCopyRepo()) {
+            <div class="field">
+              <label class="field__label" for="field-url">Repository URL</label>
+              <input id="field-url" class="input" type="url" [class.input--invalid]="repoError() !== null"
+                     placeholder="https://forgejo.example/owner/template" [value]="starterRepoUrl()"
+                     (input)="starterRepoUrl.set($any($event.target).value)">
+            </div>
+            <app-markdown-editor label="README" [value]="readme()" (valueChange)="readme.set($event)" />
           }
 
-          @if (usesArchiveUpload()) {
+          @if (isArchive() || isForkRepo()) {
             @if (isEditMode() && isArchive() && archiveConfigured()) {
               @if (archiveHasTemplate()) {
                 <p class="edit-hint">The existing ZIP download and starter repository are attached to this assignment.</p>
@@ -148,66 +120,88 @@
                 <p class="edit-hint">The confirmed ZIP is attached as a download-only starter.</p>
               }
             } @else {
-              <div class="field">
-                <label class="field__label" for="field-archive">Upload a ZIP archive</label>
-                <input id="field-archive" class="input" type="file" accept=".zip,application/zip"
-                       [disabled]="archiveUploading()"
-                       (change)="handleArchiveFileChanged($event)">
-                <p class="edit-hint">
-                  @if (isArchive()) {
-                    Students download this archive directly. No Forgejo repository will be created.
-                  } @else {
-                    The ZIP will create a private starter repository for students to copy or fork.
-                  }
-                  We’ll show the files and folders before you confirm them. ZIP files up to 50 MB.
-                </p>
-                @if (archiveUploading()) {
-                  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-                  <p class="edit-hint">Reading and checking the archive…</p>
+              <div class="dropbar" [class.dropbar--dragging]="dragging()"
+                   (dragenter)="onDragEnter($event)" (dragover)="onDragOver($event)"
+                   (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+
+                <input #fileInput class="dropbar__file" type="file" accept=".zip"
+                       (change)="onFilePicked($event)">
+
+                @if (starterFilled()) {
+                  <div class="slot">
+                    <mat-icon class="slot__icon" aria-hidden="true">{{ starterIcon() }}</mat-icon>
+                    <div class="slot__body">
+                      <p class="slot__name">{{ starterName() }}</p>
+                      <p class="slot__meta">{{ starterMeta() }}</p>
+                    </div>
+                    <div class="slot__actions">
+                      <button type="button" class="btn btn--secondary" (click)="fileInput.click()">
+                        {{ isArchive() ? 'Replace' : 'Change' }}
+                      </button>
+                      <button type="button" class="btn btn--icon" (click)="removeStarter()"
+                              aria-label="Remove starter">
+                        <mat-icon aria-hidden="true">close</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="dropbar__row">
+                    <mat-icon class="dropbar__icon" aria-hidden="true">{{ isArchive() ? 'folder_zip' : 'link' }}</mat-icon>
+                    <input #linkInput class="dropbar__input" type="text" [readonly]="isArchive()"
+                           [placeholder]="starterPlaceholder()" [value]="starterRepoUrl()"
+                           [attr.aria-label]="starterPlaceholder()"
+                           (input)="onLinkInput($any($event.target).value)"
+                           (keydown.enter)="resolveLink()">
+                    <button type="button" class="btn btn--secondary" (click)="fileInput.click()">Browse</button>
+                  </div>
+                  <p class="dropbar__hint">
+                    {{ isArchive()
+                       ? 'Students download this archive directly. No repository is created. ZIP up to 50 MB.'
+                       : 'We create a private starter repository from this. Students fork it. ZIP up to 50 MB.' }}
+                  </p>
                 }
-                @if (archiveUploadError(); as error) {
-                  <p class="field__error" role="alert">
-                    <mat-icon aria-hidden="true">error</mat-icon>
-                    <span>{{ error }}</span>
+
+                @if (dragging()) {
+                  <p class="dropbar__drop">Drop to upload</p>
+                }
+
+                @if (archiveUploading() || resolvingLink()) {
+                  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                }
+
+                @if (starterMessage(); as message) {
+                  <p class="dropbar__error" role="status" aria-live="polite">
+                    <span>{{ message }}</span>
+                    <button type="button" class="dropbar__retry" (click)="fileInput.click()">Try another file</button>
                   </p>
                 }
               </div>
-
-              @if (archivePreview(); as preview) {
-                <section class="archive-preview" aria-label="Archive contents">
-                  <div class="archive-preview__head">
-                    <div>
-                      <h3>{{ preview.fileName }}</h3>
-                      <p>{{ preview.entries.length }} files and folders — review before confirming</p>
-                    </div>
-                    <mat-icon aria-hidden="true">folder_open</mat-icon>
-                  </div>
-                  <ul class="archive-preview__entries">
-                    @for (entry of preview.entries; track entry) {
-                      <li [class.archive-preview__folder]="entry.endsWith('/')">
-                        <mat-icon aria-hidden="true">{{ entry.endsWith('/') ? 'folder' : 'draft' }}</mat-icon>
-                        <code>{{ entry }}</code>
-                      </li>
-                    }
-                  </ul>
-                  <label class="archive-confirm">
-                    <input type="checkbox" [checked]="archiveConfirmed()"
-                           (change)="archiveConfirmed.set($any($event.target).checked)">
-                    <span>I checked the folder contents and confirm this is the correct starter.</span>
-                  </label>
-                </section>
-              }
-
-              @if (archiveError(); as error) {
-                <p class="field__error" role="alert">
-                  <mat-icon aria-hidden="true">error</mat-icon>
-                  <span>{{ error }}</span>
-                </p>
-              }
             }
-          } @else if (!needsRepoUrl()) {
+
+            @if (archivePreview(); as preview) {
+              <section class="archive-preview" aria-label="Archive contents">
+                <p class="archive-preview__count">{{ preview.fileName }} — {{ treeTotal() }}</p>
+                <ul class="archive-preview__entries">
+                  @for (entry of treeShown(); track entry) {
+                    <li [class.archive-preview__folder]="entry.endsWith('/')"><code>{{ entry }}</code></li>
+                  }
+                  @if (treeHidden() > 0) {
+                    <li class="archive-preview__more">+ {{ treeHidden() }} more</li>
+                  }
+                </ul>
+                <label class="archive-confirm">
+                  <input type="checkbox" [checked]="archiveConfirmed()"
+                         (change)="archiveConfirmed.set($any($event.target).checked)">
+                  <span>I checked the folder contents and confirm this is the correct starter.</span>
+                </label>
+              </section>
+            }
+          }
+
+          @if (!isCopyRepo() && !isArchive() && !isForkRepo()) {
             <p class="edit-hint">No repository or archive is created for a description-only starter.</p>
           }
+
         </section>
       }
 
@@ -380,7 +374,7 @@
           Back
         </button>
         @if (step() < steps.length - 1) {
-          <button class="btn btn--secondary" type="button" (click)="goTo(step() + 1)">Next</button>
+          <button class="btn btn--secondary" type="button" (click)="next()">Next</button>
         } @else {
           <button class="btn btn--primary" type="button" [disabled]="saving()" (click)="handleSaveClicked()">
             {{ saving() ? 'Saving…' : 'Save' }}

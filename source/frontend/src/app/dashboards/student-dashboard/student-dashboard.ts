@@ -16,6 +16,7 @@ import { countViews, workEntries, WorkEntry } from '../../../core/util/student-w
 import { CourseService } from '../../../core/services/course-service';
 import { CourseIcon } from '../../shared/course-icon/course-icon';
 import { GitCredentialsNotice } from '../../shared/git-credentials-notice/git-credentials-notice';
+import { GitLoginStrip } from '../../shared/git-login-strip/git-login-strip';
 
 interface NextUpItem {
   assignment: AssignedAssignment;
@@ -35,7 +36,7 @@ interface StatTile {
 
 @Component({
   selector: 'app-student-dashboard',
-  imports: [RouterLink, MatCard, MatCardContent, MatIcon, MatProgressBar, CourseIcon, GitCredentialsNotice],
+  imports: [GitLoginStrip, RouterLink, MatCard, MatCardContent, MatIcon, MatProgressBar, CourseIcon, GitCredentialsNotice],
   templateUrl: './student-dashboard.html',
   styleUrl: './student-dashboard.scss'
 })
@@ -74,11 +75,18 @@ export class StudentDashboard implements OnInit {
   protected readonly stats: Signal<StatTile[]> = computed(() => [
     { label: 'To do', count: this.counts().todo, query: { view: 'todo' }, tone: 'neutral' },
     { label: 'Pushed', count: this.counts().pushed, query: { view: 'pushed' }, tone: 'neutral' },
-    { label: 'Due in 24 h', count: this.dueSoonCount(), query: null, tone: 'urgent' },
+    { label: 'Due in 24 hours', count: this.dueSoonCount(), query: null, tone: 'urgent' },
     { label: 'Past due', count: this.counts().pastDue, query: { view: 'past-due' }, tone: 'danger' }
   ]);
 
   /** The three soonest deadlines: on a landing page, the next three are the whole point. */
+  /** The strip points at the first assignment's page, which is where the step lives. */
+  protected readonly gitLoginRoute = computed<readonly string[]>(() => {
+    const first = this.nextUp()[0]?.assignment.id ?? this.entries()[0]?.assignment.id;
+
+    return first === undefined ? ['/my-assignments'] : ['/my-assignments', String(first)];
+  });
+
   protected readonly nextUp: Signal<NextUpItem[]> = computed(() => {
     const now = this.clock.now();
 

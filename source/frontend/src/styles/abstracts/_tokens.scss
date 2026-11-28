@@ -27,6 +27,9 @@ $color-success-text: #aef0c2;
 $color-warning-bg: #3a2a08;
 $color-warning-border: #8a6320;
 $color-warning-text: #ffd24a;
+
+// The bar needs a fill that stays a warning even where the text has to be darker to stay readable.
+$color-warning-fill: #ffd24a;
 $color-info-bg: #12233a;
 $color-info-border: #2e50b0;
 $color-info-text: #93c5fd;
@@ -125,6 +128,7 @@ $viewport-height: 100dvh;
   --color-warning-bg: #{$color-warning-bg};
   --color-warning-border: #{$color-warning-border};
   --color-warning-text: #{$color-warning-text};
+  --color-warning-fill: #{$color-warning-fill};
   --color-info-bg: #{$color-info-bg};
   --color-info-border: #{$color-info-border};
   --color-info-text: #{$color-info-text};
@@ -348,4 +352,54 @@ $viewport-height: 100dvh;
   --mat-sys-title-small-size: var(--font-size-base);
   --mat-sys-title-small-tracking: 0;
   --mat-sys-title-small-weight: var(--font-weight-medium);
+}
+
+// A light theme is opt-in: `data-theme="light"` on <html> swaps the palette, nothing else.
+// The page is a warm off-white rather than #fff, so cards keep an edge without needing a shadow,
+// and the accent stays the same orange the app is known for.
+@mixin light-custom-properties {
+  --color-bg-nav: #ece9e2;
+  --color-bg-body: #f4f2ec;
+  --color-bg-surface: #fbfaf6;
+  --color-bg-input: #f1efe8;
+  --color-bg-hover: #e6e3da;
+  --color-bg-code: #f4f2ec;
+  --color-border: #d9d5c9;
+  --color-border-subtle: #e6e3da;
+  --color-input-border: #c6c1b4;
+  --color-text: #262b31;
+  --color-text-muted: #5a6069;
+  --color-text-subtle: #6f757e;
+  --color-text-strong: #14181d;
+  --color-accent: #fb923c;
+  --color-accent-hover: #f97316;
+  --color-on-accent: #000;
+  --color-danger-bg: #ffebe9;
+  --color-danger-border: #cf222e;
+  --color-danger-text: #82071e;
+  --color-danger-strong: #b42318;
+  --color-success-bg: #dafbe1;
+  --color-success-border: #4ac26b;
+  --color-success-text: #116329;
+  --color-warning-bg: #fff5cc;
+  --color-warning-border: #d4a72c;
+  --color-warning-text: #8a6100;
+
+  // The bar is a large fill, so it can stay a warm amber where the label has to be darker.
+  --color-warning-fill: #e0a63a;
+  --color-info-bg: #ddf4ff;
+  --color-info-border: #54aeff;
+  --color-info-text: #0757ba;
+  --color-late-bg: #fbefff;
+  --color-late-border: #c297ff;
+  --color-late-text: #6639ba;
+  --color-neutral-bg: #f1efe8;
+  --color-neutral-border: #c6c1b4;
+  --color-neutral-text: #5a6069;
+  --color-urgency-later: #6f757e;
+  --color-urgency-soon: #8a6100;
+  --color-urgency-warm: #bc4c00;
+  --color-urgency-urgent: #bc4c00;
+  --color-urgency-critical: #cf222e;
+  --color-urgency-overdue: #a40e26;
 }

@@ -374,7 +374,8 @@
             </section>
 
             <section class="participant-section">
-              <h2 class="section-heading">Students</h2>
+              <!-- grouped in one span: the heading spreads its children apart -->
+              <h2 class="section-heading"><span>Students <span class="pill">{{ students().length }}</span></span></h2>
               @if (session.isTeacher()) {
                 <div class="add-row">
                   <span>Add Student</span>

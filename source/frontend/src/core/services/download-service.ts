@@ -92,6 +92,8 @@ const downloadJobZod = z.object({
   error: z.string().nullable(),
   createdAt: z.string(),
   completedAt: z.string().nullable(),
-  expiresAt: z.string().nullable()
+  expiresAt: z.string().nullable(),
+  fileName: z.string().nullable(),
+  sizeBytes: z.int().nullable()
 });
 export type DownloadJob = z.infer<typeof downloadJobZod>;

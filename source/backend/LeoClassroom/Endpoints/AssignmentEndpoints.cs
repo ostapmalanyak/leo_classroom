@@ -42,6 +42,7 @@ public static class AssignmentEndpoints
             assignments.MapPost("/archive-preview", PreviewStarterArchiveAsync)
                        .DisableAntiforgery()
                        .WithMetadata(new RequestSizeLimitAttribute(50 * 1024 * 1024 + 128 * 1024));
+            assignments.MapPost("/repo-preview", PreviewRepositoryAsync);
             assignments.MapGet("/course/{courseId:long:min(1)}", GetForCourseAsync);
             assignments.MapGet("/{id:long:min(1)}/edit", GetAssignmentForEditAsync)
                        .WithName(nameof(GetAssignmentForEditAsync));
@@ -287,6 +288,73 @@ public static class AssignmentEndpoints
         }
     }
 
+    /// <summary>
+    /// Reads the metadata of a starter repository the teacher pasted, so the wizard can show the
+    /// branch, the visibility and how much is in it before anything is created from it.
+    /// </summary>
+    private static async ValueTask<Results<Ok<RepositoryPreviewDto>, ValidationProblem>>
+        PreviewRepositoryAsync([FromBody] RepositoryPreviewRequest request,
+                               [FromServices] IForgejoClient forgejo,
+                               [FromServices] IOptions<ForgejoSettings> settings)
+    {
+        string host = settings.Value.PublicBaseUrl ?? settings.Value.BaseUrl ?? string.Empty;
+        (string owner, string repo)? parsed = ParseRepositoryLink(request.Url, host);
+        if (parsed is null)
+        {
+            return TypedResults.ValidationProblem(Validation.Failure(
+                "url", "Use a link to a repository on this Forgejo, for example https://forgejo.example/owner/repo."));
+        }
+
+        (string owner, string repo) = parsed.Value;
+        ForgejoRepo? found = (await forgejo.GetRepoAsync(owner, repo))
+            .Match<ForgejoRepo?>(repository => repository, _ => null, _ => null);
+        if (found is null)
+        {
+            return TypedResults.ValidationProblem(Validation.Failure(
+                "url", "No repository found at that link."));
+        }
+
+        string branch = found.DefaultBranch ?? "main";
+        IReadOnlyCollection<ForgejoTreeEntry> entries = (await forgejo.GetTreeAsync(owner, repo, branch))
+            .Match<IReadOnlyCollection<ForgejoTreeEntry>>(tree => tree, _ => [], _ => []);
+        int files = entries.Count(entry => entry.Type == "blob");
+        int folders = entries.Count(entry => entry.Type == "tree");
+
+        return TypedResults.Ok(
+            new RepositoryPreviewDto(found.FullName, branch, found.Private, files, folders));
+    }
+
+    /// <summary>
+    /// Only links that point at our own Forgejo are read: the wizard must never be pointed at
+    /// an arbitrary host.
+    /// </summary>
+    private static (string Owner, string Repo)? ParseRepositoryLink(string url, string publicBaseUrl)
+    {
+        if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out Uri? link) ||
+            (link.Scheme != Uri.UriSchemeHttps && link.Scheme != Uri.UriSchemeHttp))
+        {
+            return null;
+        }
+        if (publicBaseUrl.Length == 0 ||
+            !Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out Uri? host) ||
+            !string.Equals(link.Authority, host.Authority, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        string[] segments = link.AbsolutePath.Trim('/').Split('/');
+        if (segments.Length < 2 || segments[0].Length == 0 || segments[1].Length == 0)
+        {
+            return null;
+        }
+
+        string repo = segments[1].EndsWith(".git", StringComparison.OrdinalIgnoreCase)
+            ? segments[1][..^4]
+            : segments[1];
+
+        return (segments[0], repo);
+    }
+
     private static async ValueTask<Results<Ok<StarterArchivePreviewDto>, ValidationProblem>>
         PreviewStarterArchiveAsync([FromForm] IFormFile archive,
                                    [FromServices] IStarterArchiveStorage storage,
@@ -480,3 +548,7 @@ public sealed record AssignmentDto(
         a.StarterSourceKind == StarterSourceKind.Archive && a.ArchivePath is not null,
         a.StarterTemplateRepoUrl);
 }
+
+public sealed record RepositoryPreviewRequest(string Url);
+
+public sealed record RepositoryPreviewDto(string FullName, string DefaultBranch, bool Private, int Files, int Folders);

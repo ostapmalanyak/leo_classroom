@@ -44,6 +44,7 @@ public static class Setup
             app.MapDownloadEndpoints();
             app.MapNotificationEndpoints();
             app.MapMeEndpoints();
+            app.MapGitSetupEndpoints();
             app.MapAuditEndpoints();
             app.MapLdapSyncEndpoints();
             app.MapForgejoHealthEndpoints();

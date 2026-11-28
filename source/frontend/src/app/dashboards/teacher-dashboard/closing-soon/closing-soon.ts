@@ -16,7 +16,7 @@ export interface ClosingAssignment {
 }
 
 /**
- * The assignments that close soonest. The time left is short ("22 h", "1 h 40 min") and
+ * The assignments that close soonest. The time left is short ("22 hours", "1 hour 40 minutes") and
  * the pill wears the urgency colour of the deadline.
  */
 @Component({
@@ -55,25 +55,29 @@ export class ClosingSoonList {
     return ['/assignments', String(id), 'students'];
   }
 
-  /** "22 h", "1 h 40 min", "1 day" - short enough for a pill. */
+  /** "22 hours", "1 hour 40 minutes", "1 day" - short enough for a pill. */
   private shortRemaining(minutes: number): string {
     if (minutes < 60) {
-      return `${Math.max(1, minutes)} min`;
+      return this.unit(Math.max(1, minutes), 'minute');
     }
 
     if (minutes < 120) {
       const rest = minutes % 60;
 
-      return rest === 0 ? '1 h' : `1 h ${rest} min`;
+      return rest === 0 ? '1 hour' : `1 hour ${this.unit(rest, 'minute')}`;
     }
 
     if (minutes < 24 * 60) {
-      return `${Math.floor(minutes / 60)} h`;
+      return this.unit(Math.floor(minutes / 60), 'hour');
     }
 
     const days = Math.round(minutes / (24 * 60));
 
-    return days === 1 ? '1 day' : `${days} days`;
+    return this.unit(days, 'day');
+  }
+
+  private unit(value: number, unit: string): string {
+    return `${value} ${value === 1 ? unit : `${unit}s`}`;
   }
 
   /** The same time, spelled out for a screen reader. */

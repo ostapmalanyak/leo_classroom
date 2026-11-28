@@ -43,6 +43,25 @@ export class AssignmentService extends BackendServiceBase {
     }
   }
 
+  public async previewRepository(url: string): Promise<RepositoryPreview | string> {
+    try {
+      const response = await firstValueFrom(
+        this.http.post<unknown>(this.buildUrl('repo-preview'), { url }));
+
+      return repositoryPreviewZod.parse(response);
+    } catch (error) {
+      if (error instanceof HttpErrorResponse) {
+        const messages = (error.error as { errors?: Record<string, string[]> } | null)?.errors?.['url'];
+
+        return messages?.[0] ?? 'No repository found at that link.';
+      }
+      if (error instanceof z.ZodError) {
+        return 'The server returned an invalid repository preview.';
+      }
+      throw error;
+    }
+  }
+
   public async downloadStarterArchive(id: number): Promise<ActionResult> {
     try {
       const blob = await firstValueFrom(
@@ -416,6 +435,15 @@ const starterArchivePreviewZod = z.object({
   entries: z.string().array()
 });
 export type StarterArchivePreview = z.infer<typeof starterArchivePreviewZod>;
+
+const repositoryPreviewZod = z.object({
+  fullName: z.string(),
+  defaultBranch: z.string(),
+  private: z.boolean(),
+  files: z.int(),
+  folders: z.int()
+});
+export type RepositoryPreview = z.infer<typeof repositoryPreviewZod>;
 
 const submissionZod = z.object({
   assignmentId: z.int().positive(),

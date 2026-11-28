@@ -3,6 +3,7 @@ import Keycloak from 'keycloak-js';
 import { KEYCLOAK_EVENT_SIGNAL, KeycloakEventType, typeEventArgs, ReadyArgs } from 'keycloak-angular';
 import { Role } from './roles';
 import { rolesFromLdapEntryDn } from './leo-roles';
+import { loginRedirectUri } from './login-redirect';
 import { MeService } from '../services/me-service';
 
 interface Identity {
@@ -85,7 +86,9 @@ export class SessionService {
   }
 
   public async login(): Promise<void> {
-    await this.keycloak.login();
+    // the same rule as the guard: a fragment in the redirect_uri is what leaves a browser stuck on
+    // Keycloak's "Invalid parameter: redirect_uri" page
+    await this.keycloak.login({ redirectUri: loginRedirectUri() });
   }
 
   public async logout(): Promise<void> {
