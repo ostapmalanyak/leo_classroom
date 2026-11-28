@@ -44,7 +44,7 @@
                (keydown)="handleSearchKeydown($event)">
             @if (selectedRoster(); as roster) {
               <div class="roster-search__selected">
-                <span>{{ roster.name }}</span>
+                <span>{{ roster.name }} ({{ roster.memberCount }} members)</span>
                 <button type="button" aria-label="Clear selected roster"
                         (click)="removeSelectedRoster(); $event.stopPropagation()">
                   <mat-icon aria-hidden="true">close</mat-icon>

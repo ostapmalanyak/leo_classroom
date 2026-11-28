@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using LeoClassroom.Services.GitSetup;
 using LeoClassroom.Services.Util;
 using LeoClassroom.Persistence.Model;
 using LeoClassroom.Persistence.Util;
@@ -55,7 +56,7 @@ public interface IWebhookService
 
 internal sealed class WebhookService(
     IUnitOfWork uow, IWebhookDispatcher dispatcher, IClock clock, IOptions<ForgejoSettings> settings,
-    ILogger<WebhookService> logger) : IWebhookService
+    IGitSetupService gitSetup, ILogger<WebhookService> logger) : IWebhookService
 {
     public bool VerifySignature(ReadOnlySpan<byte> body, string? signatureHex)
     {
@@ -101,6 +102,21 @@ internal sealed class WebhookService(
 
         await dispatcher.DispatchAsync(new WebhookEnvelope(
             eventType, actor, repoOwner, repoName, receivedAt, committerDate, payload));
+
+        // A push Forgejo accepted is the first proof that this user's git credential works. Forgejo exposes no
+        // route for someone else's OAuth2 grant, so this is the signal the page waits for.
+        if (string.Equals(eventType, "push", StringComparison.OrdinalIgnoreCase) && actor is not null)
+        {
+            try
+            {
+                await gitSetup.MarkAuthorizedAsync(actor);
+            }
+            catch (Exception ex)
+            {
+                // the push itself is already recorded; a failed flag must not make Forgejo retry the webhook
+                logger.LogWarning(ex, "Could not record the git setup confirmation for {Actor}", actor);
+            }
+        }
     }
 
     private (string? Actor, string? RepoOwner, string? RepoName, Instant? CommitterDate) ParsePayload(string payload)

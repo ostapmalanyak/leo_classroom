@@ -34,6 +34,10 @@
     </section>
   }
 
+  @if (needsGitLogin()) {
+    <app-git-login-step audience="student" [allowSkip]="true" [hideWhenDone]="true" />
+  }
+
   @switch (step()) {
     @case ('archive') {
       <section class="next">
@@ -42,19 +46,25 @@
     }
     @case ('accept') {
       <section class="next">
-        <div class="next__row">
-          @if (locked()) {
-            <span class="chip chip--danger">
-              <mat-icon aria-hidden="true">lock</mat-icon>
-              Closed
-            </span>
-          } @else {
-            <button type="button" mat-flat-button color="primary" (click)="handleAccept()"
-                    [disabled]="working()">
-              {{ working() ? 'Accepting…' : 'Accept assignment' }}
-            </button>
-          }
-        </div>
+        @if (provisioning()) {
+          <p class="next__label">Setting up your repository</p>
+          <mat-progress-bar mode="indeterminate" aria-label="Setting up your repository" />
+          <p class="next__hint">This takes a few seconds.</p>
+        } @else {
+          <div class="next__row">
+            @if (locked()) {
+              <span class="chip chip--danger">
+                <mat-icon aria-hidden="true">lock</mat-icon>
+                Closed
+              </span>
+            } @else {
+              <button type="button" mat-flat-button color="primary" (click)="handleAccept()"
+                      [disabled]="working()">
+                {{ working() ? 'Accepting…' : 'Accept assignment' }}
+              </button>
+            }
+          </div>
+        }
         @if (failed()) {
           <p class="next__error" role="alert">
             {{ downloadOnly() ? 'Could not accept this assignment. Try again.' : 'Could not create your repository. Try again.' }}
@@ -64,11 +74,17 @@
     }
 
     @case ('clone') {
-      <section class="next">
-        <p class="next__label">Next: clone your repository</p>
+      <section class="next" [class.next--locked]="!gitReady()" [attr.inert]="gitReady() ? null : ''">
+        <p class="next__label">
+          Next: clone your repository
+          @if (gitIcon(); as icon) {
+            <mat-icon class="next__git-lock" [class.next__git-lock--accent]="gitReady()"
+                      aria-hidden="true">{{ icon }}</mat-icon>
+          }
+        </p>
 
         <div class="code" [class.code--dim]="locked()">
-          <code class="code__text">{{ cloneDisplay() }}</code>
+          <code class="code__text">{{ cloneCommands() }}</code>
           <button type="button" class="code__copy" (click)="copyBlock(cloneCommands())"
                   [attr.aria-label]="copied() ? 'Copied' : 'Copy clone commands'">
             <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'content_copy' }}</mat-icon>

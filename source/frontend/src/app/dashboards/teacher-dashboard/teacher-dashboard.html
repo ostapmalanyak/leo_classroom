@@ -1,3 +1,5 @@
+<app-git-login-strip route="/cli" />
+
 @if (loading()) {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
 }
@@ -22,7 +24,7 @@
     <section class="teacher-tiles" aria-label="Overview">
       <app-overview-tile [value]="courses().length" label="Courses" />
       <app-overview-tile [value]="activeCount()" label="Active assignments" />
-      <app-overview-tile [value]="closingIn24h()" label="Close in 24 h" [warning]="true" />
+      <app-overview-tile [value]="closingIn24h()" label="Close in 24 hours" [warning]="true" />
       <app-overview-tile [value]="recentlyMissed()" label="To review" [danger]="true"
                          hint="Assignments that closed in the last week and are waiting for you" />
     </section>

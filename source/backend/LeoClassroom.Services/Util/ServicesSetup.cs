@@ -2,6 +2,7 @@ using LeoClassroom.Services.Audit;
 using LeoClassroom.Services.Auth;
 using LeoClassroom.Services.Download;
 using LeoClassroom.Services.Forgejo;
+using LeoClassroom.Services.GitSetup;
 using LeoClassroom.Services.Ldap;
 using LeoClassroom.Services.Moodle;
 using LeoClassroom.Services.Notifications;
@@ -31,6 +32,7 @@ public static class ServicesSetup
         services.AddScoped<IDeletionCascade, DeletionCascade>();
         services.AddScoped<IUserDeletionService, UserDeletionService>();
         services.AddScoped<IGitCredentialService, GitCredentialService>();
+        services.AddScoped<IGitSetupService, GitSetupService>();
         services.AddScoped<IForgejoDiagnosticsService, ForgejoDiagnosticsService>();
         services.AddScoped<ICustomRosterService, CustomRosterService>();
         services.AddScoped<ICourseTeacherService, CourseTeacherService>();

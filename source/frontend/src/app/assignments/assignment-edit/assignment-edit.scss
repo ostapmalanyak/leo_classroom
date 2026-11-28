@@ -317,15 +317,19 @@
   background-color: var(--color-bg-input);
   border-radius: var(--radius);
   list-style: none;
-  margin: 0;
-  max-block-size: 16rem;
+  margin: var(--space-2) 0 0;
+  max-block-size: 12rem;
   overflow: auto;
-  padding: var(--space-2);
+  padding: 0;
 
   li {
     align-items: center;
     display: flex;
     gap: var(--space-2);
+    padding-block: 0.125rem;
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
   }
 
   code {
@@ -338,6 +342,8 @@
   display: flex;
   font-size: var(--font-size-sm);
   gap: var(--space-2);
+  margin-block-start: var(--space-3);
+  color: var(--color-text-muted);
 }
 
 // The lifecycle switch.
@@ -503,4 +509,162 @@
 
 .deadline-card__text {
   font-size: var(--font-size-sm);
+}
+
+// Starter — one bar that takes a dropped ZIP, a browse click, or a pasted link.
+.dropbar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-card);
+  background-color: var(--color-bg-input);
+  transition: border-color var(--transition), background-color var(--transition);
+
+  &:focus-within {
+    border-color: var(--color-input-border);
+  }
+
+  &.dropbar--dragging {
+    border-color: var(--color-accent);
+    background-color: color-mix(in srgb, var(--color-accent) 10%, var(--color-bg-surface));
+  }
+}
+
+/* Hidden, but still the element the Browse button and the keyboard reach. */
+.dropbar__file {
+  position: absolute;
+  inline-size: 0.0625rem;
+  block-size: 0.0625rem;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dropbar__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dropbar__icon {
+  flex: none;
+  font-size: 1.25rem;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  color: var(--color-text-subtle);
+}
+
+.dropbar__input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  border: 0;
+  background: transparent;
+  padding-block: var(--space-1);
+  font: inherit;
+  color: var(--color-text);
+
+  &::placeholder {
+    color: var(--color-text-subtle);
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &[readonly] {
+    cursor: pointer;
+  }
+}
+
+.dropbar__hint {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.dropbar__drop {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-accent);
+}
+
+.dropbar__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-danger-strong);
+}
+
+.dropbar__retry {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.slot__icon {
+  flex: none;
+  font-size: 1.5rem;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  color: var(--color-accent);
+}
+
+.slot__body {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.slot__name {
+  margin: 0;
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.slot__meta {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.slot__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.archive-preview__count {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.archive-preview__folder code {
+  color: var(--color-text);
+}
+
+.archive-preview__more {
+  color: var(--color-text-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropbar {
+    transition: none;
+  }
 }

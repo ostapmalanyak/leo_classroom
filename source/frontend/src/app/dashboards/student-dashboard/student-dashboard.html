@@ -1,6 +1,8 @@
 <!-- Temporary notice about the git credentials. Delete this line and the component to remove it. -->
 <app-git-credentials-notice></app-git-credentials-notice>
 
+<app-git-login-strip [route]="gitLoginRoute()" />
+
 @if (loading()) {
   <mat-progress-bar mode="indeterminate"></mat-progress-bar>
 }

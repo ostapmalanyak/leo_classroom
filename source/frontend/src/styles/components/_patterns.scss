@@ -635,6 +635,15 @@ mat-card.mat-mdc-card {
   --mdc-linear-progress-track-color: var(--color-bg-hover);
 }
 
+// An indeterminate bar that never sweeps when the reader asked for less motion: the status text
+// next to it already says what is happening.
+@media (prefers-reduced-motion: reduce) {
+  .mat-mdc-progress-bar .mdc-linear-progress__bar-inner {
+    animation: none;
+    inline-size: 100%;
+  }
+}
+
 .mat-mdc-checkbox,
 .mat-mdc-slide-toggle {
   --mdc-checkbox-selected-icon-color: var(--color-accent);

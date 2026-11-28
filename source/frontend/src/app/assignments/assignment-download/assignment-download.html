@@ -1,51 +1,119 @@
-<h1>Download all submissions</h1>
+<div class="page">
+  <header class="head">
+    <h1>Download all submissions</h1>
+    <p class="head__text">
+      Package every student's repository for this assignment into a single zip, with folders named by
+      student name. The export runs in the background and can be downloaded once it is ready.
+    </p>
+  </header>
 
-<p class="note">
-  Package every student's repository for this assignment into a single zip, with folders named by
-  student name. The export runs in the background and can be downloaded once it is ready.
-</p>
+  <section class="card-surface export">
+    @switch (phase()) {
+      @case ('choose') {
+        <fieldset class="snapshot">
+          <legend class="export__title">Snapshot</legend>
 
-<mat-card>
-  <mat-card-content>
-    <p class="field-label">Snapshot</p>
-    <mat-button-toggle-group [value]="mode()" (change)="mode.set($event.value)" hideSingleSelectionIndicator>
-      <mat-button-toggle [value]="null">Assignment default</mat-button-toggle>
-      <mat-button-toggle [value]="DownloadSnapshotMode.Deadline">Before deadline</mat-button-toggle>
-      <mat-button-toggle [value]="DownloadSnapshotMode.Head">Include late commits</mat-button-toggle>
-    </mat-button-toggle-group>
+          <div class="snapshot__grid">
+            <label class="snapshot__option" [class.is-selected]="mode() === null">
+              <input class="snapshot__input" type="radio" name="snapshot-mode"
+                     [checked]="mode() === null" (change)="select(null)">
+              <span class="snapshot__text">
+                <span class="snapshot__label">Assignment default</span>
+                <span class="snapshot__hint">Latest commit on main, as configured for this assignment</span>
+              </span>
+              <mat-icon class="snapshot__check" aria-hidden="true">check_circle</mat-icon>
+            </label>
 
-    <div class="actions">
-      <button mat-raised-button color="primary" [disabled]="busy()" (click)="start()">
-        Start download
-      </button>
-    </div>
-  </mat-card-content>
-</mat-card>
+            <label class="snapshot__option"
+                   [class.is-selected]="mode() === DownloadSnapshotMode.Deadline">
+              <input class="snapshot__input" type="radio" name="snapshot-mode"
+                     [checked]="mode() === DownloadSnapshotMode.Deadline"
+                     (change)="select(DownloadSnapshotMode.Deadline)">
+              <span class="snapshot__text">
+                <span class="snapshot__label">Before deadline</span>
+                <span class="snapshot__hint">Last commit pushed before the deadline, later work left out</span>
+              </span>
+              <mat-icon class="snapshot__check" aria-hidden="true">check_circle</mat-icon>
+            </label>
 
-@if (job(); as j) {
-  <mat-card class="status">
-    <mat-card-content>
-      @switch (j.status) {
-        @case (DownloadJobStatus.Pending) {
-          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-          <p>Queued…</p>
-        }
-        @case (DownloadJobStatus.Running) {
-          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-          <p>Packaging submissions…</p>
-        }
-        @case (DownloadJobStatus.Ready) {
-          <p>The archive is ready.</p>
-          <button mat-raised-button color="primary" (click)="download()">Download zip</button>
-        }
-        @case (DownloadJobStatus.Failed) {
-          <p class="error">The download failed: {{ j.error ?? 'unknown error' }}</p>
+            <label class="snapshot__option" [class.is-selected]="mode() === DownloadSnapshotMode.Head">
+              <input class="snapshot__input" type="radio" name="snapshot-mode"
+                     [checked]="mode() === DownloadSnapshotMode.Head"
+                     (change)="select(DownloadSnapshotMode.Head)">
+              <span class="snapshot__text">
+                <span class="snapshot__label">Include late commits</span>
+                <span class="snapshot__hint">Everything pushed, including work after the deadline</span>
+              </span>
+              <mat-icon class="snapshot__check" aria-hidden="true">check_circle</mat-icon>
+            </label>
+          </div>
+        </fieldset>
+
+        <p class="export__summary">
+          <span><strong>{{ repositoryCount() }}</strong> {{ repositoryWord() }}</span>
+          <span><strong>{{ noCommitCount() }}</strong> with no commits</span>
+          <span>{{ modeSummary() }}</span>
+        </p>
+
+        <div class="export__actions">
+          <button type="button" class="btn btn--primary" (click)="start()">
+            <mat-icon aria-hidden="true">folder_zip</mat-icon>
+            Start download
+          </button>
+          <p class="export__note">Folders are named by student name</p>
+        </div>
+
+        @if (notice(); as message) {
+          <p class="export__notice" role="status">{{ message }}</p>
         }
       }
 
-      @if (j.notes) {
-        <pre class="notes">{{ j.notes }}</pre>
+      @case ('running') {
+        <h2 class="export__title">Preparing your export</h2>
+        <mat-progress-bar class="export__bar" mode="indeterminate"
+                          aria-label="Preparing your export" />
+        <p class="export__status">
+          <span>{{ runningLabel() }}</span>
+          <span class="export__status-meta">In progress</span>
+        </p>
+        <p class="export__note">
+          The export runs in the background, so you can leave this page and come back
+        </p>
       }
-    </mat-card-content>
-  </mat-card>
-}
+
+      @case ('ready') {
+        <h2 class="export__title">Export ready</h2>
+
+        <div class="file">
+          <mat-icon class="file__icon" aria-hidden="true">folder_zip</mat-icon>
+          <div class="file__body">
+            <p class="file__name">{{ fileName() }}</p>
+            <p class="file__meta">{{ fileMeta() }}</p>
+          </div>
+        </div>
+
+        <div class="export__actions">
+          <button type="button" class="btn btn--primary" (click)="download()">Download zip</button>
+          <button type="button" class="btn" (click)="reset()">Export again</button>
+        </div>
+
+        @if (job()?.notes; as notes) {
+          <p class="export__notes">{{ notes }}</p>
+        }
+
+        @if (notice(); as message) {
+          <p class="export__notice" role="status">{{ message }}</p>
+        }
+      }
+
+      @case ('failed') {
+        <h2 class="export__title">Export failed</h2>
+        <p class="export__error" role="alert">{{ failureText() }}</p>
+
+        <div class="export__actions">
+          <button type="button" class="btn btn--primary" (click)="reset()">Try again</button>
+        </div>
+      }
+    }
+  </section>
+</div>

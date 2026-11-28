@@ -1,44 +1,50 @@
 import { Component, computed, inject, input } from '@angular/core';
-import { Duration, Instant } from '@js-joda/core';
-import { MatIcon } from '@angular/material/icon';
+import { ChronoUnit, Duration, Instant } from '@js-joda/core';
 import { DeadlineKind } from '../../../core/services/assignment-service';
 import { NowService } from '../../../core/services/now-service';
-import { dueLabel, relativeDue } from '../../../core/util/assignment-state';
+import { calendarDaysBetween, dueLabel } from '../../../core/util/assignment-state';
 
-/** How far before the deadline the run-up starts. */
+/** How far before the deadline the tracked stretch starts when no assign time is known. */
 const RUN_UP_DAYS = 14;
-/** How long a soft deadline keeps accepting pushes after the marker. */
-const LATE_DAYS = 7;
 
 /**
- * The one picture of a deadline: a clean track with a round marker. A soft deadline keeps the
- * track running after the marker (fading out, and filling with the warning tone once passed);
- * a hard deadline ends in the marker and turns grey afterwards. The icon says which one it is,
- * so the meaning never depends on colour alone.
+ * One picture of a deadline: a thin track from "assigned" to the deadline with a flat fill.
+ *
+ * A hard deadline stops at the end of the track. A soft one keeps working after it, so the fill
+ * turns the warning tone and fades out instead of pretending there is a wall. Everything on
+ * screen is derived from the deadline, its kind and the clock, so the picture cannot disagree
+ * with the label next to it.
  */
 @Component({
   selector: 'app-deadline-timeline',
-  imports: [MatIcon],
   template: `
     @if (hasDeadline()) {
-      <div class="timeline" [class.timeline--hard]="isHard()" [class.timeline--passed]="passed()"
-           role="img" [attr.aria-label]="label()">
-        <div class="timeline__track">
-          <span class="timeline__elapsed" [style.flex-basis.%]="elapsed()"></span>
-          <span class="timeline__remaining" [style.flex-basis.%]="remaining()"></span>
-          @if (!isHard()) {
-            <span class="timeline__tail" [style.flex-basis.%]="tail()"></span>
-          }
-          <span class="timeline__marker" [style.inset-inline-start.%]="elapsed()">
-            <mat-icon aria-hidden="true">{{ icon() }}</mat-icon>
-          </span>
+      <div class="deadline"
+           [class.deadline--hard]="isHard()"
+           [class.deadline--passed]="passed()"
+           [class.deadline--late]="isLate()"
+           role="progressbar"
+           aria-valuemin="0"
+           aria-valuemax="100"
+           [attr.aria-valuenow]="elapsed()"
+           [attr.aria-valuetext]="label()">
+        <div class="deadline__top">
+          <span class="deadline__date">{{ stamp() }}</span>
+          <span class="deadline__left">{{ left() }}</span>
         </div>
 
-        <p class="timeline__meta">
-          <mat-icon class="timeline__meta-icon" aria-hidden="true">{{ icon() }}</mat-icon>
-          <span class="timeline__stamp">{{ stamp() }}</span>
-          <span class="timeline__left" [class]="'timeline__left timeline__left--' + tone()">{{ left() }}</span>
-        </p>
+        <div class="deadline__track">
+          <span class="deadline__fill" [style.inline-size.%]="fill()"></span>
+        </div>
+
+        <div class="deadline__bottom">
+          <span class="deadline__assigned">Assigned</span>
+          <span class="deadline__kind">{{ kindLabel() }}</span>
+        </div>
+
+        @if (isLate()) {
+          <p class="deadline__note">You can still submit</p>
+        }
       </div>
     }
   `,
@@ -49,13 +55,12 @@ export class DeadlineTimeline {
 
   public readonly deadline = input<Instant | null>(null);
   public readonly kind = input<DeadlineKind>(DeadlineKind.None);
-  /** Optional start of the run-up; defaults to two weeks before the deadline. */
+  /** Optional start of the tracked stretch; defaults to two weeks before the deadline. */
   public readonly start = input<Instant | null>(null);
 
   protected readonly hasDeadline = computed(
     () => this.deadline() !== null && this.kind() !== DeadlineKind.None);
   protected readonly isHard = computed(() => this.kind() === DeadlineKind.Hard);
-  protected readonly icon = computed(() => (this.isHard() ? 'lock' : 'hourglass_bottom'));
 
   protected readonly stamp = computed(() => {
     const deadline = this.deadline();
@@ -69,63 +74,75 @@ export class DeadlineTimeline {
     return deadline !== null && this.clock.now().isAfter(deadline);
   });
 
-  /** Share of the whole track that the run-up takes; the rest is the soft tail. */
-  private readonly runUpShare = computed(() => {
-    if (this.isHard()) {
-      return 100;
-    }
+  /** Only a soft deadline can be late: a passed hard deadline is closed, not late. */
+  protected readonly isLate = computed(() => this.passed() && !this.isHard());
 
-    return (RUN_UP_DAYS / (RUN_UP_DAYS + LATE_DAYS)) * 100;
-  });
+  protected readonly kindLabel = computed(() => (this.isHard() ? 'Hard deadline' : 'Soft deadline'));
 
-  /** How much of the run-up is behind us, in percent of the full track. */
+  /** How much of the assigned stretch is behind us, in percent. */
   protected readonly elapsed = computed(() => {
     const deadline = this.deadline();
     if (deadline === null) {
       return 0;
     }
     const start = (this.start() ?? deadline.minus(Duration.ofDays(RUN_UP_DAYS))).toEpochMilli();
-    const end = deadline.toEpochMilli();
-    const span = Math.max(1, end - start);
+    const span = Math.max(1, deadline.toEpochMilli() - start);
     const done = ((this.clock.now().toEpochMilli() - start) / span) * 100;
 
-    return Math.min(this.runUpShare(), Math.max(0, (done / 100) * this.runUpShare()));
+    return Math.min(100, Math.max(0, Math.round(done)));
   });
 
-  /** The neutral part between "now" and the marker. */
-  protected readonly remaining = computed(() => this.runUpShare() - this.elapsed());
-
-  /** The soft tail behind the marker; it is fully there until the deadline passes. */
-  protected readonly tail = computed(() => 100 - this.runUpShare());
+  /** A passed deadline fills the whole track; nothing is drawn after it. */
+  protected readonly fill = computed(() => (this.passed() ? 100 : this.elapsed()));
 
   protected readonly left = computed(() => {
+    if (this.deadline() === null) {
+      return '';
+    }
+    if (this.passed()) {
+      return this.isHard() ? 'Closed' : `${this.amount()} late`;
+    }
+
+    return `${this.amount()} left`;
+  });
+
+  protected readonly label = computed(() => {
+    const kind = this.isHard() ? 'hard' : 'soft';
+    if (this.passed()) {
+      return this.isHard()
+        ? 'Hard deadline closed'
+        : `${this.amount()} late, soft deadline, you can still submit`;
+    }
+
+    return `${this.amount()} left until the ${kind} deadline`;
+  });
+
+  /** "8 days" / "5 hours" / "40 minutes", counted in whichever unit a person would use. */
+  private amount(): string {
     const deadline = this.deadline();
     if (deadline === null) {
       return '';
     }
-    const relative = relativeDue(deadline, this.clock.now());
-    if (!this.passed()) {
-      return relative;
+    const now = this.clock.now();
+    const seconds = Math.abs(now.until(deadline, ChronoUnit.SECONDS));
+    const minutes = Math.abs(now.until(deadline, ChronoUnit.MINUTES));
+
+    if (seconds < 60) {
+      return this.unit(Math.max(1, seconds), 'second');
+    }
+    if (minutes < 60) {
+      return this.unit(Math.max(1, minutes), 'minute');
+    }
+    if (minutes < 24 * 60) {
+      return this.unit(Math.floor(minutes / 60), 'hour');
     }
 
-    return this.isHard() ? 'Closed' : `${relative} late`;
-  });
+    const days = Math.abs(calendarDaysBetween(now, deadline));
 
-  protected readonly tone = computed(() => {
-    if (this.passed()) {
-      return this.isHard() ? 'closed' : 'late';
-    }
+    return this.unit(days, 'day');
+  }
 
-    return 'open';
-  });
-
-  protected readonly label = computed(() => {
-    if (this.isHard()) {
-      return this.passed() ? 'Hard deadline, closed' : `Hard deadline, ${this.left()}`;
-    }
-
-    return this.passed()
-      ? `Soft deadline, late pushes accepted, ${this.left()}`
-      : `Soft deadline, late pushes accepted, ${this.left()}`;
-  });
+  private unit(value: number, unit: string): string {
+    return `${value} ${value === 1 ? unit : `${unit}s`}`;
+  }
 }

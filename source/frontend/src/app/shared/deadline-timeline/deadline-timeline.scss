@@ -1,135 +1,106 @@
 :host {
   display: block;
-
-  /* One size drives the whole picture: track thickness, and the marker at three times that. */
-  --timeline-size: 0.55em;
-  --timeline-marker: calc(var(--timeline-size) * 3);
 }
 
-.timeline {
+/*
+ * A deadline reads like a Forgejo progress bar: a thin flat track, a flat fill, hairline edges
+ * and quiet labels. Nothing floats above the bar and there is no knob, so the track can never be
+ * mistaken for a slider.
+ */
+.deadline {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
-/* the clean track: even thickness everywhere, rounded ends */
-.timeline__track {
-  position: relative;
+.deadline__top,
+.deadline__bottom {
   display: flex;
-  align-items: center;
-  block-size: var(--timeline-size);
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.deadline__date {
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.deadline__left {
+  margin-inline-start: auto;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The track is neutral while time is left; a passed deadline leaves nothing after the fill. */
+.deadline__track {
+  position: relative;
+  block-size: 0.375rem;
   border-radius: var(--radius-pill);
   background-color: var(--color-bg-input);
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-border);
+  overflow: hidden;
 }
 
-.timeline__elapsed,
-.timeline__remaining,
-.timeline__tail {
+.deadline__fill {
+  display: block;
   block-size: 100%;
-  flex: 0 0 auto;
-}
-
-.timeline__elapsed {
+  border-radius: inherit;
   background-color: var(--color-accent);
-  border-radius: var(--radius-pill);
 }
 
-.timeline__remaining {
-  background-color: var(--color-bg-hover);
-  border-radius: var(--radius-pill);
+/* Hard deadline, closed: the bar is done, in the colour of work that can no longer be handed in. */
+.deadline--passed.deadline--hard .deadline__fill {
+  background-color: var(--color-danger-border);
 }
 
-/* the stretch after a soft deadline: it keeps going and fades into the card */
-.timeline__tail {
+/*
+ * Soft deadline, passed: the bar is open-ended, so it fills with the warning tone and fades out
+ * instead of ending in a wall. No second segment, no gap, nothing grey behind the fill.
+ */
+.deadline--late .deadline__fill {
+  background-color: transparent;
   background-image: linear-gradient(
     to right,
-    var(--color-warning-border),
-    color-mix(in srgb, var(--color-warning-border) 40%, transparent) 55%,
+    var(--color-warning-fill),
+    color-mix(in srgb, var(--color-warning-fill) 85%, transparent) 82%,
     transparent
   );
-  border-start-end-radius: var(--radius-pill);
-  border-end-end-radius: var(--radius-pill);
-  opacity: 0.85;
 }
 
-/* the marker cuts into the track with a ring in the card colour */
-.timeline__marker {
-  position: absolute;
-  inset-block-start: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--timeline-marker);
-  block-size: var(--timeline-marker);
-  margin-inline-start: calc(var(--timeline-marker) / -2);
-  translate: 0 -50%;
-  border-radius: 50%;
-  border: var(--border-width) solid var(--color-bg-surface);
-  background-color: var(--color-bg-surface);
-  color: var(--color-urgency-soon);
+/* Nothing is left of the track once a soft deadline is open-ended: no rim, no grey stub at the end. */
+.deadline--late .deadline__track {
+  background-color: transparent;
+  box-shadow: none;
 }
 
-.timeline__marker mat-icon {
-  font-size: var(--timeline-size);
-  inline-size: var(--timeline-size);
-  block-size: var(--timeline-size);
-  line-height: 1;
+.deadline__assigned {
+  color: var(--color-text-subtle);
 }
 
-.timeline--hard .timeline__marker {
+.deadline__kind {
+  margin-inline-start: auto;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.deadline--late .deadline__left {
+  color: var(--color-warning-text);
+}
+
+.deadline--passed.deadline--hard .deadline__left {
   color: var(--color-danger-strong);
 }
 
-/* passed: a soft deadline fills its tail, a hard one goes quiet */
-.timeline--passed:not(.timeline--hard) .timeline__tail {
-  background-image: linear-gradient(
-    to right,
-    var(--color-warning-text),
-    color-mix(in srgb, var(--color-warning-text) 45%, transparent) 60%,
-    transparent
-  );
-  opacity: 1;
-}
-
-.timeline--passed.timeline--hard .timeline__elapsed {
-  background-color: var(--color-bg-hover);
-}
-
-.timeline--passed.timeline--hard .timeline__marker {
-  color: var(--color-danger-strong);
-}
-
-/* label row */
-.timeline__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-2);
+/* The one note a soft deadline needs: it did not close when it said it would. */
+.deadline__note {
   margin: 0;
   font-size: var(--font-size-sm);
-  color: var(--color-text);
-}
-
-.timeline__meta-icon {
-  align-self: center;
-  font-size: 1.125rem;
-  inline-size: 1.125rem;
-  block-size: 1.125rem;
-  color: var(--color-urgency-soon);
-}
-
-.timeline--hard .timeline__meta-icon {
-  color: var(--color-danger-strong);
-}
-
-.timeline__left--open {
-  color: var(--color-urgency-soon);
-}
-
-.timeline__left--late {
-  color: var(--color-urgency-soon);
-}
-
-.timeline__left--closed {
-  color: var(--color-danger-strong);
+  color: var(--color-text-subtle);
+  text-align: end;
 }

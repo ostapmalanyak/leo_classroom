@@ -6,8 +6,8 @@ import { MatIcon } from '@angular/material/icon';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import {
-  Assignment, AssignmentService, AssignmentWrite, DeadlineKind, DownloadSnapshotMode, StarterArchivePreview,
-  StarterSourceKind
+  Assignment, AssignmentService, AssignmentWrite, DeadlineKind, DownloadSnapshotMode, RepositoryPreview,
+  StarterArchivePreview, StarterSourceKind,
 } from '../../../core/services/assignment-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 import { isHiddenNow } from '../../../core/util/assignment-state';
@@ -301,6 +301,205 @@ export class AssignmentEdit implements OnInit {
   });
 
   /** Picking a fork drops a hard deadline, because that pairing is not allowed. */
+  // Layout B: one bar takes a dropped ZIP, a browse click, and (fork only) a pasted link.
+  protected readonly dragging = signal(false);
+  protected readonly starterMessage = signal<string | null>(null);
+  protected readonly resolvingLink = signal(false);
+  protected readonly archiveBytes = signal<number | null>(null);
+  protected readonly repoPreview = signal<RepositoryPreview | null>(null);
+
+  private dragDepth = 0;
+
+  protected readonly starterFilled = computed(() =>
+    this.isArchive() ? this.archivePreview() !== null : this.repoPreview() !== null);
+
+  protected readonly starterPlaceholder = computed(() =>
+    this.isArchive() ? 'Drop a ZIP here' : 'Drop a ZIP or paste a repository link');
+
+  protected readonly starterIcon = computed(() => this.isArchive() ? 'folder_zip' : 'repository');
+
+  protected readonly starterName = computed(() => this.isArchive()
+    ? (this.archivePreview()?.fileName ?? '')
+    : (this.repoPreview()?.fullName ?? ''));
+
+  protected readonly starterMeta = computed(() => {
+    if (this.isArchive()) {
+      const bytes = this.archiveBytes();
+      const entries = this.archivePreview()?.entries.length ?? 0;
+
+      return [bytes === null ? null : AssignmentEdit.sizeLabel(bytes), `${entries} ${entries === 1 ? 'entry' : 'entries'}`]
+        .filter(part => part !== null)
+        .join(' · ');
+    }
+
+    const repo = this.repoPreview();
+    if (repo === null) {
+      return '';
+    }
+
+    return `${repo.defaultBranch} · ${repo.private ? 'private' : 'public'} · ${AssignmentEdit.plural(repo.files, 'file')}`;
+  });
+
+  protected readonly treeShown = computed(() => (this.archivePreview()?.entries ?? []).slice(0, 12));
+
+  protected readonly treeHidden = computed(() => Math.max(0, (this.archivePreview()?.entries.length ?? 0) - 12));
+
+  protected readonly treeTotal = computed(() => {
+    const entries = this.archivePreview()?.entries ?? [];
+    const folders = entries.filter(entry => entry.endsWith('/')).length;
+
+    return `${AssignmentEdit.plural(entries.length - folders, 'file')} · ${AssignmentEdit.plural(folders, 'folder')}`;
+  });
+
+  private static plural(count: number, word: string): string {
+    return `${count} ${word}${count === 1 ? '' : 's'}`;
+  }
+
+  protected onDragEnter(event: DragEvent): void {
+    event.preventDefault();
+    this.dragDepth += 1;
+    this.dragging.set(true);
+  }
+
+  protected onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer !== null) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+  }
+
+  // Counting the leaves keeps the highlight steady while the pointer crosses the children.
+  protected onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    this.dragDepth = Math.max(0, this.dragDepth - 1);
+    if (this.dragDepth === 0) {
+      this.dragging.set(false);
+    }
+  }
+
+  protected onDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.dragDepth = 0;
+    this.dragging.set(false);
+    const files = event.dataTransfer?.files ?? null;
+    if (files === null || files.length === 0) {
+      return;
+    }
+    if (files.length > 1) {
+      this.starterMessage.set('Drop one ZIP at a time');
+
+      return;
+    }
+    void this.acceptArchive(files[0]);
+  }
+
+  protected onFilePicked(event: Event): void {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file === undefined) {
+      return;
+    }
+    void this.acceptArchive(file);
+  }
+
+  protected onLinkInput(value: string): void {
+    this.starterRepoUrl.set(value);
+    this.repoPreview.set(null);
+    this.starterMessage.set(null);
+  }
+
+  protected async resolveLink(): Promise<void> {
+    const url = this.starterRepoUrl().trim();
+    if (url === '' || this.resolvingLink()) {
+      return;
+    }
+
+    this.resolvingLink.set(true);
+    this.starterMessage.set(null);
+    const result = await this.service.previewRepository(url);
+    this.resolvingLink.set(false);
+    if (typeof result === 'string') {
+      this.starterMessage.set(result);
+
+      return;
+    }
+
+    this.archivePreview.set(null);
+    this.archiveConfirmed.set(false);
+    this.repoPreview.set(result);
+  }
+
+  protected removeStarter(): void {
+    this.archivePreview.set(null);
+    this.archiveConfirmed.set(false);
+    this.archiveBytes.set(null);
+    this.archiveUploadError.set(null);
+    this.repoPreview.set(null);
+    this.starterRepoUrl.set('');
+    this.starterMessage.set(null);
+  }
+
+  /** Step two is never blocked; the reason lives next to the starter bar instead. */
+  protected next(): void {
+    if (this.step() === 1 && (this.isArchive() || this.isForkRepo()) && !this.starterFilled()) {
+      this.starterMessage.set(this.isArchive()
+        ? 'Choose a ZIP to continue'
+        : 'Choose a ZIP or paste a link to continue');
+
+      return;
+    }
+
+    this.starterMessage.set(null);
+    this.goTo(this.step() + 1);
+  }
+
+  private async acceptArchive(file: File): Promise<void> {
+    this.starterMessage.set(null);
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+      this.starterMessage.set('That file is not a ZIP. Choose a .zip file');
+
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      this.starterMessage.set('That ZIP is larger than 50 MB. Choose a smaller one');
+
+      return;
+    }
+
+    this.archivePreview.set(null);
+    this.archiveConfirmed.set(false);
+    this.archiveUploadError.set(null);
+    this.repoPreview.set(null);
+    this.archiveUploading.set(true);
+    const result = await this.service.previewStarterArchive(file);
+    this.archiveUploading.set(false);
+    if (typeof result === 'string') {
+      this.archiveUploadError.set(result);
+      this.starterMessage.set('Could not read that ZIP. Check that it opens on your computer and is under 50 MB');
+
+      return;
+    }
+
+    this.archiveBytes.set(file.size);
+    this.archivePreview.set(result);
+  }
+
+  private static sizeLabel(bytes: number): string {
+    if (bytes < 1024) {
+      return `${bytes} B`;
+    }
+    const units = ['kB', 'MB'];
+    let value = bytes / 1024;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit += 1;
+    }
+
+    return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unit]}`;
+  }
+
   protected setStarterSource(kind: StarterSourceKind): void {
     this.starterSource.set(kind);
     if (kind === StarterSourceKind.ForkOwnRepo && this.deadlineKind() === DeadlineKind.Hard) {

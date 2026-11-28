@@ -28,7 +28,7 @@ export class RosterList implements OnInit {
   protected readonly session = inject(SessionService);
 
   protected readonly RosterKind = RosterKind;
-  protected readonly displayedColumns: string[] = ['name', 'kind', 'memberCount'];
+  protected readonly displayedColumns: string[] = ['name', 'kind'];
   protected readonly rosters: WritableSignal<RosterOverview[]> = signal([]);
   protected readonly loading: WritableSignal<boolean> = signal(false);
 

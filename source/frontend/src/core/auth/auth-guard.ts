@@ -2,6 +2,7 @@ import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { inject } from '@angular/core';
 import { AuthGuardData, createAuthGuard } from 'keycloak-angular';
 import { Role } from './roles';
+import { loginRedirectUri } from './login-redirect';
 import { rolesFromLdapEntryDn } from './leo-roles';
 import { MeService } from '../services/me-service';
 
@@ -16,7 +17,7 @@ export const authGuard: CanActivateFn = createAuthGuard<CanActivateFn>(
 
     // An expired/absent session defers to Keycloak (silent refresh already attempted), then login.
     if (!authenticated) {
-      await keycloak.login({ redirectUri: window.location.href });
+      await keycloak.login({ redirectUri: loginRedirectUri() });
 
       return false;
     }

@@ -1,4 +1,6 @@
-import { Component, computed, inject, input, InputSignal, OnInit, signal, WritableSignal } from '@angular/core';
+import {
+  Component, computed, DestroyRef, inject, input, InputSignal, OnInit, signal, WritableSignal
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { MatIcon } from '@angular/material/icon';
 import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
@@ -10,6 +12,7 @@ import { CourseService } from '../../../core/services/course-service';
 import { NowService } from '../../../core/services/now-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
 import { DeadlineTimeline } from '../../shared/deadline-timeline/deadline-timeline';
+import { GitLoginStep } from '../../shared/git-login-step/git-login-step';
 
 type BadgeTone = 'neutral' | 'danger';
 
@@ -22,6 +25,7 @@ interface StudentRow {
   /** The student's own commits; null when they could not be counted (still being set up, Forgejo unreachable). */
   commits: number | null;
   lateCommits: number | null;
+  pushed: boolean;
   badge: { label: string; tone: BadgeTone; icon: string | null } | null;
   action: { label: string; kind: 'feedback' | 'repository' } | null;
   repoUrl: string | null;
@@ -38,7 +42,7 @@ const AVATAR_STACK = 3;
  */
 @Component({
   selector: 'app-assignment-students',
-  imports: [MatIcon, MatMenu, MatMenuItem, MatMenuTrigger, MatProgressBar, DeadlineTimeline],
+  imports: [MatIcon, MatMenu, MatMenuItem, MatMenuTrigger, MatProgressBar, DeadlineTimeline, GitLoginStep],
   templateUrl: './assignment-students.html',
   styleUrl: './assignment-students.scss'
 })
@@ -48,10 +52,14 @@ export class AssignmentStudents implements OnInit {
   private readonly snackbar = inject(SnackbarService);
   private readonly router = inject(Router);
   private readonly clock = inject(NowService);
+  private readonly destroyRef = inject(DestroyRef);
+  private loadingTimer: ReturnType<typeof setTimeout> | null = null;
 
   public readonly id: InputSignal<string> = input.required<string>();
 
   protected readonly loading: WritableSignal<boolean> = signal(false);
+  /** Only a load that actually takes a moment earns a bar; anything faster would just flash. */
+  protected readonly showLoading: WritableSignal<boolean> = signal(false);
   protected readonly assignment: WritableSignal<Assignment | null> = signal(null);
   protected readonly courseTitle: WritableSignal<string> = signal('');
   protected readonly rows: WritableSignal<StudentRow[]> = signal([]);
@@ -59,6 +67,12 @@ export class AssignmentStudents implements OnInit {
   protected readonly pendingOpen: WritableSignal<boolean> = signal(false);
 
   protected readonly DeadlineKind = DeadlineKind;
+
+  private static readonly BAR_DELAY_MS = 300;
+
+  public constructor() {
+    this.destroyRef.onDestroy(() => this.clearLoadingTimer());
+  }
 
   protected readonly studentUrl = computed(() => `${window.location.origin}/my-assignments/${this.id()}`);
   protected readonly title = computed(() => this.assignment()?.title ?? '');
@@ -83,6 +97,30 @@ export class AssignmentStudents implements OnInit {
   protected readonly toReviewCount = computed(() => this.acceptedRows().filter(row => row.needsReview).length);
   /** How many students have at least one commit after the deadline. */
   protected readonly lateCount = computed(() => this.acceptedRows().filter(row => (row.lateCommits ?? 0) > 0).length);
+
+  /**
+   * Every student falls into exactly one slice, so the slices add up to the whole class. A hard
+   * deadline takes write access away, so it has no late slice.
+   */
+  protected readonly slices = computed(() => {
+    const pushed = this.acceptedRows().filter(row => row.pushed);
+    const late = this.isHard() ? 0 : pushed.filter(row => (row.lateCommits ?? 0) > 0).length;
+    const total = this.totalCount();
+    let start = 0;
+
+    return [
+      { label: this.isHard() ? 'Pushed' : 'Pushed on time', count: pushed.length - late,
+        color: 'var(--color-success-text)' },
+      ...(this.isHard() ? [] : [{ label: 'Pushed late', count: late, color: 'var(--color-accent)' }]),
+      { label: 'Nothing pushed', count: total - pushed.length, color: 'var(--color-urgency-overdue)' }
+    ].map(slice => {
+      const share = total === 0 ? 0 : slice.count / total * 100;
+      const result = { ...slice, share, start, percent: Math.round(share) };
+      start += share;
+
+      return result;
+    });
+  });
 
   /** The first few avatars of the people who have not accepted, for the collapsed group. */
   protected readonly pendingPreview = computed(() => this.pendingRows().slice(0, AVATAR_STACK));
@@ -174,9 +212,9 @@ export class AssignmentStudents implements OnInit {
   }
 
   private async reload(): Promise<void> {
-    this.loading.set(true);
+    this.beginLoading();
     const submissions = await this.service.getStudents(Number(this.id()));
-    this.loading.set(false);
+    this.endLoading();
     if (submissions === null) {
       this.snackbar.show('Could not load the student list');
 
@@ -201,6 +239,29 @@ export class AssignmentStudents implements OnInit {
     this.rows.set([...accepted, ...missing]);
   }
 
+  private beginLoading(): void {
+    this.loading.set(true);
+    this.clearLoadingTimer();
+    this.loadingTimer = setTimeout(() => {
+      if (this.loading()) {
+        this.showLoading.set(true);
+      }
+    }, AssignmentStudents.BAR_DELAY_MS);
+  }
+
+  private endLoading(): void {
+    this.loading.set(false);
+    this.showLoading.set(false);
+    this.clearLoadingTimer();
+  }
+
+  private clearLoadingTimer(): void {
+    if (this.loadingTimer !== null) {
+      clearTimeout(this.loadingTimer);
+      this.loadingTimer = null;
+    }
+  }
+
   private toRow(submission: StudentSubmission, counts: Map<number, CommitSummary>): StudentRow {
     const summary = counts.get(submission.acceptanceId);
 
@@ -212,6 +273,8 @@ export class AssignmentStudents implements OnInit {
       initials: this.initialsOf(submission.firstName, submission.lastName),
       commits: summary?.commitCount ?? null,
       lateCommits: summary?.lateCommitCount ?? null,
+      // the own-commit count wins; the last push only stands in when commits could not be counted
+      pushed: summary?.commitCount != null ? summary.commitCount > 0 : submission.lastPushAt !== null,
       badge: this.badgeOf(submission),
       action: this.actionOf(submission),
       repoUrl: submission.repoUrl,
@@ -229,6 +292,7 @@ export class AssignmentStudents implements OnInit {
       initials: this.initialsOf(firstName, lastName),
       commits: null,
       lateCommits: null,
+      pushed: false,
       badge: null,
       action: null,
       repoUrl: null,

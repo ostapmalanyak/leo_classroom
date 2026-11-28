@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using LeoClassroom.Services.Forgejo;
+using LeoClassroom.Services.GitSetup;
 using LeoClassroom.Services.Util;
 using LeoClassroom.Persistence.Util;
 using Microsoft.Extensions.Logging;
@@ -24,6 +25,7 @@ public sealed class WebhookSignatureTests
                 WebhookSecret = secret,
                 WebhookTargetUrl = "https://api.test/hook"
             }),
+            Substitute.For<IGitSetupService>(),
             Substitute.For<ILogger<WebhookService>>());
 
     private static string Sign(string secret, byte[] body) =>

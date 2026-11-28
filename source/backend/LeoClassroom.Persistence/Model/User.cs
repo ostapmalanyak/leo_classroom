@@ -22,5 +22,22 @@ public class User
     ///     is replaced rather than recovered.
     /// </remarks>
     public Instant? GitCredentialIssuedAt { get; set; }
+
+    /// <summary>
+    ///     When this user last ran the one-time git login setup, or null if never
+    /// </summary>
+    public Instant? GitSetupConfiguredAt { get; set; }
+
+    /// <summary>
+    ///     When a git operation proved that the stored credential works, or null while it is still unproven
+    /// </summary>
+    public Instant? GitSetupAuthorizedAt { get; set; }
+
+    /// <summary>
+    ///     The opaque token in this user's setup URL. Random, unique and written once: it only ever marks the
+    ///     user as configured, so it grants nothing else.
+    /// </summary>
+    public string? GitSetupToken { get; set; }
+
     public ICollection<Roster> Rosters { get; set; } = [];
 }
