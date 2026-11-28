@@ -56,6 +56,7 @@ h1 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
   gap: var(--space-3);
+
   /* A legend is not a flex item, so the space between the label and its cards lives here. */
   margin-block-start: calc(var(--space-4) + var(--space-1));
 }
@@ -153,6 +154,7 @@ h1 {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
+
   /* The action row belongs to the card, not to the snapshot block above it. */
   margin-block-start: var(--space-2);
 }

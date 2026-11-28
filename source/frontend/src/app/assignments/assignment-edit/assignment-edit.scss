@@ -317,15 +317,19 @@
   background-color: var(--color-bg-input);
   border-radius: var(--radius);
   list-style: none;
-  margin: 0;
-  max-block-size: 16rem;
+  margin: var(--space-2) 0 0;
+  max-block-size: 12rem;
   overflow: auto;
-  padding: var(--space-2);
+  padding: 0;
 
   li {
     align-items: center;
     display: flex;
     gap: var(--space-2);
+    padding-block: 0.125rem;
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
   }
 
   code {
@@ -338,6 +342,8 @@
   display: flex;
   font-size: var(--font-size-sm);
   gap: var(--space-2);
+  margin-block-start: var(--space-3);
+  color: var(--color-text-muted);
 }
 
 // The lifecycle switch.
@@ -649,39 +655,12 @@
   color: var(--color-text-muted);
 }
 
-.archive-preview__entries {
-  margin: var(--space-2) 0 0;
-  padding: 0;
-  list-style: none;
-  max-block-size: 12rem;
-  overflow: auto;
-}
-
-.archive-preview__entries li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding-block: 0.125rem;
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
 .archive-preview__folder code {
   color: var(--color-text);
 }
 
 .archive-preview__more {
   color: var(--color-text-subtle);
-}
-
-.archive-confirm {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  margin-block-start: var(--space-3);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
 }
 
 @media (prefers-reduced-motion: reduce) {
