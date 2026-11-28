@@ -50,7 +50,17 @@ public sealed record CommitAnalyticsView(
     int ActiveDayCount,
     IReadOnlyCollection<CommitAnalyticsEntry> Commits);
 
-public sealed record CommitAnalyticsEntry(string Sha, Instant At, bool Late);
+public sealed record CommitAnalyticsEntry(
+    string Sha,
+    Instant At,
+    bool Late,
+    string Message,
+    IReadOnlyCollection<CommitFile> Files);
+
+/// <summary>
+///     A file a commit touched; the status is Forgejo's word for it, such as <c>added</c> or <c>modified</c>
+/// </summary>
+public sealed record CommitFile(string Path, string? Status);
 
 /// <summary>
 ///     One submission's own commits, counted for the assignment overview; null where Forgejo could not be asked

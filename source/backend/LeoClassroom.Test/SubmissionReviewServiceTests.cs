@@ -1,3 +1,4 @@
+using System.Text.Json;
 using LeoClassroom.Services.Auth;
 using LeoClassroom.Services.Forgejo;
 using LeoClassroom.Services;
@@ -69,6 +70,21 @@ public sealed class SubmissionReviewServiceTests
             new ForgejoRepo(1, "course-a-IF1", "course-7/course-a-IF1", "url", "html", defaultBranch);
         _forgejo.GetRepoAsync("course-7", "course-a-IF1")
                 .Returns(new ValueTask<OneOf<ForgejoRepo, NotFound, ForgejoError>>(repo));
+    }
+
+    [Fact]
+    public void CommitListing_CarriesMessageAndChangedFiles()
+    {
+        // the shape Forgejo 15 answers its commit listing with
+        const string json = """
+            {"sha":"abc","author":null,"files":[{"filename":"src/Main.java","status":"added"}],
+             "commit":{"message":"Add Main","author":{"date":"2026-06-13T10:00:00Z"}}}
+            """;
+
+        ForgejoCommit commit = JsonSerializer.Deserialize<ForgejoCommit>(json, JsonSerializerOptions.Web)!;
+
+        commit.Details.Message.Should().Be("Add Main");
+        commit.Files.Should().Equal(new ForgejoCommitFile("src/Main.java", "added"));
     }
 
     [Fact]

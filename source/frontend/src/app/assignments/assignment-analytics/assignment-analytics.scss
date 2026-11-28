@@ -46,9 +46,42 @@
 }
 
 .commit {
+  padding: var(--space-3) var(--space-4);
+}
+
+.commit__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-4);
+}
+
+/* a commit body keeps its own line breaks */
+.commit__message {
+  margin-block: var(--space-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.commit summary {
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.commit__files {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  overflow-wrap: anywhere;
+}
+
+.commit__status {
+  display: inline-block;
+  min-inline-size: 5.5rem;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
 }
 
 .on-time {

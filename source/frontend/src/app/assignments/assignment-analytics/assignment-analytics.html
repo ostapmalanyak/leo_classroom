@@ -39,9 +39,9 @@
 
   <dl class="spread">
     <dt>First push</dt>
-    <dd>{{ a.firstPushAt ? a.firstPushAt.toString() : '—' }}</dd>
+    <dd>{{ timestampLabel(a.firstPushAt) || '—' }}</dd>
     <dt>Last push</dt>
-    <dd>{{ a.lastPushAt ? a.lastPushAt.toString() : '—' }}</dd>
+    <dd>{{ timestampLabel(a.lastPushAt) || '—' }}</dd>
   </dl>
 
   <h2>Commits</h2>
@@ -50,15 +50,33 @@
   } @else {
     <div class="commits">
       @for (commit of a.commits; track commit.sha) {
-        <div class="commit">
-          <code>{{ commit.sha.substring(0, 8) }}</code>
-          <span>{{ commit.at.toString() }}</span>
-          @if (commit.late) {
-            <strong class="late">Late</strong>
-          } @else {
-            <strong class="on-time">On Time</strong>
-          }
-        </div>
+        <article class="card-surface commit">
+          <div class="commit__head">
+            <code>{{ commit.sha.substring(0, 8) }}</code>
+            <span>{{ timestampLabel(commit.at) }}</span>
+            @if (commit.late) {
+              <strong class="late">Late</strong>
+            } @else {
+              <strong class="on-time">On Time</strong>
+            }
+          </div>
+
+          <p class="commit__message">{{ commit.message || '(no commit message)' }}</p>
+
+          <details>
+            <summary>{{ commit.files.length }} {{ commit.files.length === 1 ? 'file' : 'files' }} changed</summary>
+            <ul class="commit__files">
+              @for (file of commit.files; track $index) {
+                <li>
+                  @if (file.status; as status) {
+                    <span class="commit__status">{{ status }}</span>
+                  }
+                  <code>{{ file.path }}</code>
+                </li>
+              }
+            </ul>
+          </details>
+        </article>
       }
     </div>
   }

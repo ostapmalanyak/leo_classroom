@@ -376,7 +376,12 @@ const commitAnalyticsZod = z.object({
   commits: z.object({
     sha: z.string(),
     at: InstantSchema,
-    late: z.boolean()
+    late: z.boolean(),
+    message: z.string(),
+    files: z.object({
+      path: z.string(),
+      status: z.string().nullable()
+    }).array()
   }).array()
 });
 export type CommitAnalytics = z.infer<typeof commitAnalyticsZod>;

@@ -53,11 +53,15 @@ public sealed record ForgejoTreeEntry(string Path, string Type);
 public sealed record ForgejoCommit(
     string Sha,
     [property: JsonPropertyName("commit")] ForgejoCommitDetails Details,
-    ForgejoUser? Author);
+    ForgejoUser? Author,
+    IReadOnlyList<ForgejoCommitFile>? Files = null);
+
+public sealed record ForgejoCommitFile(string Filename, string? Status = null);
 
 public sealed record ForgejoCommitDetails(
     [property: JsonPropertyName("author")] ForgejoCommitAuthor Author,
-    [property: JsonPropertyName("committer")] ForgejoCommitAuthor? Committer = null);
+    [property: JsonPropertyName("committer")] ForgejoCommitAuthor? Committer = null,
+    [property: JsonPropertyName("message")] string? Message = null);
 
 public sealed record ForgejoCommitAuthor(
     [property: JsonPropertyName("date")] string Date);

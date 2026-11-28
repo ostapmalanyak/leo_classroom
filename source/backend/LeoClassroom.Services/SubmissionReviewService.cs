@@ -262,8 +262,10 @@ internal sealed class SubmissionReviewService(
                 continue;
             }
 
-            entries.Add(new CommitAnalyticsEntry(commit.Sha, authoredAt,
-                                                 deadline is not null && authoredAt > deadline.Value));
+            entries.Add(new CommitAnalyticsEntry(
+                commit.Sha, authoredAt, deadline is not null && authoredAt > deadline.Value,
+                commit.Details.Message?.Trim() ?? string.Empty,
+                [.. (commit.Files ?? []).Select(file => new CommitFile(file.Filename, file.Status))]));
         }
 
         return entries;

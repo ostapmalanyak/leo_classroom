@@ -4,6 +4,7 @@ import { MatProgressBar } from '@angular/material/progress-bar';
 import { MatCardModule } from '@angular/material/card';
 import { AssignmentService, CommitAnalytics } from '../../../core/services/assignment-service';
 import { SnackbarService } from '../../../core/services/snackbar-service';
+import { timestampLabel } from '../../../core/util/assignment-state';
 
 @Component({
   selector: 'app-assignment-analytics',
@@ -14,6 +15,8 @@ import { SnackbarService } from '../../../core/services/snackbar-service';
 export class AssignmentAnalytics implements OnInit {
   private readonly service = inject(AssignmentService);
   private readonly snackbar = inject(SnackbarService);
+
+  protected readonly timestampLabel = timestampLabel;
 
   public readonly acceptanceId: InputSignal<string> = input.required<string>();
 
